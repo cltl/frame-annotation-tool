@@ -4,4 +4,5 @@ Annotation tool in JavaScript and Node.js for annotation of frames in Dutch docu
 
 ### Contact
 Filip Ilievski (f.ilievski@vu.nl)
+
 Vrije Universiteit Amsterdam
