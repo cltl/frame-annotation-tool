@@ -1,2 +1,7 @@
 # frame-annotation-tool
-Annotation tool in JavaScript and Node.js for annotation of frames in Dutch documents.
+Annotation tool in JavaScript and Node.js for annotation of frames in Dutch documents. Developed within the Dutch Framenet project.
+
+
+### Contact
+Filip Ilievski (f.ilievski@vu.nl)
+Vrije Universiteit Amsterdam
