@@ -1,0 +1,30 @@
+<html>
+<head>
+<title>Dashboard</title>
+<link href="/css/main.css" rel="stylesheet" type="text/css">
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+</head>
+<body class="centered">
+<div class="container">
+	<div class="login-container">
+            <div id="output" class="alert alert-success animated fadeInUp">Welcome back <%= username %> !</div>
+            <h2>Frame Annotation Tool: <u><%= username %></u>'s Dashboard</h2>
+            <div id="stats">
+            <h3>Your stats</h3>
+            <div class="row">
+                <span>Annotated incidents: <b><span id="menincs"></span></b></span><br/>
+                <span>Annotated documents: <b><span id="mendocs"></span></b></span><br/>
+            </div>
+            </div><br/>
+            <div class="row"> 
+                <img src="/img/dfn_logo.jpg" style="width:25%"/>
+                <img src="/img/vu_logo.png" style="width:70%"/>
+            </div>
+            <button class="btn btn-primary btn-ann" onclick="location.href= '/annotation'">Frame annotation</button>&nbsp;&nbsp;&nbsp;
+        <button class="btn btn-primary btn-ann" onclick="location.href='/logout'">Logout</button>
+        </div>
+</div>
+<script type="text/javascript" src="//code.jquery.com/jquery-1.11.2.min.js"></script>
+<script type="text/javascript" src="/js/dash.js"></script>
+</body>
+</html>

@@ -32,6 +32,7 @@ app.use(flash());
 // Set paths
 app.use('/', express.static('public/html'));
 app.use('/js', express.static('public/js'));
+app.use('/css', express.static('public/css'));
 app.use('/pdf', express.static('public/assets/pdf'));
 app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
@@ -82,8 +83,17 @@ passport.deserializeUser(function(user, done) {
   done(null, user);
 });
 
+/* Handle Login POST */
+app.post('/login', 
+  passport.authenticate('local', { failureRedirect: '/' }),
+  function(req, res) {
+    //res.redirect('/dash');
+    //logAction(req.user.user, "LOGIN");
+    res.sendStatus(200);
+  });
+
 app.get('/logout', function(req, res) {
-    logAction(req.user.user, "LOGOUT");
+//    logAction(req.user.user, "LOGOUT");
     req.logout();
     res.redirect('/');
 });
