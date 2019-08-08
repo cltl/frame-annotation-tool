@@ -5,9 +5,21 @@ Annotation tool in JavaScript and Node.js for annotation of frames in Dutch docu
 
 To install all the needed packages, please run `npm install`. This will install all dependencies listed in `package.json`.
 
-### Start the server
+### Starting the server
 
 To start the server, simply run `node server.js` or `npm start`.
+
+### Directory structure
+
+* `server.js` is the main Node.js server file.
+* the folder `public` contains all static code (HTML, Javascript) and static files to be served (images and PDF files).
+* the filder `data` contains the input data for the tool.
+* `scripts` has loading scripts that prepare the data for the tool.
+* the tool documentation can be found in `docs`.
+
+### Acknowledgements
+
+Some functionality was copied from the <a href="https://github.com/cltl/LongTailAnnotation">Long Tail Annotation tool</a>.
 
 ### Contact
 Filip Ilievski (f.ilievski@vu.nl)
