@@ -39,6 +39,12 @@ app.use('/logs', express.static('logs'));
 
 // Settings
 PORT=8686
+inc2doc_file='data/inc2doc_index.json';
+
+fs.readFile(inc2doc_file, 'utf8', function (err, data) {
+    if (err) throw err; // we'll not consider error handling for now
+    inc2doc = JSON.parse(data);
+});
 
 // =====================================
 // ROUTING FUNCTIONS ===================
@@ -122,8 +128,8 @@ function isAuthenticated(req, res, next) {
 // =====================================
 
 app.get('/listincidents', isAuthenticated, function(req, res){
-    var difference=[1,5,4,2];
-    var intersection = [6,3];
+    var difference=Object.keys(inc2doc);
+    var intersection = [];
     res.send({'new': Array.from(difference), 'old': Array.from(intersection)});
 });
 
