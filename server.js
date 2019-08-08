@@ -117,6 +117,16 @@ function isAuthenticated(req, res, next) {
     res.redirect('/');
 }
 
+// =====================================
+// QUERY FUNCTIONS =====================
+// =====================================
+
+app.get('/listincidents', isAuthenticated, function(req, res){
+    var difference=[1,5,4,2];
+    var intersection = [6,3];
+    res.send({'new': Array.from(difference), 'old': Array.from(intersection)});
+});
+
 
 app.listen(PORT, function() {
 	console.log('started annotation tool nodejs backend on port ' + PORT);
