@@ -8,27 +8,65 @@
 </head>
 <body>
 <div class="container">
-<div class="row" id="titlerow">
-    <div class="col-sm-8">
-        <h2>Frame Annotation</h2>
+    <div class="row" id="titlerow">
+        <div class="col-sm-8">
+            <h2>Frame Annotation</h2>
+        </div>
+        <div class="col-sm-2">
+            <span>Logged user: <label><%= username %> </label></span><br/>
+            <a href="/dash">Back to dashboard</a>
+        </div>
+        <div class="col-sm-2">
+            <button class="btn btn-primary btn-ann" onclick="location.href='/logout'">Logout</button>
+        </div>
     </div>
-    <div class="col-sm-2">
-        <span>Logged user: <label><%= username %> </label></span><br/>
-        <a href="/dash">Back to dashboard</a>
+    <br/>
+    <div class="row" id="pickrow">
+        <div class="col-sm-5">
+            <select id="pickfile">
+                <option value="-1">-Please pick an incident ID-</option>
+            </select>
+            <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
+        </div>
+        <div class="col-sm-7"><label id="infoMessage"></label></div>
     </div>
-    <div class="col-sm-2">
-        <button class="btn btn-primary btn-ann" onclick="location.href='/logout'">Logout</button>
+    <div class="row"></div>
+    <div class="row" id="annrow">
+        <div class="col-sm-5 ann-input">
+            <div id="annotation">
+                <div id="strinfo"></div>
+                    <label>Event type: </label>
+                    <select id="eventtype">
+                    <option value="-1" selected>-Please pick an event type-</option>
+                    <option value="b">incident</option>
+                    <option value="s">firing a gun</option>
+                    <option value="h">hit</option>
+                    <option value="m">miss</option>
+                    <option value="i">injury</option>
+                    <option value="d">death</option>
+                    <option value="o">other</option>
+                    <option value="g">generic</option>
+                    </select>
+                    <br/>
+                    <label>Cardinality:</label>
+                    <select id="cardinality">
+                    <option value="UNK" selected>unknown</option>
+                    </select>
+                    <br/>
+                    <label>Event types legend: </label>&nbsp;<label class="event_b">incident</label>&nbsp;<label class="event_s">firing a gun</label>&nbsp;<label class="event_h">hit</label>&nbsp;<label class="event_m">miss</label>&nbsp;<label class="event_i">injury</label>&nbsp;<label class="event_d">death</label>&nbsp;<label class="event_o">other</label>&nbsp;<label class="event_g">generic</label>&nbsp;<br/><label>Selection legend:</label>&nbsp;<label class="active">selected to be added</label>&nbsp;<label class="inactive">selected to be removed</label>
+                </div>
+            </div>
+        <div class="col-sm-7 ann-input">
+            <button class="btn btn-success btn-ann" onclick="saveEvent(0)">Submit event</button>
+            <button class="btn btn-info btn-ann" onclick="saveEvent(1)">Submit multiword unit</button>
+            <button class="btn btn-danger btn-rmv" onclick="removeAnnotations()">Remove annotation</button>
+            <button class="btn btn-basic btn-aux" onclick="clearSelection()">Clear selection</button>
+        </div>
     </div>
-</div>
-<br/>
-<div class="row" id="pickrow">
-    <div class="col-sm-5">
-    <select id="pickfile">
-        <option value="-1">-Please pick an incident ID-</option>
-    </select>
-    <button class="btn btn-primary btn-ann" onclick="loadIncident('men')">Load incident</button><br/>
+    <div class="row" id="bigdiv">
+        <div id="pnlLeft" class="col-sm-10"></div>
+        <div id="pnlRight" class="col-sm-2"><h4>Inferred chains</h4><div id="trails"></div></div>
     </div>
-    <div class="col-sm-7"><label id="infoMessage"></label></div>
 </div>
 
 <script type="text/javascript" src="//code.jquery.com/jquery-1.11.2.min.js"></script>

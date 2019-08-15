@@ -1,0 +1,108 @@
+html,body{
+    position: relative;
+    height: 100%;
+}
+
+.bolded{
+    font-weight: bold;
+}
+
+#addedTxts{
+    background: #fffff0;
+    font-weight: bold;
+}
+
+#newDoc {
+    background: #fafad2;
+}
+
+div.disqualified button {
+    color: #fff;
+}
+
+div.disqualified * {
+    color: #999;
+}
+
+#pnlLeft{
+    overflow-y: scroll;
+}
+
+.panel-title{
+    font-size: 1.5rem;
+}
+
+.selected{
+    background: #0f0;
+}
+
+.ann-input{
+    background: #dfe;
+}
+
+#bigdiv {
+    background: #dfe;
+}
+
+.table-condensed{
+  font-size: 1rem;
+}
+
+span.active {
+    background: #0f0;
+}
+
+span.inactive {
+    background: #f00;
+}
+
+label.active {
+    background: #0f0;
+}
+
+label.inactive {
+    background: #f00;
+}
+
+.event_s {
+    background: #0ff;
+}
+
+.event_b {
+    background: #F4A460;
+}
+
+.event_h {
+    background: #f0f;
+}
+
+.event_i {
+    background: #f99;
+}
+
+.event_d {
+    background: #ffffb3;
+}
+
+.event_m {
+    background: #77f;
+}
+
+.event_o {
+    background: #F5DEB3;
+}
+
+.event_g {
+    background: #808000;
+}
+
+.good_info {
+    color: #0f0;
+}
+
+.bad_info {
+    color: #f00;
+}
+.mwu {
+    font-weight: bold;
+}
