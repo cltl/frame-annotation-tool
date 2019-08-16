@@ -207,6 +207,19 @@ app.get('/loadincident', isAuthenticated, function(req, res){
     }
 });
 
+app.post('/storeannotations', isAuthenticated, function(req, res){
+    console.log("Storing request received from " + req.user.user);
+    if (req.body.incident){
+        var user = req.user.user;
+	    var annotations = req.body.annotations || {};
+        res.sendStatus(200);
+    } else {
+        console.error("Storing of annotations: incident not specified - user " + req.user.user);
+        res.sendStatus(400);//("Not OK: incident id not specified");
+    }
+
+});
+
 // =====================================
 // START THE SERVER! ===================
 // =====================================

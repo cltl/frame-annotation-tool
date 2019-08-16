@@ -7,6 +7,10 @@ html,body{
     font-weight: bold;
 }
 
+.plcHolder{
+    color: transparent;
+}
+
 #addedTxts{
     background: #fffff0;
     font-weight: bold;
@@ -36,13 +40,10 @@ div.disqualified * {
     background: #0f0;
 }
 
-.ann-input{
+#annrow{
     background: #dfe;
 }
 
-#bigdiv {
-    background: #dfe;
-}
 
 .table-condensed{
   font-size: 1rem;

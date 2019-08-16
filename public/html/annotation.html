@@ -24,45 +24,59 @@
     <div class="row" id="pickrow">
         <div class="col-sm-5">
             <select id="pickfile">
-                <option value="-1">-Please pick an incident ID-</option>
+                <option value="-1">-Pick an incident ID-</option>
             </select>
             <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
         </div>
-        <div class="col-sm-7"><label id="infoMessage"></label></div>
+        <div class="col-sm-6"><label id="infoMessage"></label></div>
     </div>
-    <div class="row"></div>
-    <div class="row" id="annrow">
-        <div class="col-sm-5 ann-input">
+    <div class="row justify-content-center" id="annrow">
+        <div class="ann-input col-sm-9">
             <div id="annotation">
-                <div id="strinfo"></div>
-                    <label>Event type: </label>
-                    <select id="eventtype">
-                    <option value="-1" selected>-Please pick an event type-</option>
-                    <option value="b">incident</option>
-                    <option value="s">firing a gun</option>
-                    <option value="h">hit</option>
-                    <option value="m">miss</option>
-                    <option value="i">injury</option>
-                    <option value="d">death</option>
-                    <option value="o">other</option>
-                    <option value="g">generic</option>
-                    </select>
+                <div class="col-sm-4">
+                    <label>Frame EE or Idiom: </label>
                     <br/>
-                    <label>Cardinality:</label>
-                    <select id="cardinality">
-                    <option value="UNK" selected>unknown</option>
+                    <select id="anntype">
+                        <option value="-1" selected>-Pick annotation type-</option>
+                        <option value="fee">FEE</option>
+                        <option value="idiom">Idiom</option>
                     </select>
-                    <br/>
-                    <label>Event types legend: </label>&nbsp;<label class="event_b">incident</label>&nbsp;<label class="event_s">firing a gun</label>&nbsp;<label class="event_h">hit</label>&nbsp;<label class="event_m">miss</label>&nbsp;<label class="event_i">injury</label>&nbsp;<label class="event_d">death</label>&nbsp;<label class="event_o">other</label>&nbsp;<label class="event_g">generic</label>&nbsp;<br/><label>Selection legend:</label>&nbsp;<label class="active">selected to be added</label>&nbsp;<label class="inactive">selected to be removed</label>
+                </div>
+                <div id="frameAnnotation" class="col-sm-4">
+                    <label>Choice of frame:</label><br/>
+                    <select id="frameChooser">
+                        <option value="-1" selected>-Pick frame-</option>
+                        <option value="Killing">Killing</option>
+                        <option value="Change_of_leadership">Change of leadership</option>
+                    </select>
+                </div>
+                <div id="feAnnotation" class="col-sm-4">
+                    <label id="activeFrame"></label>
+                    <label>Frame element annotation:</label>
+                    <select id="roleChooser">
+                        <option value="-1" selected>-Pick frame role-</option>
+                    </select>
                 </div>
             </div>
-        <div class="col-sm-7 ann-input">
-            <button class="btn btn-success btn-ann" onclick="saveEvent(0)">Submit event</button>
-            <button class="btn btn-info btn-ann" onclick="saveEvent(1)">Submit multiword unit</button>
-            <button class="btn btn-danger btn-rmv" onclick="removeAnnotations()">Remove annotation</button>
-            <button class="btn btn-basic btn-aux" onclick="clearSelection()">Clear selection</button>
+            <div class="row col-sm-12 plcHolder">X</div>
+            <div id="buttons">
+                <div class="col-sm-4">
+                    <button class="btn btn-success btn-ann" onclick="saveFrameAnnotation()">Save annotation</button>
+                </div>
+                <div class="col-sm-4">
+                    <button class="btn btn-danger btn-rmv" onclick="removeAnnotations()">Remove annotation</button>
+                </div>
+                <div class="col-sm-4">
+                    <button class="btn btn-info btn-aux" onclick="clearSelection()">Clear selection</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <h5>Structured data</h5>
+            <div id="strinfo"></div>
         </div>
     </div>
+    <br/>
     <div class="row" id="bigdiv">
         <div id="pnlLeft" class="col-sm-10"></div>
         <div id="pnlRight" class="col-sm-2"><h4>Inferred chains</h4><div id="trails"></div></div>
