@@ -3,6 +3,7 @@ var app = express();
 var request = require('request');
 var fs = require('fs');
 var xmlParser = require('fast-xml-parser');
+var jsonParser = require("fast-xml-parser").j2xParser;
 var LocalStrategy = require('passport-local').Strategy
 var morgan       = require('morgan');
 var cookieParser = require('cookie-parser');
@@ -10,6 +11,7 @@ var bodyParser = require('body-parser');
 var glob = require('glob');
 var passport = require('passport');
 var expressSession = require('express-session');
+var mkdirp = require('mkdirp');
 
 app.use(express.static(__dirname + '/public/html'));
 app.set('views', __dirname + '/public/html');
@@ -42,9 +44,10 @@ app.use('/logs', express.static('logs'));
 PORT=8686
 inc2doc_file='data/inc2doc_index.json';
 dataDir='data/naf/';
+annotationDir='annotation/'
 
 var xmlOptions = {
-    attributeNamePrefix : "@_",
+    attributeNamePrefix : "",
     attrNodeName: "attr", //default is 'false'
     textNodeName : "#text",
     ignoreAttributes : false,
@@ -56,10 +59,20 @@ var xmlOptions = {
     cdataTagName: "__cdata", //default is 'false'
     cdataPositionChar: "\\c",
     localeRange: "", //To support non english character in tag/attribute values.
-    parseTrueNumberOnly: true,
+    parseTrueNumberOnly: true
 };
 
-
+var jsonOptions = {
+    attributeNamePrefix : "",
+    attrNodeName: "attr", //default is false
+    textNodeName : "#text",
+    ignoreAttributes : false,
+    cdataTagName: "__cdata", //default is false
+    cdataPositionChar: "\\c",
+    format: true,
+    indentBy: "",
+    supressEmptyNode: true,
+};
 
 // Files
 fs.readFile(inc2doc_file, 'utf8', function (err, data) {
@@ -73,7 +86,7 @@ fs.readFile(inc2doc_file, 'utf8', function (err, data) {
 
 app.get('/', function(req, res){
     res.sendFile('index.html', {root:'./public/html'});
-});
+    });
 
 app.get('/dash', isAuthenticated, function(req, res){
     res.render('dash.html', { username: req.user.user });
@@ -148,7 +161,7 @@ function isAuthenticated(req, res, next) {
 // QUERY UTILS =========================
 // =====================================
 
-function loadNAFFile(nafName, callback){
+function loadNAFFile(nafName, adaptJson=true, callback){
     var filename=dataDir + nafName + '.naf';
     console.log(filename);
     fs.readFile(filename, 'utf-8', function(err, xmlData) {
@@ -158,31 +171,82 @@ function loadNAFFile(nafName, callback){
 
         var jsonObj = xmlParser.parse(xmlData, xmlOptions);
 
-        var tokens = jsonObj['NAF']['text']['wf'];
-        var ready_title_tokens=[];
-        var ready_body_tokens=[]
-        for (var i=0; i<tokens.length; i++){
-            var token=tokens[i];
-            var txt=token['#text'];
-            var tid=token['attr']['@_id'];
-            var sent=token['attr']['@_sent'];
-            var token_data={'text': txt, 'tid': tid, 'sent': sent};
-            if (sent=='1') ready_title_tokens.push(token_data);
-            else ready_body_tokens.push(token_data);
-            if (i==tokens.length-1) callback({'title': ready_title_tokens, 'body': ready_body_tokens});
+        if (adaptJson){
+            var tokens = jsonObj['NAF']['text']['wf'];
+            var ready_title_tokens=[];
+            var ready_body_tokens=[]
+            for (var i=0; i<tokens.length; i++){
+                var token=tokens[i];
+                var txt=token['#text'];
+                var tid=token['attr']['id'];
+                var sent=token['attr']['sent'];
+                var token_data={'text': txt, 'tid': tid, 'sent': sent};
+                if (sent=='1') ready_title_tokens.push(token_data);
+                else ready_body_tokens.push(token_data);
+                if (i==tokens.length-1) callback({'title': ready_title_tokens, 'body': ready_body_tokens, 'name': nafName});
+            }
+        } else {
+            console.log(JSON.stringify(jsonObj));
+            callback(jsonObj);
         }
     });
 }
 
-function loadAllNafs(nafs, callback){
+var loadAllNafs = function(nafs, callback){
     var data=[];
     
     for (var i=0; i<nafs.length; i++){
-        loadNAFFile(nafs[i], function(nafData){
+        loadNAFFile(nafs[i], adaptJson=true, function(nafData){
             data.push(nafData);
             if (data.length==nafs.length) callback(data);
         });
     }
+}
+
+// TODO: Implement this function
+var addAnnotationsToJson = function(jsonData, annotations){
+    if (annotations['anntype']=='idiom'){  
+        return jsonData;
+    } else{ // FEE
+        var frame = annotations['frame'];
+        var tids = annotations['mentions'];
+        if (!('srl' in jsonData)){
+            jsonData['srl']={};
+            jsonData['srl']['#text']='';
+            jsonData['srl']['predicate']=[];
+            var pr_id="pr1";
+        } else {
+            var pr_num=jsonData['srl'].length + 1;
+            var pr_id="pr" + pr_num;
+        }
+        var aPredicate = {};
+        aPredicate['#text']='';
+        aPredicate['attr']={};
+        aPredicate['attr']['id']=pr_id;
+        aPredicate['externalReferences']={'#text': '', 'externalRef': []};
+        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet'}});
+        aPredicate['span']={'#text': '', 'target': []};
+        for (var i=0; i<tids.length; i++){
+            var tid=tids[i].split('.')[1];
+            aPredicate['span']['target'].push({'#text': '', 'attr':{'id': tid}});
+        }
+        jsonData['srl']['predicate'].push(aPredicate);
+        return jsonData;
+    }
+}
+
+var saveNAFAnnotation = function(userAnnotationFile, updatedJson, callback){
+    var parser = new jsonParser(jsonOptions);
+    var xml = parser.parse(updatedJson);
+    fs.writeFile(userAnnotationFile, xml, function(err, data) {
+        if (err) {
+            console.log(err);
+        }
+        else {
+            console.log('updated!');
+            callback(false);
+        }
+  });
 }
 
 // =====================================
@@ -208,13 +272,43 @@ app.get('/loadincident', isAuthenticated, function(req, res){
 });
 
 app.post('/storeannotations', isAuthenticated, function(req, res){
-    console.log("Storing request received from " + req.user.user);
+    var thisUser=req.user.user;
+    console.log("Storing request received from " + thisUser);
     if (req.body.incident){
-        var user = req.user.user;
 	    var annotations = req.body.annotations || {};
-        res.sendStatus(200);
+        var firstMention=annotations['mentions'][0];
+        console.log(firstMention);
+        var docidAndTid = firstMention.split('.');
+        var docId=docidAndTid[0].replace(/_/g, " ");;
+        loadNAFFile(docId, adaptJson=false, function(nafData){
+            var userAnnotationDir=annotationDir + thisUser + "/";
+
+            var langAndTitle=docId.split('/');
+            var lang=langAndTitle[0];
+            var title=langAndTitle[1];
+
+            var userAnnotationDirLang = userAnnotationDir + lang + '/';
+
+            mkdirp(userAnnotationDirLang, function (err) {
+                if (err) console.error(err)
+                else console.log('pow!')
+            });
+
+            var userAnnotationFile=userAnnotationDirLang + title + '.naf';
+            console.log('File ' + docId + ' loaded. Now updating and saving.');
+            var updatedJson = addAnnotationsToJson(nafData, annotations);
+
+            saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
+                console.log('Error obtained with saving: ' + error);
+                if (error){
+                    res.sendStatus(400);
+                } else {
+                    res.sendStatus(200);
+                }
+            });
+        });
     } else {
-        console.error("Storing of annotations: incident not specified - user " + req.user.user);
+        console.error("Storing of annotations: incident not specified - user " + thisUser);
         res.sendStatus(400);//("Not OK: incident id not specified");
     }
 

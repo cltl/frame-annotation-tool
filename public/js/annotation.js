@@ -58,22 +58,18 @@ var getStructuredData = function(inc){
 var addToken = function(tid, token, annotated) {
     if (token=='\n') return '<br/>';
     else {
-	if (!annotated[tid]){
-        return "<span id=" + tid + " class=\"clickable\">" + token + "</span> ";
-	} else {
-        var mwuClass="";
-        if (annotated[tid]["mwu"]) mwuClass="mwu";
-	    return "<span id=" + tid + " class=\"event_" + annotated[tid]['eventtype'] + " unclickable " + mwuClass + "\">" + token + "<sub>" + (annotated[tid]['participants'] || 'NONE') + '</sub><sup>' + annotated[tid]['cardinality'] + "</sup></span> ";
-	}
+        if (!annotated[tid]){
+            return "<span id=" + tid + " class=\"clickable\">" + token + "</span> ";
+        } else return ""; 
     }
     
 }
 
-var addTokens = function(tokens){
+var addTokens = function(tokens, docId){
     var text = "";
     for (var token_num in tokens) {
         var token_info=tokens[token_num];
-        text+=addToken(token_info.tid, token_info.text, {});
+        text+=addToken(docId.replace(/ /g, "_") + '.' + token_info.tid, token_info.text, {});
     }
     return text;
 }
@@ -85,8 +81,10 @@ var loadTextsFromFile = function(inc){
         var c=0;
         var data=res['nafs'];
         for (var doc_num in data) {
+            var docId=data[doc_num]['name'];
+
             var title_tokens=data[doc_num]['title'];
-            title=addTokens(title_tokens);
+            title=addTokens(title_tokens, docId);
             
             var header = "<div class=\"panel panel-default\" id=\"" + doc_num + "\">";
             header += "<div class=\"panel-heading\"><h4 class=\"panel-title\">" + title; 
@@ -94,7 +92,7 @@ var loadTextsFromFile = function(inc){
 
             var body = "<div class=\"panel-body\">";
             var body_tokens = data[doc_num]['body'];
-            body += addTokens(body_tokens);
+            body += addTokens(body_tokens, docId);
             body += "</div></div>";
 
             all_html += header + body;    
@@ -128,7 +126,7 @@ var storeAndReload = function(ann){
     console.log("Storing annotations");
     console.log(ann);
 
-    $.post("/storeannotations", {'annotations': ann, 'incident': $("#pickfile").val()})
+    $.post("/storeannotations", {'annotations': ann, 'incident': $("#pickfile").val() })
         .done(function() {
             alert( "Annotation saved. Now re-loading." );
             // reloadInside(mwu);
