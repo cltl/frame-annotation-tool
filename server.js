@@ -311,7 +311,12 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
         console.error("Storing of annotations: incident not specified - user " + thisUser);
         res.sendStatus(400);//("Not OK: incident id not specified");
     }
+});
 
+app.get('/getstrdata', isAuthenticated, function(req, res){
+    var inc = req.query['inc'];
+    var jsonResult={'time': 'yesterday', 'location': 'Marseille'};
+    res.send(jsonResult);
 });
 
 // =====================================

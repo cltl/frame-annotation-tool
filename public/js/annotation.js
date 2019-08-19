@@ -53,6 +53,12 @@ var printInfo = function(msg){
 
 var getStructuredData = function(inc){
     // TODO: DEFINE THIS!
+    $.get('/getstrdata', {'inc': inc}, function(data, status) {
+        //var data=JSON.parse(data);
+        var str_html = "<label id=\"strloc\">Location: " + data['location'] + "</label><br/><label id=\"strtime\">Date: " + data['time'] + "</label><br/>";
+        $("#strinfo").html(str_html);
+
+    });
 }
 
 var addToken = function(tid, token, annotated) {
