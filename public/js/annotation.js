@@ -55,7 +55,20 @@ var getStructuredData = function(inc){
     // TODO: DEFINE THIS!
     $.get('/getstrdata', {'inc': inc}, function(data, status) {
         //var data=JSON.parse(data);
-        var str_html = "<label id=\"strloc\">Location: " + data['location'] + "</label><br/><label id=\"strtime\">Date: " + data['time'] + "</label><br/>";
+        var str_html='';
+        for (var property in data) {
+            var vals=data[property];
+            var clean_property=property.split(':')[1];
+            str_html += "<label id=\"strloc\">" + clean_property + ":</label> ";
+            for (var i=0; i<vals.length; i++){
+                var splitted=vals[i].split('|');
+                if (i>0) str_html += ", ";
+                var valText=splitted[1];
+                if ($.trim(splitted[1])=="") str_html+=splitted[0];
+                else str_html += "<a href=\"" + splitted[0] + "\">" + valText + "</a>";
+            }
+            str_html+="<br/>";
+        }
         $("#strinfo").html(str_html);
 
     });
@@ -75,7 +88,9 @@ var addTokens = function(tokens, docId){
     var text = "";
     for (var token_num in tokens) {
         var token_info=tokens[token_num];
-        text+=addToken(docId.replace(/ /g, "_") + '.' + token_info.tid, token_info.text, {});
+        var tokenId=docId.replace(/ /g, "_") + '.' + token_info.sent + '.' + token_info.tid;
+        var newToken=addToken(tokenId, token_info.text, {});
+        text+=newToken;
     }
     return text;
 }
@@ -91,7 +106,7 @@ var loadTextsFromFile = function(inc){
 
             var title_tokens=data[doc_num]['title'];
             title=addTokens(title_tokens, docId);
-            
+
             var header = "<div class=\"panel panel-default\" id=\"" + doc_num + "\">";
             header += "<div class=\"panel-heading\"><h4 class=\"panel-title\">" + title; 
             header += "</h4></div>";
@@ -146,28 +161,57 @@ var storeAndReload = function(ann){
     $("#infoMessage").html("");
 }
 
-var saveFrameAnnotation = function(){
-    if ($("#anntype").val()=='-1'){
-        printInfo("Please pick an annotation type");
+var allValuesSame = function(sent) {
+    for(var i = 1; i < sent.length; i++)
+    {
+        if(sent[i] !== sent[0])
+            return false;
+    }
+    return true;
+}
+
+var sameSentence = function(allMentions){
+    var sents = allMentions.map(function(x) {return x.substring(0,x.lastIndexOf('.')); });
+    return allValuesSame(sents);
+}
+
+var validateAnnotation = function(){
+     if ($("#anntype").val()=='-1'){
+         return [false, "Please pick an annotation type"];
     } else{
         var anntype = $("#anntype").val();
         if (anntype=='fee' & $("#frameChooser").val()=='-1'){
-            printInfo("Please pick a frame");
+            return [false, "Please pick a frame"];
         } else {
             var allMentions = $(".active").map(function() {
                 return $(this).attr('id');
             }).get();
             if (allMentions.length>0){
-                if (anntype=='fee'){
-                    var frame = $("#frameChooser").val();
-                    var anAnnotation = {'anntype': anntype, 'frame': frame, 'mentions': allMentions};
+                if (!sameSentence(allMentions)) {
+                    return [false, "All terms of a frame must be in the same sentence"];
                 } else {
-                    var anAnnotation = {'anntype': anntype, 'mentions': allMentions};
+                    if (anntype=='fee'){
+                        var frame = $("#frameChooser").val();
+                        var anAnnotation = {'anntype': anntype, 'frame': frame, 'mentions': allMentions};
+                    } else {
+                        var anAnnotation = {'anntype': anntype, 'mentions': allMentions};
+                    }
+                    return [true, anAnnotation];
                 }
-                storeAndReload(anAnnotation);
             } else {
-            printInfo("Please select at least one mention");
+                return [false, "Please select at least one mention"];
             }
         }
+    }
+   
+}
+
+var saveFrameAnnotation = function(){
+    var validation=validateAnnotation();
+    var isValid=validation[0];
+    if (isValid){
+        storeAndReload(validation[1]);    
+    } else{
+        printInfo(validation[1]);
     }
 }

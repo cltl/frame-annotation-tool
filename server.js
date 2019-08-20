@@ -43,6 +43,7 @@ app.use('/logs', express.static('logs'));
 // Settings
 PORT=8686
 inc2doc_file='data/inc2doc_index.json';
+inc2str_file='data/inc2str_index.json';
 dataDir='data/naf/';
 annotationDir='annotation/'
 
@@ -78,6 +79,11 @@ var jsonOptions = {
 fs.readFile(inc2doc_file, 'utf8', function (err, data) {
     if (err) throw err; // we'll not consider error handling for now
     inc2doc = JSON.parse(data);
+});
+
+fs.readFile(inc2str_file, 'utf8', function (err, data) {
+    if (err) throw err; // we'll not consider error handling for now
+    inc2str = JSON.parse(data);
 });
 
 // =====================================
@@ -161,6 +167,18 @@ function isAuthenticated(req, res, next) {
 // QUERY UTILS =========================
 // =====================================
 
+var getTokenData = function(tokens){
+    var tokenData={};
+    for (var i=0; i<tokens.length; i++){
+        var token=tokens[i];
+        var txt=token['#text'];
+        var tid=token['attr']['id'];
+        var sent=token['attr']['sent'];
+        tokenData[tid]={'sent': sent, 'text': txt};
+    }
+    return tokenData;
+}
+
 function loadNAFFile(nafName, adaptJson=true, callback){
     var filename=dataDir + nafName + '.naf';
     console.log(filename);
@@ -173,20 +191,48 @@ function loadNAFFile(nafName, adaptJson=true, callback){
 
         if (adaptJson){
             var tokens = jsonObj['NAF']['text']['wf'];
-            var ready_title_tokens=[];
-            var ready_body_tokens=[]
-            for (var i=0; i<tokens.length; i++){
-                var token=tokens[i];
-                var txt=token['#text'];
-                var tid=token['attr']['id'];
-                var sent=token['attr']['sent'];
-                var token_data={'text': txt, 'tid': tid, 'sent': sent};
-                if (sent=='1') ready_title_tokens.push(token_data);
-                else ready_body_tokens.push(token_data);
-                if (i==tokens.length-1) callback({'title': ready_title_tokens, 'body': ready_body_tokens, 'name': nafName});
+            var tokenData = getTokenData(tokens);
+
+            var terms = jsonObj['NAF']['terms']['term'];
+            var termData = {};
+
+            var ready_title_terms=[];
+            var ready_body_terms=[];
+
+            for (var i=0; i<terms.length; i++){
+                var term=terms[i];
+
+                var termId=term['attr']['id'];
+
+                var targets=[term['span']['target']];
+                var components=term['component'];
+                if (components){
+                    for (var c=0; c<components.length; c++){
+                        var comp=components[c];
+                        var compId=comp['attr']['id'];
+                        var lemma=comp['attr']['lemma'];
+                        var tokenId=targets[0]['attr']['id'];
+                        var sent=tokenData[tokenId]['sent'];
+                        var termData={'text': lemma, 'tid': compId, 'sent': sent}; 
+                        if (sent=='1') ready_title_terms.push(termData);
+                        else ready_body_terms.push(termData);
+                    }
+                } else {
+                    var termTokens=[];
+                    for (var t=0; t<targets.length; t++){
+                        var target=targets[t];
+                        var targetId=target['attr']['id'];
+                        var targetInfo=tokenData[targetId];
+                        var sent=targetInfo['sent'];
+                        termTokens.push(targetInfo['text']);
+                    }
+                    var termData={'text': termTokens.join(' '), 'tid': termId, 'sent': sent};
+                    if (sent=='1') ready_title_terms.push(termData);
+                    else ready_body_terms.push(termData);
+                }
+                if (i==terms.length-1) callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName});
             }
         } else {
-            console.log(JSON.stringify(jsonObj));
             callback(jsonObj);
         }
     });
@@ -315,7 +361,8 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
 
 app.get('/getstrdata', isAuthenticated, function(req, res){
     var inc = req.query['inc'];
-    var jsonResult={'time': 'yesterday', 'location': 'Marseille'};
+    var jsonResult=inc2str[inc];
+    //var jsonResult={'time': 'yesterday', 'location': 'Marseille'};
     res.send(jsonResult);
 });
 
