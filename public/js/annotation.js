@@ -107,6 +107,8 @@ var loadTextsFromFile = function(inc){
             var title_tokens=data[doc_num]['title'];
             title=addTokens(title_tokens, docId);
 
+            console.log(data[doc_num]['annotations']);
+
             var header = "<div class=\"panel panel-default\" id=\"" + doc_num + "\">";
             header += "<div class=\"panel-heading\"><h4 class=\"panel-title\">" + title; 
             header += "</h4></div>";

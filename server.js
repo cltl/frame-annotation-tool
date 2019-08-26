@@ -179,8 +179,11 @@ var getTokenData = function(tokens){
     return tokenData;
 }
 
-function loadNAFFile(nafName, adaptJson=true, callback){
-    var filename=dataDir + nafName + '.naf';
+function loadNAFFile(nafName, theUser, adaptJson=true, callback){
+    var filename=annotationDir + theUser + '/' + nafName + '.naf';
+    if (!(fs.existsSync(filename))){
+        var filename=dataDir + nafName + '.naf';
+    }
     console.log(filename);
     fs.readFile(filename, 'utf-8', function(err, xmlData) {
         if (err) {
@@ -194,10 +197,17 @@ function loadNAFFile(nafName, adaptJson=true, callback){
             var tokenData = getTokenData(tokens);
 
             var terms = jsonObj['NAF']['terms']['term'];
+            var srl=[];
+            console.log(Object.keys(jsonObj['NAF']));
+            if (jsonObj['NAF']['srl'])
+                srl=jsonObj['NAF']['srl']['predicate'];
+            console.log('predicates' + JSON.stringify(srl));
             var termData = {};
 
             var ready_title_terms=[];
             var ready_body_terms=[];
+
+            
 
             for (var i=0; i<terms.length; i++){
                 var term=terms[i];
@@ -230,7 +240,7 @@ function loadNAFFile(nafName, adaptJson=true, callback){
                     if (sent=='1') ready_title_terms.push(termData);
                     else ready_body_terms.push(termData);
                 }
-                if (i==terms.length-1) callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName});
+                if (i==terms.length-1) callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': srl});
             }
         } else {
             callback(jsonObj);
@@ -238,11 +248,11 @@ function loadNAFFile(nafName, adaptJson=true, callback){
     });
 }
 
-var loadAllNafs = function(nafs, callback){
+var loadAllNafs = function(nafs, theUser, callback){
     var data=[];
     
     for (var i=0; i<nafs.length; i++){
-        loadNAFFile(nafs[i], adaptJson=true, function(nafData){
+        loadNAFFile(nafs[i], theUser, adaptJson=true, function(nafData){
             data.push(nafData);
             if (data.length==nafs.length) callback(data);
         });
@@ -256,13 +266,13 @@ var addAnnotationsToJson = function(jsonData, annotations){
     } else{ // FEE
         var frame = annotations['frame'];
         var tids = annotations['mentions'];
-        if (!('srl' in jsonData)){
-            jsonData['srl']={};
-            jsonData['srl']['#text']='';
-            jsonData['srl']['predicate']=[];
+        if (!('srl' in jsonData['NAF'])){
+            jsonData['NAF']['srl']={};
+            jsonData['NAF']['srl']['#text']='';
+            jsonData['NAF']['srl']['predicate']=[];
             var pr_id="pr1";
         } else {
-            var pr_num=jsonData['srl'].length + 1;
+            var pr_num=jsonData['NAF']['srl'].length + 1;
             var pr_id="pr" + pr_num;
         }
         var aPredicate = {};
@@ -276,7 +286,8 @@ var addAnnotationsToJson = function(jsonData, annotations){
             var tid=tids[i].split('.')[1];
             aPredicate['span']['target'].push({'#text': '', 'attr':{'id': tid}});
         }
-        jsonData['srl']['predicate'].push(aPredicate);
+        console.log(jsonData['NAF']['srl']['predicate'])
+        jsonData['NAF']['srl']['predicate'].push(aPredicate);
         return jsonData;
     }
 }
@@ -311,7 +322,7 @@ app.get('/loadincident', isAuthenticated, function(req, res){
     } else{
         var incidentId = req.query['inc'];
         var nafs=inc2doc[incidentId];
-        loadAllNafs(nafs, function(data){
+        loadAllNafs(nafs, req.user.user, function(data){
             res.send({'nafs': data});
         });
     }
@@ -326,7 +337,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
         console.log(firstMention);
         var docidAndTid = firstMention.split('.');
         var docId=docidAndTid[0].replace(/_/g, " ");;
-        loadNAFFile(docId, adaptJson=false, function(nafData){
+        loadNAFFile(docId, req.user.user, adaptJson=false, function(nafData){
             var userAnnotationDir=annotationDir + thisUser + "/";
 
             var langAndTitle=docId.split('/');
@@ -336,20 +347,20 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
             var userAnnotationDirLang = userAnnotationDir + lang + '/';
 
             mkdirp(userAnnotationDirLang, function (err) {
-                if (err) console.error(err)
-                else console.log('pow!')
-            });
+                if (err) console.error('Error with creating a directory' + err);
+                else {
+                    var userAnnotationFile=userAnnotationDirLang + title + '.naf';
+                    console.log('File ' + docId + ' loaded. Now updating and saving.');
+                    var updatedJson = addAnnotationsToJson(nafData, annotations);
 
-            var userAnnotationFile=userAnnotationDirLang + title + '.naf';
-            console.log('File ' + docId + ' loaded. Now updating and saving.');
-            var updatedJson = addAnnotationsToJson(nafData, annotations);
-
-            saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
-                console.log('Error obtained with saving: ' + error);
-                if (error){
-                    res.sendStatus(400);
-                } else {
-                    res.sendStatus(200);
+                    saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
+                        console.log('Error obtained with saving: ' + error);
+                        if (error){
+                            res.sendStatus(400);
+                        } else {
+                            res.sendStatus(200);
+                        }
+                    });
                 }
             });
         });
