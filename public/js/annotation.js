@@ -52,7 +52,6 @@ var printInfo = function(msg){
 }
 
 var getStructuredData = function(inc){
-    // TODO: DEFINE THIS!
     $.get('/getstrdata', {'inc': inc}, function(data, status) {
         //var data=JSON.parse(data);
         var str_html='';
@@ -77,19 +76,22 @@ var getStructuredData = function(inc){
 var addToken = function(tid, token, annotated) {
     if (token=='\n') return '<br/>';
     else {
-        if (!annotated[tid]){
+        var shortTid=tid.split('.')[2];
+        if (!annotated[shortTid]){
             return "<span id=" + tid + " class=\"clickable\">" + token + "</span> ";
-        } else return ""; 
+        } else {
+            var mwuClass="mwu";
+            return "<span id=" + tid + " class=\"event_" + annotated[shortTid]['frametype'] + " unclickable " + mwuClass + "\">" + token + "</span> ";
+        }
     }
-    
 }
 
-var addTokens = function(tokens, docId){
+var addTokens = function(tokens, docId, annotations){
     var text = "";
     for (var token_num in tokens) {
         var token_info=tokens[token_num];
         var tokenId=docId.replace(/ /g, "_") + '.' + token_info.sent + '.' + token_info.tid;
-        var newToken=addToken(tokenId, token_info.text, {});
+        var newToken=addToken(tokenId, token_info.text, annotations);
         text+=newToken;
     }
     return text;
@@ -104,10 +106,10 @@ var loadTextsFromFile = function(inc){
         for (var doc_num in data) {
             var docId=data[doc_num]['name'];
 
-            var title_tokens=data[doc_num]['title'];
-            title=addTokens(title_tokens, docId);
-
             console.log(data[doc_num]['annotations']);
+
+            var title_tokens=data[doc_num]['title'];
+            title=addTokens(title_tokens, docId, data[doc_num]['annotations']);
 
             var header = "<div class=\"panel panel-default\" id=\"" + doc_num + "\">";
             header += "<div class=\"panel-heading\"><h4 class=\"panel-title\">" + title; 
@@ -115,7 +117,7 @@ var loadTextsFromFile = function(inc){
 
             var body = "<div class=\"panel-body\">";
             var body_tokens = data[doc_num]['body'];
-            body += addTokens(body_tokens, docId);
+            body += addTokens(body_tokens, docId, data[doc_num]['annotations']);
             body += "</div></div>";
 
             all_html += header + body;    
@@ -145,6 +147,22 @@ var loadIncident = function(){
 
 // SAVE ANNOTATION
 
+var defaultValues = function(){
+    $("#anntype").val('-1');
+    $("#frameChooser").val('-1');
+    $("#frameAnnotation").hide();
+}
+
+var reloadInside=function(){
+    if($("span.active").length>0){
+        var newClass = 'event_' + $("#frameChooser").val();
+        $("span.active").removeClass().addClass(newClass).addClass("unclickable").addClass("mwu");
+    } else if ($("span.inactive").length>0){
+        $("span.inactive").children().remove();
+        $("span.inactive").removeClass().addClass("clickable");
+    }
+}
+
 var storeAndReload = function(ann){
     console.log("Storing annotations");
     console.log(ann);
@@ -152,8 +170,8 @@ var storeAndReload = function(ann){
     $.post("/storeannotations", {'annotations': ann, 'incident': $("#pickfile").val() })
         .done(function() {
             alert( "Annotation saved. Now re-loading." );
-            // reloadInside(mwu);
-            //defaultValues();
+            reloadInside();
+            defaultValues();
             //showTrails();
         })
     .fail(function() {
@@ -212,6 +230,7 @@ var saveFrameAnnotation = function(){
     var validation=validateAnnotation();
     var isValid=validation[0];
     if (isValid){
+        console.log('storing ' + validation[1]);
         storeAndReload(validation[1]);    
     } else{
         printInfo(validation[1]);

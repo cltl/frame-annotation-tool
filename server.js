@@ -179,6 +179,43 @@ var getTokenData = function(tokens){
     return tokenData;
 }
 
+var prepareAnnotations = function(srl_data, callback){
+    var result={};
+    if (Array.isArray(srl_data)){
+        var done_i=0;
+        for (var i=0; i<srl_data.length; i++){
+            var pr = srl_data[i];
+            var pr_id=pr['attr']['id'];
+            var ftype = pr['externalReferences']['externalRef']['attr']['reference'];
+            var targets=pr['span']['target'];
+            if (!(Array.isArray(targets))) targets=[targets];
+
+            for (var j=0; j<targets.length; j++){
+                var tid=targets[j]['attr']['id'];
+                var tidEntry = {'frametype': ftype, 'predicate': pr_id};
+                result[tid]=tidEntry;
+                if (j+1==targets.length){
+                    done_i++;
+                    if (done_i==srl_data.length) {
+                        callback(result);
+                    }
+                }
+            }
+        }
+    } else{
+        var pr = srl_data;
+        var pr_id=pr['attr']['id'];
+        var ftype = pr['externalReferences']['externalRef']['attr']['reference'];
+        var targets=pr['span']['target'];
+        for (var j=0; j<targets.length; j++){
+            var tid=targets[j]['attr']['id'];
+            var tidEntry = {'frametype': ftype, 'predicate': pr_id};
+            result[tid]=tidEntry;
+        }
+        callback(result);
+    }
+}
+
 function loadNAFFile(nafName, theUser, adaptJson=true, callback){
     var filename=annotationDir + theUser + '/' + nafName + '.naf';
     if (!(fs.existsSync(filename))){
@@ -198,10 +235,8 @@ function loadNAFFile(nafName, theUser, adaptJson=true, callback){
 
             var terms = jsonObj['NAF']['terms']['term'];
             var srl=[];
-            console.log(Object.keys(jsonObj['NAF']));
             if (jsonObj['NAF']['srl'])
                 srl=jsonObj['NAF']['srl']['predicate'];
-            console.log('predicates' + JSON.stringify(srl));
             var termData = {};
 
             var ready_title_terms=[];
@@ -240,7 +275,11 @@ function loadNAFFile(nafName, theUser, adaptJson=true, callback){
                     if (sent=='1') ready_title_terms.push(termData);
                     else ready_body_terms.push(termData);
                 }
-                if (i==terms.length-1) callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': srl});
+                if (i==terms.length-1){
+                    prepareAnnotations(srl, function(ready_srl){
+                        callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl});
+                    });
+                }
             }
         } else {
             callback(jsonObj);
@@ -272,7 +311,7 @@ var addAnnotationsToJson = function(jsonData, annotations){
             jsonData['NAF']['srl']['predicate']=[];
             var pr_id="pr1";
         } else {
-            var pr_num=jsonData['NAF']['srl'].length + 1;
+            var pr_num=(jsonData['NAF']['srl']['predicate'].length || 1) + 1;
             var pr_id="pr" + pr_num;
         }
         var aPredicate = {};
@@ -283,10 +322,14 @@ var addAnnotationsToJson = function(jsonData, annotations){
         aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet'}});
         aPredicate['span']={'#text': '', 'target': []};
         for (var i=0; i<tids.length; i++){
-            var tid=tids[i].split('.')[1];
+            var tid=tids[i].split('.')[2];
             aPredicate['span']['target'].push({'#text': '', 'attr':{'id': tid}});
         }
-        console.log(jsonData['NAF']['srl']['predicate'])
+        var predicates=jsonData['NAF']['srl']['predicate'];
+        if (!(Array.isArray(predicates))){
+            jsonData['NAF']['srl']['predicate']=[]
+            jsonData['NAF']['srl']['predicate'].push(predicates);
+        }
         jsonData['NAF']['srl']['predicate'].push(aPredicate);
         return jsonData;
     }
@@ -334,7 +377,6 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
     if (req.body.incident){
 	    var annotations = req.body.annotations || {};
         var firstMention=annotations['mentions'][0];
-        console.log(firstMention);
         var docidAndTid = firstMention.split('.');
         var docId=docidAndTid[0].replace(/_/g, " ");;
         loadNAFFile(docId, req.user.user, adaptJson=false, function(nafData){
@@ -352,7 +394,6 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
                     var userAnnotationFile=userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
                     var updatedJson = addAnnotationsToJson(nafData, annotations);
-
                     saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
                         console.log('Error obtained with saving: ' + error);
                         if (error){

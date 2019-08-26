@@ -65,6 +65,14 @@ label.inactive {
     background: #f00;
 }
 
+.event_Change_of_leadership {
+    background: #F4A460;
+}
+
+.event_Killing {
+    background: #0ff;
+}
+
 .event_s {
     background: #0ff;
 }
