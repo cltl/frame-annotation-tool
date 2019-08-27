@@ -298,13 +298,22 @@ var loadAllNafs = function(nafs, theUser, callback){
     }
 }
 
-// TODO: Implement this function
+var makeSpanLayer = function(anObj, tids){
+    anObj['span']={'#text': '', 'target': []};
+    for (var i=0; i<tids.length; i++){
+        var tid=tids[i].split('.')[2];
+        anObj['span']['target'].push({'#text': '', 'attr':{'id': tid}});
+    }
+    return anObj['span'];
+}
+
 var addAnnotationsToJson = function(jsonData, annotations){
     if (annotations['anntype']=='idiom'){  
         return jsonData;
     } else{ // FEE
         var frame = annotations['frame'];
         var tids = annotations['mentions'];
+        var roles = annotations['roles'] || [{'semRole': 'A0', 'targets':['x.y.t3', 'x.y.t4']}]; 
         if (!('srl' in jsonData['NAF'])){
             jsonData['NAF']['srl']={};
             jsonData['NAF']['srl']['#text']='';
@@ -320,11 +329,21 @@ var addAnnotationsToJson = function(jsonData, annotations){
         aPredicate['attr']['id']=pr_id;
         aPredicate['externalReferences']={'#text': '', 'externalRef': []};
         aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet'}});
-        aPredicate['span']={'#text': '', 'target': []};
-        for (var i=0; i<tids.length; i++){
-            var tid=tids[i].split('.')[2];
-            aPredicate['span']['target'].push({'#text': '', 'attr':{'id': tid}});
+        aPredicate['span']=makeSpanLayer(aPredicate, tids);
+        
+        aPredicate['role']=[];
+        console.log(roles);
+        for (var r=0; r<roles.length; r++){
+            var roleData=roles[r];
+            var aRole={};
+            aRole['#text']='';
+            aRole['attr']={}
+            aRole['attr']['id']='rl' + (r+1).toString();
+            aRole['attr']['semRole']=roleData['semRole'];
+            aRole['span']=makeSpanLayer(aRole, roleData['targets']);
+            aPredicate['role'].push(aRole);
         }
+
         var predicates=jsonData['NAF']['srl']['predicate'];
         if (!(Array.isArray(predicates))){
             jsonData['NAF']['srl']['predicate']=[]
