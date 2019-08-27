@@ -45,6 +45,35 @@ var clearSelection = function(){
     $('span').removeClass("inactive");
 }
 
+var removeAnnotations = function(){
+    if ($("span.inactive").length>0){
+        var allMentions = $(".inactive").map(function() {
+            return $(this).attr('id');
+        }).get();
+        for (var i=0; i<allMentions.length; i++){
+            var k = allMentions[i];
+            var prId = annotations[k]['predicate'];
+            var docId=k.split('.')[0];
+        }
+        $.post("/removeannotations", {'docid': docId, 'prid': prId })
+        .done(function(){
+            alert('Annotation removed. Now re-loading ');
+            reloadInside();
+            defaultValues();
+        })
+        fail(function(){
+            alert('There was an error removing these annotations.');
+        });
+        //for (var i=0; i<annotations.length; i++){
+        //    if (annotations[i]['predicate']==prId)
+        //        delete annotations[i];
+        //}
+        storeAndReload(annotations);
+    } else {
+        printInfo("Select at least one span to remove");
+    }
+}
+
 var printInfo = function(msg){
         $("#infoMessage").html(msg);
         $("#infoMessage").removeClass("good_info");

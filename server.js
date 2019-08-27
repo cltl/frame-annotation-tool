@@ -307,6 +307,19 @@ var makeSpanLayer = function(anObj, tids){
     return anObj['span'];
 }
 
+var removeAnnotationFromJson = function(jsonData, frameId){
+    if (!('srl' in jsonData['NAF'])) return jsonData;
+    var predicates=jsonData['NAF']['predicate'];
+    var newPredicates=[];
+    for (var i=0; i<predicates.length; i++){
+        var thisPredicate = predicates[i];
+        if (thisPredicate['attr']['id']!=frameId)
+            newPredicates.push(thisPredicate);
+    }
+    jsonData['NAF']['predicate']=newPredicates;
+    return jsonData;
+}
+
 var addAnnotationsToJson = function(jsonData, annotations){
     if (annotations['anntype']=='idiom'){  
         return jsonData;
@@ -390,6 +403,40 @@ app.get('/loadincident', isAuthenticated, function(req, res){
     }
 });
 
+app.post('/removeannotation', isAuthenticated, function(req, res){
+    var thisUser=req.user.user;
+    console.log("Removing request received from " + thisUser);
+    var frameId = req.body.predicate;
+    var docId = req.body.docid;
+    loadNAFFile(docId, req.user.user, adaptJson=false, function(nafData){
+        var userAnnotationDir=annotationDir + thisUser + "/";
+
+        var langAndTitle=docId.split('/');
+        var lang=langAndTitle[0];
+        var title=langAndTitle[1];
+
+        var userAnnotationDirLang = userAnnotationDir + lang + '/';
+
+        mkdirp(userAnnotationDirLang, function (err) {
+            if (err) 
+                console.error('Error with creating a directory' + err);
+            else {
+                var userAnnotationFile=userAnnotationDirLang + title + '.naf';
+                console.log('File ' + docId + ' loaded. Now updating and saving.');
+                var updatedJson = removeAnnotationFromJson(nafData, frameId);
+                saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
+                    console.log('Error obtained with saving: ' + error);
+                    if (error){
+                        res.sendStatus(400);
+                    } else {
+                        res.sendStatus(200);
+                    }
+                });
+            }
+        });
+    });
+});
+
 app.post('/storeannotations', isAuthenticated, function(req, res){
     var thisUser=req.user.user;
     console.log("Storing request received from " + thisUser);
@@ -397,7 +444,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
 	    var annotations = req.body.annotations || {};
         var firstMention=annotations['mentions'][0];
         var docidAndTid = firstMention.split('.');
-        var docId=docidAndTid[0].replace(/_/g, " ");;
+        var docId=docidAndTid[0].replace(/_/g, " ");
         loadNAFFile(docId, req.user.user, adaptJson=false, function(nafData){
             var userAnnotationDir=annotationDir + thisUser + "/";
 
