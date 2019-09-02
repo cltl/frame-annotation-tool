@@ -50,25 +50,22 @@ var removeAnnotations = function(){
         var allMentions = $(".inactive").map(function() {
             return $(this).attr('id');
         }).get();
+        var toRemove={};
         for (var i=0; i<allMentions.length; i++){
             var k = allMentions[i];
-            var prId = annotations[k]['predicate'];
             var docId=k.split('.')[0];
+            if (!(toRemove[docId])) toRemove[docId]=[];
+            toRemove[docId].push(k.split('.')[2]);
         }
-        $.post("/removeannotations", {'docid': docId, 'prid': prId })
+        $.post("/removeannotations", {'doctokens': toRemove })
         .done(function(){
             alert('Annotation removed. Now re-loading ');
             reloadInside();
             defaultValues();
         })
-        fail(function(){
+        .fail(function(){
             alert('There was an error removing these annotations.');
         });
-        //for (var i=0; i<annotations.length; i++){
-        //    if (annotations[i]['predicate']==prId)
-        //        delete annotations[i];
-        //}
-        storeAndReload(annotations);
     } else {
         printInfo("Select at least one span to remove");
     }

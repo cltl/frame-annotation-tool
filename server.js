@@ -307,17 +307,33 @@ var makeSpanLayer = function(anObj, tids){
     return anObj['span'];
 }
 
-var removeAnnotationFromJson = function(jsonData, frameId){
+var removeAnnotationFromJson = function(jsonData, removeTokens){
     if (!('srl' in jsonData['NAF'])) return jsonData;
-    var predicates=jsonData['NAF']['predicate'];
+    var predicates=jsonData['NAF']['srl']['predicate'];
     var newPredicates=[];
     for (var i=0; i<predicates.length; i++){
         var thisPredicate = predicates[i];
-        if (thisPredicate['attr']['id']!=frameId)
+        var targets=thisPredicate['span']['target'];
+        if (!(Array.isArray(targets))) targets=[targets];
+        removeThis=false;
+        for (var t=0; t<targets.length; t++){
+            console.log(removeTokens + targets[t]['attr']['id']);
+            if (removeTokens.indexOf(targets[t]['attr']['id'])>-1){
+                removeThis=true;
+                break;
+            }
+        }
+        if (!(removeThis))
             newPredicates.push(thisPredicate);
+        else
+            console.log('We will remove ' + thisPredicate);
+        if (i==predicates.length-1){
+            console.log(predicates);
+            console.log(newPredicates);
+            jsonData['NAF']['srl']['predicate']=newPredicates;
+            return jsonData;
+        }
     }
-    jsonData['NAF']['predicate']=newPredicates;
-    return jsonData;
 }
 
 var addAnnotationsToJson = function(jsonData, annotations){
@@ -333,7 +349,9 @@ var addAnnotationsToJson = function(jsonData, annotations){
             jsonData['NAF']['srl']['predicate']=[];
             var pr_id="pr1";
         } else {
-            var pr_num=(jsonData['NAF']['srl']['predicate'].length || 1) + 1;
+            var thePredicates=jsonData['NAF']['srl']['predicate'];
+            var pr_num=(parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
+            console.log('New predicate number ' + pr_num);
             var pr_id="pr" + pr_num;
         }
         var aPredicate = {};
@@ -403,38 +421,42 @@ app.get('/loadincident', isAuthenticated, function(req, res){
     }
 });
 
-app.post('/removeannotation', isAuthenticated, function(req, res){
+app.post('/removeannotations', isAuthenticated, function(req, res){
     var thisUser=req.user.user;
     console.log("Removing request received from " + thisUser);
-    var frameId = req.body.predicate;
-    var docId = req.body.docid;
-    loadNAFFile(docId, req.user.user, adaptJson=false, function(nafData){
-        var userAnnotationDir=annotationDir + thisUser + "/";
+    var doctokens=req.body.doctokens;
+    console.log(doctokens);
+    for (var docId_underline in doctokens){
+        var docId=docId_underline.replace(/_/g, " ");;
+        loadNAFFile(docId, req.user.user, adaptJson=false, function(nafData){
+            var userAnnotationDir=annotationDir + thisUser + "/";
 
-        var langAndTitle=docId.split('/');
-        var lang=langAndTitle[0];
-        var title=langAndTitle[1];
+            var langAndTitle=docId.split('/');
+            var lang=langAndTitle[0];
+            var title=langAndTitle[1];
 
-        var userAnnotationDirLang = userAnnotationDir + lang + '/';
+            var userAnnotationDirLang = userAnnotationDir + lang + '/';
 
-        mkdirp(userAnnotationDirLang, function (err) {
-            if (err) 
-                console.error('Error with creating a directory' + err);
-            else {
-                var userAnnotationFile=userAnnotationDirLang + title + '.naf';
-                console.log('File ' + docId + ' loaded. Now updating and saving.');
-                var updatedJson = removeAnnotationFromJson(nafData, frameId);
-                saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
-                    console.log('Error obtained with saving: ' + error);
-                    if (error){
-                        res.sendStatus(400);
-                    } else {
-                        res.sendStatus(200);
-                    }
-                });
-            }
+            mkdirp(userAnnotationDirLang, function (err) {
+                if (err) 
+                    console.error('Error with creating a directory' + err);
+                else {
+                    var userAnnotationFile=userAnnotationDirLang + title + '.naf';
+                    console.log('File ' + docId + ' loaded. Now updating and saving.');
+                    var tokens = doctokens[docId_underline];
+                    var updatedJson = removeAnnotationFromJson(nafData, tokens);
+                    saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
+                        console.log('Error obtained with saving: ' + error);
+                        if (error){
+                            res.sendStatus(400);
+                        } else {
+                            res.sendStatus(200);
+                        }
+                    });
+                }
+            });
         });
-    });
+    }
 });
 
 app.post('/storeannotations', isAuthenticated, function(req, res){
