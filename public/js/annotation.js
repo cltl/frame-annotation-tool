@@ -13,10 +13,13 @@ $(function(){
 
     $("#anntype").on('change', function(){
 	    if (this.value=='fee'){
-            //$("#feAnnotation").show();
+            $("#feAnnotation").hide();
             $("#frameAnnotation").show();
-	    } else {
-            //$("#feAnnotation").hide();
+	    } else if (this.value=='role'){ 
+            $("#frameAnnotation").hide();
+            $("#feAnnotation").show();        
+        } else {
+            $("#feAnnotation").hide();
 		    $("#frameAnnotation").hide();
 	    }
 	});
@@ -38,6 +41,10 @@ $(function(){
         }
 
     });
+
+    frame2Roles={"Killing": ["Cause", "Instrument", "Killer", "Means", "Victim"], 
+                "Change_of_leadership": ["Function", "New_leader", "Old_Leader", "Role"]};
+
 }); // This is where the load function ends!
 
 var clearSelection = function(){
@@ -129,6 +136,7 @@ var loadTextsFromFile = function(inc){
         var all_html = ""; 
         var c=0;
         var data=res['nafs'];
+        console.log(data);
         for (var doc_num in data) {
             var docId=data[doc_num]['name'];
 
@@ -166,6 +174,9 @@ var loadIncident = function(){
         $("#bigdiv").show();
         $("#frameAnnotation").hide();
         $("#feAnnotation").hide();
+        $("#activeFrame").text("none");
+        $("#activePredicate").text("");
+        $("#anntype").val('-1');
     } else{
         printInfo("Please select an incident");
     }
@@ -189,19 +200,38 @@ var reloadInside=function(){
     }
 }
 
+var refreshRoles = function(theFrame){
+    var relevantRoles = frame2Roles[theFrame];
+
+    var $el = $("#roleChooser");
+    $el.empty(); // remove old options
+    $el.append($("<option value='-1' selected>-Pick frame-</option>"));
+    $.each(relevantRoles, function(anIndex) {
+        var unit = relevantRoles[anIndex];
+        $el.append($("<option></option>")
+            .attr("value", unit).text(unit));
+    });
+}
+
 var storeAndReload = function(ann){
     console.log("Storing annotations");
     console.log(ann);
 
     $.post("/storeannotations", {'annotations': ann, 'incident': $("#pickfile").val() })
-        .done(function() {
+        .done(function(myData) {
             alert( "Annotation saved. Now re-loading." );
+            var pickedFrame = $("#frameChooser").val();
+            $("#activeFrame").text(pickedFrame);
+            var pr_id=myData['prid'];
+            var doc_id = myData['docid'];
+            $("#activePredicate").text(doc_id + '@' + pr_id);
+            refreshRoles(pickedFrame);
             reloadInside();
             defaultValues();
             //showTrails();
         })
-    .fail(function() {
-        alert( "There was an error with storing these annotations" );
+    .fail(function(err) {
+        alert( "There was an error with storing these annotations: " + err );
     });
 
     $("#infoMessage").html("");

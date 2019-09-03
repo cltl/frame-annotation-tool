@@ -39,10 +39,11 @@
                     <select id="anntype">
                         <option value="-1" selected>-Pick annotation type-</option>
                         <option value="fee">FEE</option>
+                        <option value="role">Role</option>
                         <option value="idiom">Idiom</option>
                     </select>
                 </div>
-                <div id="frameAnnotation" class="col-sm-4">
+                <div id="frameAnnotation" class="col-sm-8">
                     <label>Choice of frame:</label><br/>
                     <select id="frameChooser">
                         <option value="-1" selected>-Pick frame-</option>
@@ -50,12 +51,18 @@
                         <option value="Change_of_leadership">Change of leadership</option>
                     </select>
                 </div>
-                <div id="feAnnotation" class="col-sm-4">
-                    <label id="activeFrame"></label>
-                    <label>Frame element annotation:</label>
-                    <select id="roleChooser">
-                        <option value="-1" selected>-Pick frame role-</option>
-                    </select>
+                <div id="feAnnotation" class="col-sm-8">
+                    <div class="col-sm-6">
+                        <label>Choose role:</label>
+                        <select id="roleChooser">
+                            <option value="-1" selected>-Pick frame role-</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        <label>Active frame: </label>
+                        <label id="activeFrame">none</label>~
+                        <label id="activePredicate"></label>
+                    </div>
                 </div>
             </div>
             <div class="row col-sm-12 plcHolder">X</div>

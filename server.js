@@ -181,6 +181,8 @@ var getTokenData = function(tokens){
 
 var prepareAnnotations = function(srl_data, callback){
     var result={};
+    if (!srl_data || srl_data.length==0)
+        callback(result);
     if (Array.isArray(srl_data)){
         var done_i=0;
         for (var i=0; i<srl_data.length; i++){
@@ -276,7 +278,9 @@ function loadNAFFile(nafName, theUser, adaptJson=true, callback){
                     else ready_body_terms.push(termData);
                 }
                 if (i==terms.length-1){
+                    console.log(i + ' is at the end. Prepare annotations for this file. Srl:');
                     prepareAnnotations(srl, function(ready_srl){
+                        console.log('All annotations ready');
                         callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl});
                     });
                 }
@@ -289,7 +293,7 @@ function loadNAFFile(nafName, theUser, adaptJson=true, callback){
 
 var loadAllNafs = function(nafs, theUser, callback){
     var data=[];
-    
+    console.log(nafs); 
     for (var i=0; i<nafs.length; i++){
         loadNAFFile(nafs[i], theUser, adaptJson=true, function(nafData){
             data.push(nafData);
@@ -381,7 +385,7 @@ var addAnnotationsToJson = function(jsonData, annotations){
             jsonData['NAF']['srl']['predicate'].push(predicates);
         }
         jsonData['NAF']['srl']['predicate'].push(aPredicate);
-        return jsonData;
+        return {'prid': pr_id, 'json': jsonData};
     }
 }
 
@@ -391,6 +395,7 @@ var saveNAFAnnotation = function(userAnnotationFile, updatedJson, callback){
     fs.writeFile(userAnnotationFile, xml, function(err, data) {
         if (err) {
             console.log(err);
+            callback(err);
         }
         else {
             console.log('updated!');
@@ -416,6 +421,7 @@ app.get('/loadincident', isAuthenticated, function(req, res){
         var incidentId = req.query['inc'];
         var nafs=inc2doc[incidentId];
         loadAllNafs(nafs, req.user.user, function(data){
+            console.log("All nafs loaded. returning the result now");
             res.send({'nafs': data});
         });
     }
@@ -481,13 +487,16 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
                 else {
                     var userAnnotationFile=userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
-                    var updatedJson = addAnnotationsToJson(nafData, annotations);
+                    var newData = addAnnotationsToJson(nafData, annotations);
+                    var pr_id=newData['prid'];
+                    var updatedJson=newData['json'];
                     saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
                         console.log('Error obtained with saving: ' + error);
                         if (error){
-                            res.sendStatus(400);
+                            res.status(400).json({'error': error});
                         } else {
-                            res.sendStatus(200);
+                            console.log('Sending response with predicate ID ' + pr_id);
+                            res.send({'prid': pr_id, 'docid': docId});
                         }
                     });
                 }
