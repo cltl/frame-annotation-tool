@@ -56,7 +56,7 @@ var xmlOptions = {
     allowBooleanAttributes : false,
     parseNodeValue : false,
     parseAttributeValue : false,
-    trimValues: false, // FI: to keep newlines and spaces
+    trimValues: true, // FI: to trim newlines and spaces (these are preserved with CDATA)
     cdataTagName: "__cdata", //default is 'false'
     cdataPositionChar: "\\c",
     localeRange: "", //To support non english character in tag/attribute values.

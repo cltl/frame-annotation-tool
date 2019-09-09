@@ -90,7 +90,9 @@ var getStructuredData = function(inc){
         var str_html='';
         for (var property in data) {
             var vals=data[property];
-            var clean_property=property.split(':')[1];
+            var split_data=property.split(':');
+            if (split_data[0]=='pm') continue;
+            var clean_property=split_data[1];
             str_html += "<label id=\"strloc\">" + clean_property + ":</label> ";
             for (var i=0; i<vals.length; i++){
                 var splitted=vals[i].split('|');
