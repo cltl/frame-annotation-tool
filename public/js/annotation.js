@@ -88,6 +88,7 @@ var getStructuredData = function(inc){
     $.get('/getstrdata', {'inc': inc}, function(data, status) {
         //var data=JSON.parse(data);
         var str_html='';
+        var allValues = new Set();
         for (var property in data) {
             var vals=data[property];
             var split_data=property.split(':');
@@ -97,14 +98,21 @@ var getStructuredData = function(inc){
             for (var i=0; i<vals.length; i++){
                 var splitted=vals[i].split('|');
                 if (i>0) str_html += ", ";
+                var valLink=splitted[0];
                 var valText=splitted[1];
-                if ($.trim(splitted[1])=="") str_html+=splitted[0];
-                else str_html += "<a href=\"" + splitted[0] + "\">" + valText + "</a>";
+                if ($.trim(splitted[1])=="") str_html+=valLink;
+                else str_html += "<a href=\"" + valLink + "\">" + valText + "</a>";
+                allValues.add(vals[i]);
             }
             str_html+="<br/>";
         }
         $("#strinfo").html(str_html);
-
+        var $rc = $("#referentChooser");
+        $rc.empty(); // remove old options
+        $rc.append($("<option value='-1' selected>-Pick referent-</option>"));
+        for (let item of allValues) 
+            $rc.append($("<option></option>")
+            .attr("value", item.split('|')[0]).text(item));
     });
 }
 
@@ -189,6 +197,7 @@ var loadIncident = function(){
 var defaultValues = function(){
     $("#anntype").val('-1');
     $("#frameChooser").val('-1');
+    $("#referentChooser").val('-1');
     $("#frameAnnotation").hide();
 }
 
@@ -260,6 +269,8 @@ var validateAnnotation = function(){
         var anntype = $("#anntype").val();
         if (anntype=='fee' & $("#frameChooser").val()=='-1'){
             return [false, "Please pick a frame"];
+        } else if (anntype=='role' & $("#roleChooser").val()=='-1'){
+            return [false, "Please pick a role"];
         } else {
             var allMentions = $(".active").map(function() {
                 return $(this).attr('id');
@@ -271,7 +282,10 @@ var validateAnnotation = function(){
                     if (anntype=='fee'){
                         var frame = $("#frameChooser").val();
                         var anAnnotation = {'anntype': anntype, 'frame': frame, 'mentions': allMentions};
-                    } else {
+                    } else if (anntype=='role') {
+                        var role = $('#roleChooser').val();
+                        var anAnnotation = {'anntype': anntype, 'role': {'prid': $("#activeFrame").val(), 'targets': allMentions, 'semRole': role}};
+                    } else { //idiom
                         var anAnnotation = {'anntype': anntype, 'mentions': allMentions};
                     }
                     return [true, anAnnotation];

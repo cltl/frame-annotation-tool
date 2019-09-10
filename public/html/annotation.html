@@ -31,7 +31,7 @@
         <div class="col-sm-6"><label id="infoMessage"></label></div>
     </div>
     <div class="row justify-content-center" id="annrow">
-        <div class="ann-input col-sm-6">
+        <div class="ann-input col-sm-8">
             <div id="annotation">
                 <div class="col-sm-4">
                     <label>Frame EE or Idiom: </label>
@@ -52,13 +52,19 @@
                     </select>
                 </div>
                 <div id="feAnnotation" class="col-sm-8">
-                    <div class="col-sm-6">
+                    <div class="col-sm-4">
                         <label>Choose role:</label>
                         <select id="roleChooser">
                             <option value="-1" selected>-Pick frame role-</option>
                         </select>
                     </div>
-                    <div class="col-sm-6">
+                    <div class="col-sm-4">
+                        <label>Choose referent:</label>
+                        <select id="referentChooser">
+                            <option value="-1" selected>-Pick referent-</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-4">
                         <label>Active frame: </label>
                         <label id="activeFrame">none</label>~
                         <label id="activePredicate"></label>
@@ -78,7 +84,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6">
+        <div class="col-sm-4">
             <div id="strinfo"></div>
         </div>
     </div>

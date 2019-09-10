@@ -340,52 +340,74 @@ var removeAnnotationFromJson = function(jsonData, removeTokens){
     }
 }
 
+var annotateFrame=function(jsonData, annotations){
+    var frame = annotations['frame'];
+    var tids = annotations['mentions'];
+    if (!('srl' in jsonData['NAF'])){
+        jsonData['NAF']['srl']={};
+        jsonData['NAF']['srl']['#text']='';
+        jsonData['NAF']['srl']['predicate']=[];
+        var pr_id="pr1";
+    } else {
+        var thePredicates=jsonData['NAF']['srl']['predicate'];
+        var pr_num=(parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
+        console.log('New predicate number ' + pr_num);
+        var pr_id="pr" + pr_num;
+    }
+    var aPredicate = {};
+    aPredicate['#text']='';
+    aPredicate['attr']={};
+    aPredicate['attr']['id']=pr_id;
+    aPredicate['externalReferences']={'#text': '', 'externalRef': []};
+    aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet'}});
+    aPredicate['span']=makeSpanLayer(aPredicate, tids);
+    
+    aPredicate['role']=[];
+    var predicates=jsonData['NAF']['srl']['predicate'];
+    if (!(Array.isArray(predicates))){
+        jsonData['NAF']['srl']['predicate']=[]
+        jsonData['NAF']['srl']['predicate'].push(predicates);
+    }
+    jsonData['NAF']['srl']['predicate'].push(aPredicate);
+    return {'prid': pr_id, 'json': jsonData};
+}
+
+var annotateRoles=function(jsonData, annotations){
+    var roleData = annotations['role'] || [{'semRole': 'A0', 'targets':['x.y.t3', 'x.y.t4']}]; 
+    if ('srl' in jsonData['NAF']){
+        var predicates=jsonData['NAF']['srl']['predicate'];
+        if (!Array.isArray(predicates))
+            predicates=[predicates];
+        for (var i=0; i<predicates.length; i++){
+            if (predicates[i]['attr']['id']==roleData['prid']){
+                if (!('role' in predicates[i]))
+                    predicates[i]['role']=[];
+                else if (!(Array.isArray(predicates[i]['role'])))
+                    predicates[i]['role']=[predicates[i]['role']];
+                var existingRoles=predicates[i]['role'];
+                var aRole={};
+                aRole['#text']='';
+                aRole['attr']={}
+                aRole['attr']['id']='rl' + (existingRoles.length).toString();
+                aRole['attr']['semRole']=roleData['semRole'];
+                aRole['span']=makeSpanLayer(aRole, roleData['targets']);
+                aPredicate['role'].push(aRole);
+            }
+            break;
+        }
+        return {'prid': roleData['prid'], 'json': jsonData};
+    } else{
+        return {'prid': roleData['prid'], 'json': jsonData};
+    }
+}
+
 var addAnnotationsToJson = function(jsonData, annotations){
     if (annotations['anntype']=='idiom'){  
         return jsonData;
-    } else{ // FEE
-        var frame = annotations['frame'];
-        var tids = annotations['mentions'];
-        var roles = annotations['roles'] || [{'semRole': 'A0', 'targets':['x.y.t3', 'x.y.t4']}]; 
-        if (!('srl' in jsonData['NAF'])){
-            jsonData['NAF']['srl']={};
-            jsonData['NAF']['srl']['#text']='';
-            jsonData['NAF']['srl']['predicate']=[];
-            var pr_id="pr1";
-        } else {
-            var thePredicates=jsonData['NAF']['srl']['predicate'];
-            var pr_num=(parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
-            console.log('New predicate number ' + pr_num);
-            var pr_id="pr" + pr_num;
-        }
-        var aPredicate = {};
-        aPredicate['#text']='';
-        aPredicate['attr']={};
-        aPredicate['attr']['id']=pr_id;
-        aPredicate['externalReferences']={'#text': '', 'externalRef': []};
-        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet'}});
-        aPredicate['span']=makeSpanLayer(aPredicate, tids);
-        
-        aPredicate['role']=[];
-        console.log(roles);
-        for (var r=0; r<roles.length; r++){
-            var roleData=roles[r];
-            var aRole={};
-            aRole['#text']='';
-            aRole['attr']={}
-            aRole['attr']['id']='rl' + (r+1).toString();
-            aRole['attr']['semRole']=roleData['semRole'];
-            aRole['span']=makeSpanLayer(aRole, roleData['targets']);
-            aPredicate['role'].push(aRole);
-        }
-
-        var predicates=jsonData['NAF']['srl']['predicate'];
-        if (!(Array.isArray(predicates))){
-            jsonData['NAF']['srl']['predicate']=[]
-            jsonData['NAF']['srl']['predicate'].push(predicates);
-        }
-        jsonData['NAF']['srl']['predicate'].push(aPredicate);
-        return {'prid': pr_id, 'json': jsonData};
+    } else if (annotations['anntype']=='fee'){
+        return annotateFrame(jsonData, annotations);
+    } else{ // Role
+        return annotateRole(jsonData, annotations);
     }
 }
 
