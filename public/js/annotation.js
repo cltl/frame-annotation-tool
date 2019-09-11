@@ -284,7 +284,7 @@ var validateAnnotation = function(){
                         var anAnnotation = {'anntype': anntype, 'frame': frame, 'mentions': allMentions};
                     } else if (anntype=='role') {
                         var role = $('#roleChooser').val();
-                        var anAnnotation = {'anntype': anntype, 'role': {'prid': $("#activeFrame").val(), 'targets': allMentions, 'semRole': role}};
+                        var anAnnotation = {'anntype': anntype, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': allMentions, 'semRole': role, 'referent': $("#referentChooser").val()};
                     } else { //idiom
                         var anAnnotation = {'anntype': anntype, 'mentions': allMentions};
                     }

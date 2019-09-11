@@ -350,6 +350,7 @@ var annotateFrame=function(jsonData, annotations){
         var pr_id="pr1";
     } else {
         var thePredicates=jsonData['NAF']['srl']['predicate'];
+        if (!(Array.isArray(thePredicates))) thePredicates=[thePredicates];
         var pr_num=(parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
         console.log('New predicate number ' + pr_num);
         var pr_id="pr" + pr_num;
@@ -372,26 +373,30 @@ var annotateFrame=function(jsonData, annotations){
     return {'prid': pr_id, 'json': jsonData};
 }
 
-var annotateRoles=function(jsonData, annotations){
-    var roleData = annotations['role'] || [{'semRole': 'A0', 'targets':['x.y.t3', 'x.y.t4']}]; 
+var annotateRole=function(jsonData, annotations){
+    var roleData = annotations || [{'semRole': 'A0', 'targets':['x.y.t3', 'x.y.t4']}]; 
     if ('srl' in jsonData['NAF']){
         var predicates=jsonData['NAF']['srl']['predicate'];
         if (!Array.isArray(predicates))
             predicates=[predicates];
         for (var i=0; i<predicates.length; i++){
+            console.log('is predicate ok if the id is ' + predicates[i]['attr']['id']);
             if (predicates[i]['attr']['id']==roleData['prid']){
+                console.log('Enriching role with id ' + roleData['prid']);
                 if (!('role' in predicates[i]))
                     predicates[i]['role']=[];
                 else if (!(Array.isArray(predicates[i]['role'])))
-                    predicates[i]['role']=[predicates[i]['role']];
+                    aPredicate['role']=[predicates[i]['role']];
                 var existingRoles=predicates[i]['role'];
                 var aRole={};
                 aRole['#text']='';
                 aRole['attr']={}
                 aRole['attr']['id']='rl' + (existingRoles.length).toString();
                 aRole['attr']['semRole']=roleData['semRole'];
-                aRole['span']=makeSpanLayer(aRole, roleData['targets']);
-                aPredicate['role'].push(aRole);
+                aRole['span']=makeSpanLayer(aRole, roleData['mentions']);
+                aRole['externalReferences']={'#text': '', 'externalRef': []};
+                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': roleData['referent'], 'resource': 'Wikidata', 'source': 'framer', 'reftype': 'reference'}});
+                predicates[i]['role'].push(aRole);
             }
             break;
         }
@@ -492,6 +497,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
     console.log("Storing request received from " + thisUser);
     if (req.body.incident){
 	    var annotations = req.body.annotations || {};
+        console.log(JSON.stringify(annotations));
         var firstMention=annotations['mentions'][0];
         var docidAndTid = firstMention.split('.');
         var docId=docidAndTid[0].replace(/_/g, " ");
