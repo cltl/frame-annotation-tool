@@ -171,10 +171,10 @@ var getTokenData = function(tokens){
     var tokenData={};
     for (var i=0; i<tokens.length; i++){
         var token=tokens[i];
-        var txt=token['#text'];
+        //var txt=token['#text'];
         var tid=token['attr']['id'];
         var sent=token['attr']['sent'];
-        tokenData[tid]={'sent': sent, 'text': txt};
+        tokenData[tid]={'sent': sent, 'text': token['__cdata']};
     }
     return tokenData;
 }

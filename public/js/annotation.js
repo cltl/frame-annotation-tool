@@ -216,7 +216,7 @@ var refreshRoles = function(theFrame){
 
     var $el = $("#roleChooser");
     $el.empty(); // remove old options
-    $el.append($("<option value='-1' selected>-Pick frame-</option>"));
+    $el.append($("<option value='-1' selected>-Pick frame role-</option>"));
     $.each(relevantRoles, function(anIndex) {
         var unit = relevantRoles[anIndex];
         $el.append($("<option></option>")
