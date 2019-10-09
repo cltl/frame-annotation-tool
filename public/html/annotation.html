@@ -44,12 +44,22 @@
                     </select>
                 </div>
                 <div id="frameAnnotation" class="col-sm-8">
-                    <label>Choice of frame:</label><br/>
-                    <select id="frameChooser">
-                        <option value="-1" selected>-Pick frame-</option>
-                        <option value="Killing">Killing</option>
-                        <option value="Change_of_leadership">Change of leadership</option>
-                    </select>
+                    <div class="col-sm-4">
+                        <label>Choice of frame:</label><br/>
+                        <select id="frameChooser">
+                            <option value="-1" selected>-Pick frame-</option>
+                            <option value="Killing">Killing</option>
+                            <option value="Change_of_leadership">Change of leadership</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-4">
+                        <label>Relation type:</label><br/>
+                        <select id="relChooser">
+                            <option value="-1" selected>-Pick relation-</option>
+                            <option value="reference">Reference</option>
+                            <option value="evocation">Evocation</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="feAnnotation" class="col-sm-8">
                     <div class="col-sm-4">
@@ -90,8 +100,8 @@
     </div>
     <br/>
     <div class="row" id="bigdiv">
-        <div id="pnlLeft" class="col-sm-10"></div>
-        <div id="pnlRight" class="col-sm-2"><h4>Inferred chains</h4><div id="trails"></div></div>
+        <div id="pnlLeft" class="col-sm-9"></div>
+        <div id="pnlRight" class="col-sm-3"><h4>SRL annotations</h4><div id="trails"></div></div>
     </div>
 </div>
 

@@ -47,6 +47,8 @@ $(function(){
 
 }); // This is where the load function ends!
 
+annotations={};
+
 var clearSelection = function(){
     $('span').removeClass("active");
     $('span').removeClass("inactive");
@@ -129,18 +131,18 @@ var addToken = function(tid, token, annotated) {
     }
 }
 
-var addTokens = function(tokens, docId, annotations){
+var addTokens = function(tokens, docId, anns){
     var text = "";
     for (var token_num in tokens) {
         var token_info=tokens[token_num];
         var tokenId=docId.replace(/ /g, "_") + '.' + token_info.sent + '.' + token_info.tid;
-        var newToken=addToken(tokenId, token_info.text, annotations);
+        var newToken=addToken(tokenId, token_info.text, anns);
         text+=newToken;
     }
     return text;
 }
 
-var loadTextsFromFile = function(inc){
+var loadTextsFromFile = function(inc, callback){
     $("#pnlLeft").html("");
     $.get("/loadincident", {'inc': inc}, function(res, status) {
         var all_html = ""; 
@@ -148,9 +150,14 @@ var loadTextsFromFile = function(inc){
         var data=res['nafs'];
         console.log(data);
         for (var doc_num in data) {
+            
             var docId=data[doc_num]['name'];
 
             console.log(data[doc_num]['annotations']);
+
+            annotations[docId]=data[doc_num]['annotations'];
+            if (Object.keys(annotations).length==data.length) callback();
+            else console.log(Object.keys(annotations).length + " " + data.length);
 
             var title_tokens=data[doc_num]['title'];
             title=addTokens(title_tokens, docId, data[doc_num]['annotations']);
@@ -172,6 +179,18 @@ var loadTextsFromFile = function(inc){
     });
 }
 
+var showAnnotations = function(){
+    console.log('annotations' + JSON.stringify(annotations));
+    var html="";
+    for (var key in annotations){
+        html+="<b>" + key + "</b><br/>";
+        for (var ann in annotations[key]){
+            html+=ann + "," + annotations[key][ann]['frametype'] + "," + annotations[key][ann]['predicate'] + "," + annotations[key][ann]['reftype'] + "<br/>" ;
+        }
+    }
+    $("#trails").html(html);
+}
+
 // Load incident - both for mention and structured annotation
 var loadIncident = function(){
     var inc = $("#pickfile").val();
@@ -179,7 +198,9 @@ var loadIncident = function(){
         $("#incid").html(inc);
         $("#infoMessage").html("");
         getStructuredData(inc);
-        loadTextsFromFile(inc);
+        loadTextsFromFile(inc, function(){
+            showAnnotations();
+        });
         $("#annrow").show();
         $("#bigdiv").show();
         $("#frameAnnotation").hide();
@@ -197,6 +218,7 @@ var loadIncident = function(){
 var defaultValues = function(){
     $("#anntype").val('-1');
     $("#frameChooser").val('-1');
+    $('#relChooser').val('-1');
     $("#referentChooser").val('-1');
     $("#frameAnnotation").hide();
 }
@@ -271,6 +293,8 @@ var validateAnnotation = function(){
             return [false, "Please pick a frame"];
         } else if (anntype=='role' & $("#roleChooser").val()=='-1'){
             return [false, "Please pick a role"];
+        } else if (anntype=='fee' & $("#relChooser").val()=='-1'){
+            return [false, "Please pick a frame relation type"];
         } else {
             var allMentions = $(".active").map(function() {
                 return $(this).attr('id');
@@ -281,7 +305,9 @@ var validateAnnotation = function(){
                 } else {
                     if (anntype=='fee'){
                         var frame = $("#frameChooser").val();
-                        var anAnnotation = {'anntype': anntype, 'frame': frame, 'mentions': allMentions};
+                        var reltype= $("#relChooser").val();
+                        var anAnnotation = {'anntype': anntype, 'frame': frame, 'reltype': reltype, 'mentions': allMentions};
+                        console.log(JSON.stringify(anAnnotation));
                     } else if (anntype=='role') {
                         var role = $('#roleChooser').val();
                         var anAnnotation = {'anntype': anntype, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': allMentions, 'semRole': role, 'referent': $("#referentChooser").val()};

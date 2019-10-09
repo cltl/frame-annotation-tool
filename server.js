@@ -189,12 +189,13 @@ var prepareAnnotations = function(srl_data, callback){
             var pr = srl_data[i];
             var pr_id=pr['attr']['id'];
             var ftype = pr['externalReferences']['externalRef']['attr']['reference'];
+            var reftype = pr['externalReferences']['externalRef']['attr']['reftype'];
             var targets=pr['span']['target'];
             if (!(Array.isArray(targets))) targets=[targets];
 
             for (var j=0; j<targets.length; j++){
                 var tid=targets[j]['attr']['id'];
-                var tidEntry = {'frametype': ftype, 'predicate': pr_id};
+                var tidEntry = {'frametype': ftype, 'reftype': reftype, 'predicate': pr_id};
                 result[tid]=tidEntry;
                 if (j+1==targets.length){
                     done_i++;
@@ -342,6 +343,7 @@ var removeAnnotationFromJson = function(jsonData, removeTokens){
 
 var annotateFrame=function(jsonData, annotations){
     var frame = annotations['frame'];
+    var reftype = annotations['reltype'];
     var tids = annotations['mentions'];
     if (!('srl' in jsonData['NAF'])){
         jsonData['NAF']['srl']={};
@@ -360,7 +362,7 @@ var annotateFrame=function(jsonData, annotations){
     aPredicate['attr']={};
     aPredicate['attr']['id']=pr_id;
     aPredicate['externalReferences']={'#text': '', 'externalRef': []};
-    aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet'}});
+    aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': 'framer', 'reftype': reftype}});
     aPredicate['span']=makeSpanLayer(aPredicate, tids);
     
     aPredicate['role']=[];
@@ -515,6 +517,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
                 else {
                     var userAnnotationFile=userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
+                    console.log(JSON.stringify(annotations));
                     var newData = addAnnotationsToJson(nafData, annotations);
                     var pr_id=newData['prid'];
                     var updatedJson=newData['json'];
