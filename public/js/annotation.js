@@ -225,6 +225,17 @@ var defaultValues = function(){
 
 var reloadInside=function(){
     if($("span.active").length>0){
+        var actives=$(".active").map(function(){
+            return $(this).attr('id');
+        }).get();
+        for (var i=0; i<actives.length; i++){
+            var active=actives[i];
+            var elems=active.split('.');
+            var docId=elems[0].replace(/_/g, ' ');
+            var tid=elems[2];
+            annotations[docId][tid]={"frametype": $("#frameChooser").val(), "reftype": $("#relChooser").val(), "predicate": "pr100"};
+            if (i==actives.length-1) showAnnotations();
+        }
         var newClass = 'event_' + $("#frameChooser").val();
         $("span.active").removeClass().addClass(newClass).addClass("unclickable").addClass("mwu");
     } else if ($("span.inactive").length>0){
