@@ -68,16 +68,11 @@
                             <option value="-1" selected>-Pick frame role-</option>
                         </select>
                     </div>
-                    <div class="col-sm-4">
+                    <div class="col-sm-8">
                         <label>Choose referent:</label>
                         <select id="referentChooser">
                             <option value="-1" selected>-Pick referent-</option>
                         </select>
-                    </div>
-                    <div class="col-sm-4">
-                        <label>Active frame: </label>
-                        <label id="activeFrame">none</label>~
-                        <label id="activePredicate"></label>
                     </div>
                 </div>
             </div>
@@ -101,7 +96,13 @@
     <br/>
     <div class="row" id="bigdiv">
         <div id="pnlLeft" class="col-sm-9"></div>
-        <div id="pnlRight" class="col-sm-3"><h4>SRL annotations</h4><div id="trails"></div></div>
+        <div id="pnlRight" class="col-sm-3">
+            <h4>Active frame </h4>
+            <label>Type:</label> <span id="activeFrame">none</span><br/>
+            <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
+            <h4>SRL annotations</h4>
+            <div id="trails"></div>
+        </div>
     </div>
 </div>
 

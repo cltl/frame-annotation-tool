@@ -48,6 +48,7 @@ $(function(){
 }); // This is where the load function ends!
 
 annotations={};
+wdt_prefix="http://wikidata.org/wiki/";
 
 var clearSelection = function(){
     $('span').removeClass("active");
@@ -87,10 +88,25 @@ var printInfo = function(msg){
 }
 
 var getStructuredData = function(inc){
+    var type2Label={'Q132821': 'murder', 'Q168983': 'conflagration'};
     $.get('/getstrdata', {'inc': inc}, function(data, status) {
         //var data=JSON.parse(data);
         var str_html='';
         var allValues = new Set();
+        var incData=inc.split('/');
+        var incTypeLabel=type2Label[incData[0]] || incData[0];
+        
+        var incType=wdt_prefix + incData[0];
+        var incId=wdt_prefix + incData[1];
+
+        str_html += "<label id=\"incType\">incident type:</label> ";
+        str_html+="<a href=\"" + incType + "\">" + incTypeLabel + "</a>";
+        str_html+="<br/>";
+
+        str_html += "<label id=\"incId\">incident ID:</label> ";
+        str_html+="<a href=\"" + incId + "\">" + incId + "</a>";
+        str_html+="<br/>";
+
         for (var property in data) {
             var vals=data[property];
             var split_data=property.split(':');
@@ -181,6 +197,7 @@ var loadTextsFromFile = function(inc, callback){
 
 var showAnnotations = function(){
     console.log('annotations' + JSON.stringify(annotations));
+    $("#trails").html('');
     var html="";
     for (var key in annotations){
         html+="<b>" + key + "</b><br/>";
@@ -195,19 +212,21 @@ var showAnnotations = function(){
 var loadIncident = function(){
     var inc = $("#pickfile").val();
     if (inc!="-1"){
-        $("#incid").html(inc);
-        $("#infoMessage").html("");
-        getStructuredData(inc);
+        annotations={};
         loadTextsFromFile(inc, function(){
+            $("#trails").html('');
             showAnnotations();
+            $("#incid").html(inc);
+            $("#infoMessage").html("");
+            getStructuredData(inc);
+            $("#annrow").show();
+            $("#bigdiv").show();
+            $("#frameAnnotation").hide();
+            $("#feAnnotation").hide();
+            $("#activeFrame").text("none");
+            $("#activePredicate").text("");
+            $("#anntype").val('-1');
         });
-        $("#annrow").show();
-        $("#bigdiv").show();
-        $("#frameAnnotation").hide();
-        $("#feAnnotation").hide();
-        $("#activeFrame").text("none");
-        $("#activePredicate").text("");
-        $("#anntype").val('-1');
     } else{
         printInfo("Please select an incident");
     }
@@ -221,6 +240,18 @@ var defaultValues = function(){
     $('#relChooser').val('-1');
     $("#referentChooser").val('-1');
     $("#frameAnnotation").hide();
+    $("#feAnnotation").hide();
+}
+
+var getMaxPredicateID=function(docAnnotations){
+    maxId=-1;
+    for (var key in docAnnotations){
+        var tidAnnotation=docAnnotations[key];
+        var prid=tidAnnotation['predicate'];
+        var pridNum=parseInt(prid.substring(2));
+        if (pridNum>maxId) maxId=pridNum;
+    }
+    return maxId;
 }
 
 var reloadInside=function(){
@@ -228,12 +259,16 @@ var reloadInside=function(){
         var actives=$(".active").map(function(){
             return $(this).attr('id');
         }).get();
+
+        var maxPredicateId=null;
         for (var i=0; i<actives.length; i++){
             var active=actives[i];
             var elems=active.split('.');
             var docId=elems[0].replace(/_/g, ' ');
             var tid=elems[2];
-            annotations[docId][tid]={"frametype": $("#frameChooser").val(), "reftype": $("#relChooser").val(), "predicate": "pr100"};
+            if (!maxPredicateId)
+                maxPredicateId = getMaxPredicateID(annotations[docId]);
+            annotations[docId][tid]={"frametype": $("#frameChooser").val(), "reftype": $("#relChooser").val(), "predicate": "pr" + (maxPredicateId+1).toString()};
             if (i==actives.length-1) showAnnotations();
         }
         var newClass = 'event_' + $("#frameChooser").val();
@@ -250,6 +285,7 @@ var refreshRoles = function(theFrame){
     var $el = $("#roleChooser");
     $el.empty(); // remove old options
     $el.append($("<option value='-1' selected>-Pick frame role-</option>"));
+    console.log("theFrame" + theFrame);
     $.each(relevantRoles, function(anIndex) {
         var unit = relevantRoles[anIndex];
         $el.append($("<option></option>")
@@ -257,22 +293,25 @@ var refreshRoles = function(theFrame){
     });
 }
 
-var storeAndReload = function(ann){
+var storeAndReload = function(ann, anntype){
     console.log("Storing annotations");
     console.log(ann);
 
     $.post("/storeannotations", {'annotations': ann, 'incident': $("#pickfile").val() })
         .done(function(myData) {
             alert( "Annotation saved. Now re-loading." );
-            var pickedFrame = $("#frameChooser").val();
-            $("#activeFrame").text(pickedFrame);
-            var pr_id=myData['prid'];
-            var doc_id = myData['docid'];
-            $("#activePredicate").text(doc_id + '@' + pr_id);
+            if (anntype=='fee'){
+                var pickedFrame = $("#frameChooser").val();
+                $("#activeFrame").text(pickedFrame);
+                var pr_id=myData['prid'];
+                var doc_id = myData['docid'];
+                $("#activePredicate").text(doc_id + '@' + pr_id);
+            } else{
+                var pickedFrame=$("#activeFrame").text();
+            }
             refreshRoles(pickedFrame);
             reloadInside();
             defaultValues();
-            //showTrails();
         })
     .fail(function(err) {
         alert( "There was an error with storing these annotations: " + err );
@@ -295,11 +334,10 @@ var sameSentence = function(allMentions){
     return allValuesSame(sents);
 }
 
-var validateAnnotation = function(){
-     if ($("#anntype").val()=='-1'){
+var validateAnnotation = function(anntype){
+     if (anntype=='-1'){
          return [false, "Please pick an annotation type"];
     } else{
-        var anntype = $("#anntype").val();
         if (anntype=='fee' & $("#frameChooser").val()=='-1'){
             return [false, "Please pick a frame"];
         } else if (anntype=='role' & $("#roleChooser").val()=='-1'){
@@ -336,11 +374,12 @@ var validateAnnotation = function(){
 }
 
 var saveFrameAnnotation = function(){
-    var validation=validateAnnotation();
+    var anntype = $("#anntype").val();
+    var validation=validateAnnotation(anntype);
     var isValid=validation[0];
     if (isValid){
         console.log('storing ' + validation[1]);
-        storeAndReload(validation[1]);    
+        storeAndReload(validation[1], anntype);    
     } else{
         printInfo(validation[1]);
     }
