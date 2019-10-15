@@ -3,3 +3,4 @@ data/
 allowed.json
 package-lock.json
 node_modules/
+*.log

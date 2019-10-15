@@ -41,7 +41,7 @@ app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
 
 // Settings
-PORT=8686
+PORT=8787
 inc2doc_file='data/inc2doc_index.json';
 inc2str_file='data/inc2str_index.json';
 dataDir='data/naf/';
@@ -219,7 +219,7 @@ var prepareAnnotations = function(srl_data, callback){
     }
 }
 
-function loadNAFFile(nafName, theUser, adaptJson=true, callback){
+function loadNAFFile(nafName, theUser, adaptJson, callback){
     var filename=annotationDir + theUser + '/' + nafName + '.naf';
     if (!(fs.existsSync(filename))){
         var filename=dataDir + nafName + '.naf';
@@ -296,7 +296,7 @@ var loadAllNafs = function(nafs, theUser, callback){
     var data=[];
     console.log(nafs); 
     for (var i=0; i<nafs.length; i++){
-        loadNAFFile(nafs[i], theUser, adaptJson=true, function(nafData){
+        loadNAFFile(nafs[i], theUser, true, function(nafData){
             data.push(nafData);
             if (data.length==nafs.length) callback(data);
         });
@@ -463,7 +463,7 @@ app.post('/removeannotations', isAuthenticated, function(req, res){
     console.log(doctokens);
     for (var docId_underline in doctokens){
         var docId=docId_underline.replace(/_/g, " ");;
-        loadNAFFile(docId, req.user.user, adaptJson=false, function(nafData){
+        loadNAFFile(docId, req.user.user, false, function(nafData){
             var userAnnotationDir=annotationDir + thisUser + "/";
 
             var langAndTitle=docId.split('/');
@@ -503,7 +503,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
         var firstMention=annotations['mentions'][0];
         var docidAndTid = firstMention.split('.');
         var docId=docidAndTid[0].replace(/_/g, " ");
-        loadNAFFile(docId, req.user.user, adaptJson=false, function(nafData){
+        loadNAFFile(docId, req.user.user, false, function(nafData){
             var userAnnotationDir=annotationDir + thisUser + "/";
 
             var langAndTitle=docId.split('/');
