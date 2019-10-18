@@ -17,6 +17,14 @@ To start the server, simply run `node server.js` or `npm start`.
 * `scripts` has loading scripts that prepare the data for the tool.
 * the tool documentation can be found in `docs`.
 
+### Reloading the data
+
+Reloading the tool data requires four steps:
+1. Re-create the .bin files and move them to `data/` (remove the old ones first if the event types are different)
+2. Re-create the .naf files and move them to `data/naf' (remove the old ones first)
+3. Run the script in `scripts/create_indices.py`.
+4. [optionally] remove the old data in `annotation`
+
 ### Acknowledgements
 
 Some functionality was copied from the <a href="https://github.com/cltl/LongTailAnnotation">Long Tail Annotation tool</a>.
