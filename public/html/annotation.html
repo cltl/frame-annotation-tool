@@ -31,9 +31,9 @@
         <div class="col-sm-6"><label id="infoMessage"></label></div>
     </div>
     <div class="row justify-content-center" id="annrow">
-        <div class="ann-input col-sm-8">
+        <div class="ann-input col-sm-6">
             <div id="annotation">
-                <div class="col-sm-4">
+                <div class="col-sm-6">
                     <label>Annotation type: </label>
                     <br/>
                     <select id="anntype">
@@ -43,8 +43,8 @@
                         <option value="idiom">Idiom</option>
                     </select>
                 </div>
-                <div id="frameAnnotation" class="col-sm-8">
-                    <div class="col-sm-4">
+                <div id="frameAnnotation" class="col-sm-6">
+                    <div class="col-sm-6">
                         <label>Choice of frame:</label><br/>
                         <select id="frameChooser">
                             <option value="-1" selected>-Pick frame-</option>
@@ -52,28 +52,28 @@
                             <option value="Change_of_leadership">Change of leadership</option>
                         </select>
                     </div>
-                    <div class="col-sm-4">
+                    <div class="col-sm-6">
                         <label>Relation type:</label><br/>
                         <select id="relChooser">
                             <option value="-1" selected>-Pick relation-</option>
-                            <option value="reference">Reference</option>
-                            <option value="evocation">Evocation</option>
+                            <option value="refer">refersTo</option>
+                            <option value="refer">isReferredBy</option>
+                            <option value="evoke">evokes</option>
+                            <option value="evoke">isEvokedBy</option>
+                            <option value="type">isOfType</option>
                         </select>
                     </div>
                 </div>
-                <div id="feAnnotation" class="col-sm-8">
-                    <div class="col-sm-4">
+                <div id="feAnnotation" class="col-sm-6">
+                    <div class="col-sm-6">
                         <label>Choose role:</label>
                         <select id="roleChooser">
                             <option value="-1" selected>-Pick frame role-</option>
                         </select>
                     </div>
-                    <div class="col-sm-8">
-                        <label>Choose referent:</label>
-                        <select id="referentChooser">
-                            <option value="-1" selected>-Pick referent-</option>
-                        </select>
-                    </div>
+                    <div class="col-sm-6">
+                        <label>Selected Wikidata referents:</label>
+                        <span id="referents"></span>
                 </div>
             </div>
             <div class="row col-sm-12 plcHolder">X</div>
@@ -89,7 +89,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-4">
+        <div class="col-sm-6">
             <div id="strinfo"></div>
         </div>
     </div>

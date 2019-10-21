@@ -45,6 +45,14 @@ $(function(){
     frame2Roles={"Killing": ["Cause", "Instrument", "Killer", "Means", "Victim"], 
                 "Change_of_leadership": ["Function", "New_leader", "Old_Leader", "Role"]};
 
+
+    $(".strLink").click(function(e){
+        if (e.shiftKey){
+            e.preventDefault();
+            alert('Shift click');
+        }
+    });
+
 }); // This is where the load function ends!
 
 annotations={};
@@ -119,7 +127,7 @@ var getStructuredData = function(inc){
                 var valLink=splitted[0];
                 var valText=splitted[1];
                 if ($.trim(splitted[1])=="") str_html+=valLink;
-                else str_html += "<a href=\"" + valLink + "\">" + valText + "</a>";
+                else str_html += "<a href=\"" + valLink + "\" class=\"strLink\">" + valText + "</a>";
                 allValues.add(vals[i]);
             }
             str_html+="<br/>";
