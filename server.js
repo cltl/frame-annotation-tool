@@ -183,39 +183,37 @@ var prepareAnnotations = function(srl_data, callback){
     var result={};
     if (!srl_data || srl_data.length==0)
         callback(result);
-    if (Array.isArray(srl_data)){
-        var done_i=0;
-        for (var i=0; i<srl_data.length; i++){
-            var pr = srl_data[i];
-            var pr_id=pr['attr']['id'];
-            var ftype = pr['externalReferences']['externalRef']['attr']['reference'];
-            var reftype = pr['externalReferences']['externalRef']['attr']['reftype'];
-            var targets=pr['span']['target'];
-            if (!(Array.isArray(targets))) targets=[targets];
+    if (!(Array.isArray(srl_data))) srl_data=[srl_data];
 
-            for (var j=0; j<targets.length; j++){
-                var tid=targets[j]['attr']['id'];
-                var tidEntry = {'frametype': ftype, 'reftype': reftype, 'predicate': pr_id};
-                result[tid]=tidEntry;
-                if (j+1==targets.length){
-                    done_i++;
-                    if (done_i==srl_data.length) {
-                        callback(result);
-                    }
-                }
-            }
-        }
-    } else{
-        var pr = srl_data;
+    var done_i=0;
+    for (var i=0; i<srl_data.length; i++){
+        var pr = srl_data[i];
         var pr_id=pr['attr']['id'];
-        var ftype = pr['externalReferences']['externalRef']['attr']['reference'];
+        var extRefs = pr['externalReferences']['externalRef'];
+        console.log(JSON.stringify(extRefs));
+        var ftype='';
+        if (!(Array.isArray(extRefs)))
+            ftype = extRefs['attr']['reference'];
+        else{
+            extRefs.forEach(function(extRef){
+                if (extRef['attr']['reftype']=='type')
+                    ftype=extRef['attr']['reference'];
+            });
+        }
         var targets=pr['span']['target'];
+        if (!(Array.isArray(targets))) targets=[targets];
+
         for (var j=0; j<targets.length; j++){
             var tid=targets[j]['attr']['id'];
             var tidEntry = {'frametype': ftype, 'predicate': pr_id};
             result[tid]=tidEntry;
+            if (j+1==targets.length){
+                done_i++;
+                if (done_i==srl_data.length) {
+                    callback(result);
+                }
+            }
         }
-        callback(result);
     }
 }
 
@@ -345,6 +343,7 @@ var annotateFrame=function(jsonData, annotations){
     var frame = annotations['frame'];
     var reftype = annotations['reltype'];
     var tids = annotations['mentions'];
+    var referents= annotations['referents'];
     if (!('srl' in jsonData['NAF'])){
         jsonData['NAF']['srl']={};
         jsonData['NAF']['srl']['#text']='';
@@ -362,7 +361,11 @@ var annotateFrame=function(jsonData, annotations){
     aPredicate['attr']={};
     aPredicate['attr']['id']=pr_id;
     aPredicate['externalReferences']={'#text': '', 'externalRef': []};
-    aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': 'framer', 'reftype': reftype}});
+    aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'type'}});
+    if (referents && referents.length>0)
+        referents.forEach(function(ref){
+            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': 'framer', 'reftype': reftype}});
+        });
     aPredicate['span']=makeSpanLayer(aPredicate, tids);
     
     aPredicate['role']=[];
@@ -376,7 +379,7 @@ var annotateFrame=function(jsonData, annotations){
 }
 
 var annotateRole=function(jsonData, annotations){
-    var roleData = annotations || [{'semRole': 'A0', 'targets':['x.y.t3', 'x.y.t4']}]; 
+    var roleData = annotations;
     if ('srl' in jsonData['NAF']){
         var predicates=jsonData['NAF']['srl']['predicate'];
         if (!Array.isArray(predicates))
@@ -393,14 +396,21 @@ var annotateRole=function(jsonData, annotations){
                 var aRole={};
                 aRole['#text']='';
                 aRole['attr']={}
-                aRole['attr']['id']='rl' + (existingRoles.length).toString();
-                aRole['attr']['semRole']=roleData['semRole'];
+                aRole['attr']['id']='rl' + (existingRoles.length + 1).toString();
                 aRole['span']=makeSpanLayer(aRole, roleData['mentions']);
+                var referents= roleData['referents'];
+                var semRole=roleData['semRole'];
                 aRole['externalReferences']={'#text': '', 'externalRef': []};
-                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': roleData['referent'], 'resource': 'Wikidata', 'source': 'framer', 'reftype': 'reference'}});
+                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'type'}});
+                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'evoke'}});
+                if (referents.length>0)
+
+                    referents.forEach(function(ref){
+                        aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': 'framer', 'reftype': 'reference'}});
+                    });
                 predicates[i]['role'].push(aRole);
+                break;
             }
-            break;
         }
         return {'prid': roleData['prid'], 'json': jsonData};
     } else{

@@ -226,7 +226,7 @@ var showAnnotations = function(){
     for (var key in annotations){
         html+="<b>" + key + "</b><br/>";
         for (var ann in annotations[key]){
-            html+=ann + "," + annotations[key][ann]['frametype'] + "," + annotations[key][ann]['predicate'] + "," + annotations[key][ann]['reftype'] + "<br/>" ;
+            html+=ann + "," + annotations[key][ann]['frametype'] + "," + annotations[key][ann]['predicate'] + "<br/>" ;
         }
     }
     $("#trails").html(html);
@@ -262,19 +262,23 @@ var defaultValues = function(){
     $("#anntype").val('-1');
     $("#frameChooser").val('-1');
     $('#relChooser').val('-1');
-    $("#referentChooser").val('-1');
     $("#frameAnnotation").hide();
     $("#feAnnotation").hide();
+    referents=[];
+    $("#referents").html("");
+    $(".referent").removeClass("referent");
 }
 
 var getMaxPredicateID=function(docAnnotations){
-    maxId=-1;
+    maxId=0;
+    console.log(docAnnotations);
     for (var key in docAnnotations){
         var tidAnnotation=docAnnotations[key];
         var prid=tidAnnotation['predicate'];
         var pridNum=parseInt(prid.substring(2));
         if (pridNum>maxId) maxId=pridNum;
     }
+    console.log(maxId);
     return maxId;
 }
 
@@ -284,16 +288,17 @@ var reloadInside=function(){
             return $(this).attr('id');
         }).get();
 
-        var maxPredicateId=null;
-        for (var i=0; i<actives.length; i++){
-            var active=actives[i];
-            var elems=active.split('.');
-            var docId=elems[0].replace(/_/g, ' ');
-            var tid=elems[2];
-            if (!maxPredicateId)
-                maxPredicateId = getMaxPredicateID(annotations[docId]);
-            annotations[docId][tid]={"frametype": $("#frameChooser").val(), "reftype": $("#relChooser").val(), "predicate": "pr" + (maxPredicateId+1).toString()};
-            if (i==actives.length-1) showAnnotations();
+        if ($("#anntype").val()=='fee'){
+            var firstDocId = actives[0].split('.')[0].replace(/_/g, ' ');
+            var maxPredicateId=getMaxPredicateID(annotations[firstDocId]);
+            for (var i=0; i<actives.length; i++){
+                var active=actives[i];
+                var elems=active.split('.');
+                var docId=elems[0].replace(/_/g, ' ');
+                var tid=elems[2];
+                annotations[docId][tid]={"frametype": $("#frameChooser").val(), "predicate": "pr" + (maxPredicateId+1).toString()};
+                if (i==actives.length-1) showAnnotations();
+            }
         }
         var newClass = 'event_' + $("#frameChooser").val();
         $("span.active").removeClass().addClass(newClass).addClass("unclickable").addClass("mwu");
@@ -376,14 +381,15 @@ var validateAnnotation = function(anntype){
                 if (!sameSentence(allMentions)) {
                     return [false, "All terms of a frame must be in the same sentence"];
                 } else {
+                    var wdtLinks = referents.map(x => x.split('|')[0]);
                     if (anntype=='fee'){
                         var frame = $("#frameChooser").val();
                         var reltype= $("#relChooser").val();
-                        var anAnnotation = {'anntype': anntype, 'frame': frame, 'reltype': reltype, 'mentions': allMentions};
+                        var anAnnotation = {'anntype': anntype, 'frame': frame, 'reltype': reltype, 'mentions': allMentions, 'referents': wdtLinks};
                         console.log(JSON.stringify(anAnnotation));
                     } else if (anntype=='role') {
-                        var role = $('#roleChooser').val();
-                        var anAnnotation = {'anntype': anntype, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': allMentions, 'semRole': role, 'referent': $("#referentChooser").val()};
+                        var role = $("#activeFrame").text() + "@" + $('#roleChooser').val();
+                        var anAnnotation = {'anntype': anntype, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': allMentions, 'semRole': role, 'referents': wdtLinks};
                     } else { //idiom
                         var anAnnotation = {'anntype': anntype, 'mentions': allMentions};
                     }
@@ -403,7 +409,7 @@ var saveFrameAnnotation = function(){
     var isValid=validation[0];
     if (isValid){
         console.log('storing ' + validation[1]);
-        storeAndReload(validation[1], anntype);    
+        storeAndReload(validation[1], anntype);
     } else{
         printInfo(validation[1]);
     }
