@@ -118,7 +118,6 @@ var getStructuredData = function(inc){
                 var splitted=vals[i].split('|');
                 if (i>0) str_html += ", ";
                 var valLink=splitted[0];
-                console.log(valLink);
                 var valText=splitted[1];
                 if ($.trim(valText)=="") str_html+=valLink;
                 else str_html += "<a href=\"" + valLink + "\" class=\"strLink\" target=\"_blank\">" + valText + "</a>";
@@ -186,12 +185,10 @@ var loadTextsFromFile = function(inc, callback){
         var all_html = ""; 
         var c=0;
         var data=res['nafs'];
-        console.log(data);
         for (var doc_num in data) {
             
             var docId=data[doc_num]['name'];
 
-            console.log(data[doc_num]['annotations']);
 
             annotations[docId]=data[doc_num]['annotations'];
             if (Object.keys(annotations).length==data.length){ 
@@ -220,7 +217,6 @@ var loadTextsFromFile = function(inc, callback){
 }
 
 var showAnnotations = function(){
-    console.log('annotations' + JSON.stringify(annotations));
     $("#trails").html('');
     var html="";
     for (var key in annotations){

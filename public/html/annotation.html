@@ -31,9 +31,9 @@
         <div class="col-sm-6"><label id="infoMessage"></label></div>
     </div>
     <div class="row justify-content-center" id="annrow">
-        <div class="ann-input col-sm-7">
+        <div class="ann-input col-sm-8">
             <div id="annotation">
-                <div class="col-sm-4">
+                <div class="col-sm-3">
                     <label>Annotation type: </label>
                     <br/>
                     <select id="anntype">
@@ -43,8 +43,8 @@
                         <option value="idiom">Idiom</option>
                     </select>
                 </div>
-                <div id="frameAnnotation" class="col-sm-8">
-                    <div class="col-sm-5">
+                <div id="frameAnnotation" class="col-sm-9">
+                    <div class="col-sm-4">
                         <label>Choose frame:</label><br/>
                         <select id="frameChooser">
                             <option value="-1" selected>-Pick frame-</option>
@@ -52,7 +52,7 @@
                             <option value="Change_of_leadership">Change of leadership</option>
                         </select>
                     </div>
-                    <div class="col-sm-7">
+                    <div class="col-sm-3">
                         <label>Relation type:</label><br/>
                         <select id="relChooser">
                             <option value="-1" selected>-Pick relation-</option>
@@ -63,15 +63,19 @@
                             <option value="type">isOfType</option>
                         </select>
                     </div>
-                </div>
-                <div id="feAnnotation" class="col-sm-8">
                     <div class="col-sm-5">
-                        <label>Choose role:</label>
+                        <label>Wikidata referents:</label><br/>
+                        <span><i>If applicable, choose Wikidata referents by clicking on the participant/event links.</i></span>
+                    </div>
+                </div>
+                <div id="feAnnotation" class="col-sm-9">
+                    <div class="col-sm-6">
+                        <label>Choose role:</label><br/>
                         <select id="roleChooser">
                             <option value="-1" selected>-Pick frame role-</option>
                         </select>
                     </div>
-                    <div class="col-sm-7">
+                    <div class="col-sm-5">
                         <label>Wikidata referents:</label><br/>
                         <span><i>If applicable, choose Wikidata referents by clicking on the participant/event links.</i></span>
                     </div>
@@ -90,7 +94,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-5">
+        <div class="col-sm-4">
             <div id="strinfo"></div>
         </div>
     </div>
