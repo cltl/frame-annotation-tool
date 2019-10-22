@@ -31,9 +31,9 @@
         <div class="col-sm-6"><label id="infoMessage"></label></div>
     </div>
     <div class="row justify-content-center" id="annrow">
-        <div class="ann-input col-sm-6">
+        <div class="ann-input col-sm-7">
             <div id="annotation">
-                <div class="col-sm-6">
+                <div class="col-sm-4">
                     <label>Annotation type: </label>
                     <br/>
                     <select id="anntype">
@@ -43,16 +43,16 @@
                         <option value="idiom">Idiom</option>
                     </select>
                 </div>
-                <div id="frameAnnotation" class="col-sm-6">
-                    <div class="col-sm-6">
-                        <label>Choice of frame:</label><br/>
+                <div id="frameAnnotation" class="col-sm-8">
+                    <div class="col-sm-5">
+                        <label>Choose frame:</label><br/>
                         <select id="frameChooser">
                             <option value="-1" selected>-Pick frame-</option>
                             <option value="Killing">Killing</option>
                             <option value="Change_of_leadership">Change of leadership</option>
                         </select>
                     </div>
-                    <div class="col-sm-6">
+                    <div class="col-sm-7">
                         <label>Relation type:</label><br/>
                         <select id="relChooser">
                             <option value="-1" selected>-Pick relation-</option>
@@ -64,16 +64,13 @@
                         </select>
                     </div>
                 </div>
-                <div id="feAnnotation" class="col-sm-6">
-                    <div class="col-sm-6">
+                <div id="feAnnotation" class="col-sm-8">
+                    <div class="col-sm-5">
                         <label>Choose role:</label>
                         <select id="roleChooser">
                             <option value="-1" selected>-Pick frame role-</option>
                         </select>
                     </div>
-                    <div class="col-sm-6">
-                        <label>Selected Wikidata referents:</label>
-                        <span id="referents"></span>
                 </div>
             </div>
             <div class="row col-sm-12 plcHolder">X</div>
@@ -89,7 +86,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6">
+        <div class="col-sm-5">
             <div id="strinfo"></div>
         </div>
     </div>
@@ -100,6 +97,7 @@
             <h4>Active frame </h4>
             <label>Type:</label> <span id="activeFrame">none</span><br/>
             <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
+            <label>Selected Wikidata referents:</label><br/><span id="referents"></span><br/>
             <h4>SRL annotations</h4>
             <div id="trails"></div>
         </div>

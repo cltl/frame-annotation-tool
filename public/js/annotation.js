@@ -45,17 +45,10 @@ $(function(){
     frame2Roles={"Killing": ["Cause", "Instrument", "Killer", "Means", "Victim"], 
                 "Change_of_leadership": ["Function", "New_leader", "Old_Leader", "Role"]};
 
-
-    $(".strLink").click(function(e){
-        if (e.shiftKey){
-            e.preventDefault();
-            alert('Shift click');
-        }
-    });
-
 }); // This is where the load function ends!
 
 annotations={};
+referents=[];
 wdt_prefix="http://wikidata.org/wiki/";
 
 var clearSelection = function(){
@@ -108,11 +101,11 @@ var getStructuredData = function(inc){
         var incId=wdt_prefix + incData[1];
 
         str_html += "<label id=\"incType\">incident type:</label> ";
-        str_html+="<a href=\"" + incType + "\">" + incTypeLabel + "</a>";
+        str_html+="<a href=\"" + incType + "\" class=\"strLink\">" + incTypeLabel + "</a>";
         str_html+="<br/>";
 
         str_html += "<label id=\"incId\">incident ID:</label> ";
-        str_html+="<a href=\"" + incId + "\">" + incId + "</a>";
+        str_html+="<a href=\"" + incId + "\" class=\"strLink\">" + incId + "</a>";
         str_html+="<br/>";
 
         for (var property in data) {
@@ -125,20 +118,41 @@ var getStructuredData = function(inc){
                 var splitted=vals[i].split('|');
                 if (i>0) str_html += ", ";
                 var valLink=splitted[0];
+                console.log(valLink);
                 var valText=splitted[1];
-                if ($.trim(splitted[1])=="") str_html+=valLink;
-                else str_html += "<a href=\"" + valLink + "\" class=\"strLink\">" + valText + "</a>";
+                if ($.trim(valText)=="") str_html+=valLink;
+                else str_html += "<a href=\"" + valLink + "\" class=\"strLink\" target=\"_blank\">" + valText + "</a>";
                 allValues.add(vals[i]);
             }
             str_html+="<br/>";
         }
         $("#strinfo").html(str_html);
-        var $rc = $("#referentChooser");
-        $rc.empty(); // remove old options
-        $rc.append($("<option value='-1' selected>-Pick referent-</option>"));
-        for (let item of allValues) 
-            $rc.append($("<option></option>")
-            .attr("value", item.split('|')[0]).text(item));
+
+        $(".strLink").click(function(e){
+            if (!e.ctrlKey && !e.metaKey){
+                e.preventDefault();
+                var link=$(this).attr('href');
+                var text=$(this).text();
+                if ($(this).hasClass('referent')){
+                    $(this).removeClass('referent');
+                    var index = referents.indexOf(link + '|' + text);
+                    if (index !== -1) referents.splice(index, 1);
+                } else {
+                    referents.push(link + '|' + text);
+                    $(this).addClass('referent');
+                }
+                var myHtml="";
+                referents.forEach(function(ref){
+                    var splitted=ref.split('|');
+                    var valLink=splitted[0];
+                    var valText=splitted[1];
+                    if ($.trim(valText)=="") myHtml+=valLink;
+                    else myHtml += "<a href=\"" + valLink + "\" target=\"_blank\">" + valText + "</a><br/>";
+                });
+                $("#referents").html(myHtml);
+            } else if (!($(this).attr('href').startsWith('http')))
+                e.preventDefault();
+        });
     });
 }
 
@@ -180,7 +194,9 @@ var loadTextsFromFile = function(inc, callback){
             console.log(data[doc_num]['annotations']);
 
             annotations[docId]=data[doc_num]['annotations'];
-            if (Object.keys(annotations).length==data.length) callback();
+            if (Object.keys(annotations).length==data.length){ 
+                callback();
+            }
             else console.log(Object.keys(annotations).length + " " + data.length);
 
             var title_tokens=data[doc_num]['title'];
