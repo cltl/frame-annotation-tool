@@ -56,6 +56,10 @@ var clearSelection = function(){
     $('span').removeClass("inactive");
 }
 
+var activatePredicate = function(){
+   alert("function in progress"); 
+}
+
 var removeAnnotations = function(){
     if ($("span.inactive").length>0){
         var allMentions = $(".inactive").map(function() {
@@ -284,6 +288,7 @@ var reloadInside=function(){
             return $(this).attr('id');
         }).get();
 
+        var newClass='';
         if ($("#anntype").val()=='fee'){
             var firstDocId = actives[0].split('.')[0].replace(/_/g, ' ');
             var maxPredicateId=getMaxPredicateID(annotations[firstDocId]);
@@ -295,8 +300,10 @@ var reloadInside=function(){
                 annotations[docId][tid]={"frametype": $("#frameChooser").val(), "predicate": "pr" + (maxPredicateId+1).toString()};
                 if (i==actives.length-1) showAnnotations();
             }
+            newClass = 'event_' + $("#frameChooser").val();
+        } else if ($("#anntype").val()=='role'){
+            newClass = 'role';
         }
-        var newClass = 'event_' + $("#frameChooser").val();
         $("span.active").removeClass().addClass(newClass).addClass("unclickable").addClass("mwu");
     } else if ($("span.inactive").length>0){
         $("span.inactive").children().remove();

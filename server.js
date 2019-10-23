@@ -179,6 +179,44 @@ var getTokenData = function(tokens){
     return tokenData;
 }
 
+var getAnnotatedRolesForPredicate=function(srl_data, the_id, callback){
+    var result={};
+    if (!srl_data || srl_data.length==0)
+        callback(result);
+    if (!(Array.isArray(srl_data))) srl_data=[srl_data];
+    for (var i=0; i<srl_data.length; i++){
+        var pr = srl_data[i];
+        var pr_id=pr['attr']['id'];
+        if (pr_id!=the_id) continue;
+        if (!(pr[i]['role'])) callback(result);
+        var roles=pr[i]['role'];
+        for (var role_i=0; role_i<roles.length; role_i++){
+            var role=roles[role_i];
+            var targets=role['span']['target'];
+            if (!(Array.isArray(targets))) targets=[targets];
+            
+            var extRefs = role['externalReferences']['externalRef'];
+            var roleType='';
+            if (!(Array.isArray(extRefs)))
+                roleType = extRefs['attr']['reference'].split('@')[1];
+            else{
+                extRefs.forEach(function(extRef){
+                    if (extRef['attr']['reftype']=='type')
+                        roleType=extRef['attr']['reference'].split('@')[1];
+                });
+            }
+            for (var j=0; j<targets.length; j++){
+                var tid=targets[j];
+                var tidEntry = roleType;
+                result[tid]=tidEntry;
+                if (j+1==targets.length){
+                    callback(result);
+                }
+            }
+        }
+    }    
+});
+
 var prepareAnnotations = function(srl_data, callback){
     var result={};
     if (!srl_data || srl_data.length==0)
@@ -391,7 +429,7 @@ var annotateRole=function(jsonData, annotations){
                 if (!('role' in predicates[i]))
                     predicates[i]['role']=[];
                 else if (!(Array.isArray(predicates[i]['role'])))
-                    aPredicate['role']=[predicates[i]['role']];
+                    predicates[i]['role']=[predicates[i]['role']];
                 var existingRoles=predicates[i]['role'];
                 var aRole={};
                 aRole['#text']='';

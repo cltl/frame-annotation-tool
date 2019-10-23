@@ -73,15 +73,7 @@ label.inactive {
     background: #0ff;
 }
 
-.event_s {
-    background: #0ff;
-}
-
-.event_b {
-    background: #F4A460;
-}
-
-.event_h {
+.role {
     background: #f0f;
 }
 
