@@ -403,7 +403,7 @@ var annotateRole=function(jsonData, annotations){
                 aRole['externalReferences']={'#text': '', 'externalRef': []};
                 aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'type'}});
                 aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'evoke'}});
-                if (referents.length>0)
+                if (referents && referents.length>0)
 
                     referents.forEach(function(ref){
                         aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': 'framer', 'reftype': 'reference'}});
