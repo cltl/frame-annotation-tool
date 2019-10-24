@@ -1,3 +1,10 @@
+annotations={};
+referents=[];
+wdt_prefix="http://wikidata.org/wiki/";
+type2Label={'Q132821': 'murder', 'Q168983': 'conflagration'};
+
+frame2Roles={"Killing": ["Cause", "Instrument", "Killer", "Means", "Victim"], "Change_of_leadership": ["Function", "New_leader", "Old_Leader", "Role"]};
+
 $(function(){
     $("#annrow").hide();
     $("#bigdiv").hide();
@@ -23,41 +30,59 @@ $(function(){
 		    $("#frameAnnotation").hide();
 	    }
 	});
-    
-    $.get('/listincidents', {}, function(unsorted, status) {
-        var old_inc = unsorted['old'];
-        var new_inc = unsorted['new'];
-        var old_sorted = old_inc.sort();
-        var new_sorted = new_inc.sort();
-
-        $('#pickfile').append($('<option></option>').val('-1').html("--INCIDENTS YOU'VE WORKED ON--").prop('disabled', true));
-        for(var i = 0; i < old_sorted.length; i++) {
-            $('#pickfile').append($('<option></option>').val(old_sorted[i]).html(old_sorted[i]));
+    $.get('/listprojectsandtypes', {}, function(data, status) { 
+        var projects=data['proj'];
+        var types=data['types'];
+        for(var i = 0; i < projects.length; i++) {
+            $('#pickproj').append($('<option></option>').val(projects[i]).html(projects[i]));
         }
 
-        $('#pickfile').append($('<option></option>').val('-1').html("--OTHER INCIDENTS--").prop('disabled', true));
-        for(var i = 0; i < new_sorted.length; i++) {
-            $('#pickfile').append($('<option></option>').val(new_sorted[i]).html(new_sorted[i]));
+        for(var i = 0; i < types.length; i++) {
+            var typeLabel=type2Label[types[i]];
+            $('#picktype').append($('<option></option>').val(types[i]).html(typeLabel));
         }
-
     });
 
-    frame2Roles={"Killing": ["Cause", "Instrument", "Killer", "Means", "Victim"], 
-                "Change_of_leadership": ["Function", "New_leader", "Old_Leader", "Role"]};
 
 }); // This is where the load function ends!
 
-annotations={};
-referents=[];
-wdt_prefix="http://wikidata.org/wiki/";
 
 var clearSelection = function(){
     $('span').removeClass("active");
     $('span').removeClass("inactive");
 }
 
+
 var activatePredicate = function(){
    alert("function in progress"); 
+}
+
+var updateIncidentList=function(){
+    var pickedType=$('#picktype').val();
+    var pickedProj=$('#pickproj').val();
+    if (pickedType!='-1' && pickedProj!='-1'){
+        $.get('/listincidents', {'myproj': pickedProj, 'mytype': pickedType}, function(unsorted, status) {
+            var old_inc = unsorted['old'];
+            var new_inc = unsorted['new'];
+            var old_sorted = old_inc.sort();
+            var new_sorted = new_inc.sort();
+            
+            reloadDropdown("#pickfile", new_sorted, "-Pick an incident ID-");
+            /*
+            $('#pickfile').append($('<option></option>').val('-1').html("--INCIDENTS YOU'VE WORKED ON--").prop('disabled', true));
+            for(var i = 0; i < old_sorted.length; i++) {
+                $('#pickfile').append($('<option></option>').val(old_sorted[i]).html(old_sorted[i]));
+            }
+
+            $('#pickfile').append($('<option></option>').val('-1').html("--OTHER INCIDENTS--").prop('disabled', true));
+            for(var i = 0; i < new_sorted.length; i++) {
+                $('#pickfile').append($('<option></option>').val(new_sorted[i]).html(new_sorted[i]));
+            }
+            */
+        });
+    } else{
+        reloadDropdown("#pickfile", [], "-Pick an incident ID-");
+    }
 }
 
 var removeAnnotations = function(){
@@ -93,16 +118,16 @@ var printInfo = function(msg){
 }
 
 var getStructuredData = function(inc){
-    var type2Label={'Q132821': 'murder', 'Q168983': 'conflagration'};
     $.get('/getstrdata', {'inc': inc}, function(data, status) {
         //var data=JSON.parse(data);
         var str_html='';
         var allValues = new Set();
-        var incData=inc.split('/');
-        var incTypeLabel=type2Label[incData[0]] || incData[0];
+
+        var incTypeId=$("#picktype").val();
+        var incTypeLabel=type2Label[incTypeId] || incTypeId;
         
-        var incType=wdt_prefix + incData[0];
-        var incId=wdt_prefix + incData[1];
+        var incType=wdt_prefix + incTypeId;
+        var incId=wdt_prefix + inc;
 
         str_html += "<label id=\"incType\">incident type:</label> ";
         str_html+="<a href=\"" + incType + "\" class=\"strLink\">" + incTypeLabel + "</a>";
@@ -200,11 +225,15 @@ var loadTextsFromFile = function(inc, callback){
             }
             else console.log(Object.keys(annotations).length + " " + data.length);
 
+            var source=data[doc_num]['source'];
+            var sourcetype=data[doc_num]['sourcetype'];
+
             var title_tokens=data[doc_num]['title'];
             title=addTokens(title_tokens, docId, data[doc_num]['annotations']);
 
             var header = "<div class=\"panel panel-default\" id=\"" + doc_num + "\">";
             header += "<div class=\"panel-heading\"><h4 class=\"panel-title\">" + title; 
+            header += "(" + sourcetype + " RT; <a href=\"" + source + "\">" + source + "</a>)";
             header += "</h4></div>";
 
             var body = "<div class=\"panel-body\">";
@@ -311,18 +340,20 @@ var reloadInside=function(){
     }
 }
 
-var refreshRoles = function(theFrame){
-    var relevantRoles = frame2Roles[theFrame];
-
-    var $el = $("#roleChooser");
+var reloadDropdown=function(elementId, sourceList, defaultOption){
+    var $el = $(elementId);
     $el.empty(); // remove old options
-    $el.append($("<option value='-1' selected>-Pick frame role-</option>"));
-    console.log("theFrame" + theFrame);
-    $.each(relevantRoles, function(anIndex) {
-        var unit = relevantRoles[anIndex];
+    $el.append($("<option value='-1' selected>" + defaultOption + "</option>"));
+    $.each(sourceList, function(anIndex) {
+        var unit = sourceList[anIndex];
         $el.append($("<option></option>")
             .attr("value", unit).text(unit));
     });
+}
+
+var refreshRoles = function(theFrame){
+    var relevantRoles = frame2Roles[theFrame];
+    reloadDropdown("#roleChooser", relevantRoles, "-Pick frame role-");
 }
 
 var storeAndReload = function(ann, anntype){

@@ -22,6 +22,7 @@
     "ejs": "2.6.2",
     "fast-xml-parser": "3.12.19",
     "glob": "7.1.4",
-    "mkdirp": "0.5.1"
+    "mkdirp": "0.5.1",
+    "underscore": "^1.9.1"
   }
 }

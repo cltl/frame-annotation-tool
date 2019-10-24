@@ -22,11 +22,25 @@
     </div>
     <br/>
     <div class="row" id="pickrow">
-        <div class="col-sm-5">
-            <select id="pickfile">
-                <option value="-1">-Pick an incident ID-</option>
-            </select>
-            <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
+        <div class="col-sm-6">
+            <div class="col-sm-3">
+                <select id="pickproj" onchange="updateIncidentList()">
+                    <option value="-1">-Pick a project-</option>
+                </select>
+            </div>
+            <div class="col-sm-3">
+                <select id="picktype" onchange="updateIncidentList()">
+                    <option value="-1">-Pick a type-</option>
+                </select>
+            </div>
+            <div class="col-sm-3">
+                <select id="pickfile">
+                    <option value="-1">-Pick an incident ID-</option>
+                </select>
+            </div>
+            <div class="col-sm-3">
+                <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
+            </div>
         </div>
         <div class="col-sm-6"><label id="infoMessage"></label></div>
     </div>

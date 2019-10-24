@@ -12,6 +12,7 @@ var glob = require('glob');
 var passport = require('passport');
 var expressSession = require('express-session');
 var mkdirp = require('mkdirp');
+var _ = require('underscore');
 
 app.use(express.static(__dirname + '/public/html'));
 app.set('views', __dirname + '/public/html');
@@ -44,6 +45,8 @@ app.use('/logs', express.static('logs'));
 PORT=8787
 inc2doc_file='data/inc2doc_index.json';
 inc2str_file='data/inc2str_index.json';
+type2inc_file='data/type2inc_index.json';
+proj2inc_file='data/proj2inc_index.json';
 dataDir='data/naf/';
 annotationDir='annotation/'
 
@@ -84,6 +87,16 @@ fs.readFile(inc2doc_file, 'utf8', function (err, data) {
 fs.readFile(inc2str_file, 'utf8', function (err, data) {
     if (err) throw err; // we'll not consider error handling for now
     inc2str = JSON.parse(data);
+});
+
+fs.readFile(proj2inc_file, 'utf8', function (err, data) {
+    if (err) throw err; // we'll not consider error handling for now
+    proj2inc = JSON.parse(data);
+});
+
+fs.readFile(type2inc_file, 'utf8', function (err, data) {
+    if (err) throw err; // we'll not consider error handling for now
+    type2inc = JSON.parse(data);
 });
 
 // =====================================
@@ -179,6 +192,7 @@ var getTokenData = function(tokens){
     return tokenData;
 }
 
+/*
 var getAnnotatedRolesForPredicate=function(srl_data, the_id, callback){
     var result={};
     if (!srl_data || srl_data.length==0)
@@ -216,6 +230,7 @@ var getAnnotatedRolesForPredicate=function(srl_data, the_id, callback){
         }
     }    
 });
+*/
 
 var prepareAnnotations = function(srl_data, callback){
     var result={};
@@ -281,8 +296,9 @@ function loadNAFFile(nafName, theUser, adaptJson, callback){
             var ready_title_terms=[];
             var ready_body_terms=[];
 
-            
-
+            var wikiTitle=jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
+            if (!wikiTitle)
+                console.log(jsonObj);
             for (var i=0; i<terms.length; i++){
                 var term=terms[i];
 
@@ -318,7 +334,7 @@ function loadNAFFile(nafName, theUser, adaptJson, callback){
                     console.log(i + ' is at the end. Prepare annotations for this file. Srl:');
                     prepareAnnotations(srl, function(ready_srl){
                         console.log('All annotations ready');
-                        callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl});
+                        callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl, 'source': wikiTitle, 'sourcetype': wikiTitle.includes('wikipedia') ? "secondary" : "primary"});
                     });
                 }
             }
@@ -485,10 +501,20 @@ var saveNAFAnnotation = function(userAnnotationFile, updatedJson, callback){
 // QUERY ENDPOINTS =====================
 // =====================================
 
+app.get('/listprojectsandtypes', isAuthenticated, function(req, res){
+    var projects=Object.keys(proj2inc);
+    var types=Object.keys(type2inc);
+    res.send({'proj': Array.from(projects), 'types': Array.from(types)});
+});
+
 app.get('/listincidents', isAuthenticated, function(req, res){
-    var difference=Object.keys(inc2doc);
-    var intersection = [];
-    res.send({'new': Array.from(difference), 'old': Array.from(intersection)});
+    var aType=req.query['mytype'];
+    var aProj=req.query['myproj'];
+    var incWithDocs=Object.keys(inc2doc);
+    var incOfType=Array.from(type2inc[aType]);
+    var incOfProj=Array.from(proj2inc[aProj]);
+    var selected=_.intersection(incWithDocs, incOfType, incOfProj);
+    res.send({'new': Array.from(selected), 'old': []});
 });
 
 app.get('/loadincident', isAuthenticated, function(req, res){
