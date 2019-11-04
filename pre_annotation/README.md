@@ -82,6 +82,7 @@ This file contains information about the main frames of an event, the subframes,
             470
         ],
     "lu_to_dominant_frame": {
+            "en" : {
             "accident": 115,
             "altercation": 93,
             "annihilate": 590,
@@ -92,6 +93,9 @@ This file contains information about the main frames of an event, the subframes,
             "arsenal": 426,
             "arson": 432,
         ....
+        },
+        "nl" : {}, # to be filled  
+        "it" : {}, # to be filled
     }
 ...
 

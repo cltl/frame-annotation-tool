@@ -76,17 +76,6 @@ var updateIncidentList=function(){
             var new_sorted = new_inc.sort();
             
             reloadDropdown("#pickfile", new_sorted, "-Pick an incident ID-");
-            /*
-            $('#pickfile').append($('<option></option>').val('-1').html("--INCIDENTS YOU'VE WORKED ON--").prop('disabled', true));
-            for(var i = 0; i < old_sorted.length; i++) {
-                $('#pickfile').append($('<option></option>').val(old_sorted[i]).html(old_sorted[i]));
-            }
-
-            $('#pickfile').append($('<option></option>').val('-1').html("--OTHER INCIDENTS--").prop('disabled', true));
-            for(var i = 0; i < new_sorted.length; i++) {
-                $('#pickfile').append($('<option></option>').val(new_sorted[i]).html(new_sorted[i]));
-            }
-            */
         });
     } else{
         reloadDropdown("#pickfile", [], "-Pick an incident ID-");
@@ -225,11 +214,14 @@ var loadTextsFromFile = function(inc, callback){
         var all_html = ""; 
         var c=0;
         var data=res['nafs'];
-        var lus=Object.keys(res['lus']);
+        var lus=res['lus'];
         for (var doc_num in data) {
             
             var docId=data[doc_num]['name'];
 
+            var docLang=docId.split('/')[0];
+
+            var lusLang=Object.keys(lus[docLang]) || [];
 
             annotations[docId]=data[doc_num]['annotations'];
             if (Object.keys(annotations).length==data.length){ 
@@ -241,7 +233,7 @@ var loadTextsFromFile = function(inc, callback){
             var sourcetype=data[doc_num]['sourcetype'];
 
             var title_tokens=data[doc_num]['title'];
-            title=addTokens(title_tokens, docId, data[doc_num]['annotations'], lus);
+            title=addTokens(title_tokens, docId, data[doc_num]['annotations'], lusLang);
 
             var header = "<div class=\"panel panel-default\" id=\"" + doc_num + "\">";
             header += "<div class=\"panel-heading\"><h4 class=\"panel-title\">" + title; 
@@ -250,7 +242,7 @@ var loadTextsFromFile = function(inc, callback){
 
             var body = "<div class=\"panel-body\">";
             var body_tokens = data[doc_num]['body'];
-            body += addTokens(body_tokens, docId, data[doc_num]['annotations'], lus);
+            body += addTokens(body_tokens, docId, data[doc_num]['annotations'], lusLang);
             body += "</div></div>";
 
             all_html += header + body;    
