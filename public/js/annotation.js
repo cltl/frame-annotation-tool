@@ -192,12 +192,15 @@ var getStructuredData = function(inc){
     });
 }
 
-var addToken = function(tid, token, annotated) {
+var addToken = function(tid, token, annotated, lus) {
     if (token=='\n') return '<br/>';
     else {
         var shortTid=tid.split('.')[2];
         if (!annotated[shortTid]){
-            return "<span id=" + tid + " class=\"clickable\">" + token + "</span> ";
+            if (lus.indexOf(token)!=-1 || lus.indexOf(token.toLowerCase())!=-1) // pre-annotate
+                return "<span id=" + tid + " class=\"clickable suggested\">" + token + "</span> ";
+            else
+                return "<span id=" + tid + " class=\"clickable\">" + token + "</span> ";
         } else {
             var mwuClass="mwu";
             return "<span id=" + tid + " class=\"event_" + annotated[shortTid]['frametype'] + " unclickable " + mwuClass + "\">" + token + "</span> ";
@@ -205,12 +208,12 @@ var addToken = function(tid, token, annotated) {
     }
 }
 
-var addTokens = function(tokens, docId, anns){
+var addTokens = function(tokens, docId, anns, lus){
     var text = "";
     for (var token_num in tokens) {
         var token_info=tokens[token_num];
         var tokenId=docId.replace(/ /g, "_") + '.' + token_info.sent + '.' + token_info.tid;
-        var newToken=addToken(tokenId, token_info.text, anns);
+        var newToken=addToken(tokenId, token_info.text, anns, lus);
         text+=newToken;
     }
     return text;
@@ -218,10 +221,11 @@ var addTokens = function(tokens, docId, anns){
 
 var loadTextsFromFile = function(inc, callback){
     $("#pnlLeft").html("");
-    $.get("/loadincident", {'inc': inc}, function(res, status) {
+    $.get("/loadincident", {'inc': inc, 'etype': $("#picktype").val()}, function(res, status) {
         var all_html = ""; 
         var c=0;
         var data=res['nafs'];
+        var lus=Object.keys(res['lus']);
         for (var doc_num in data) {
             
             var docId=data[doc_num]['name'];
@@ -237,7 +241,7 @@ var loadTextsFromFile = function(inc, callback){
             var sourcetype=data[doc_num]['sourcetype'];
 
             var title_tokens=data[doc_num]['title'];
-            title=addTokens(title_tokens, docId, data[doc_num]['annotations']);
+            title=addTokens(title_tokens, docId, data[doc_num]['annotations'], lus);
 
             var header = "<div class=\"panel panel-default\" id=\"" + doc_num + "\">";
             header += "<div class=\"panel-heading\"><h4 class=\"panel-title\">" + title; 
@@ -246,7 +250,7 @@ var loadTextsFromFile = function(inc, callback){
 
             var body = "<div class=\"panel-body\">";
             var body_tokens = data[doc_num]['body'];
-            body += addTokens(body_tokens, docId, data[doc_num]['annotations']);
+            body += addTokens(body_tokens, docId, data[doc_num]['annotations'], lus);
             body += "</div></div>";
 
             all_html += header + body;    
@@ -263,7 +267,7 @@ var showAnnotations = function(){
     for (var key in annotations){
         html+="<b>" + key + "</b><br/>";
         for (var ann in annotations[key]){
-            html+=ann + "," + annotations[key][ann]['frametype'] + "," + annotations[key][ann]['predicate'] + "<br/>" ;
+            html+=ann + "," + (annotations[key][ann]['frametype'] || 'NO-FRAME') + "," + annotations[key][ann]['predicate'] + "<br/>" ;
         }
     }
     $("#trails").html(html);
@@ -363,6 +367,7 @@ var reloadDropdownWithGroups=function(elementId, sourceJson, defaultOption){
     var $el = $(elementId);
     $el.empty(); // remove old options
     $el.append($("<option value='-1' selected>" + defaultOption + "</option>"));
+    $el.append($("<option value='none'>NONE RELEVANT</option>"));
     for (var group in sourceJson){
         var groupData = sourceJson[group];
         $el.append($('<option></option>').val('-1').html(group).prop('disabled', true));
@@ -375,7 +380,10 @@ var reloadDropdownWithGroups=function(elementId, sourceJson, defaultOption){
 }
 
 var refreshRoles = function(theFrame){
-    var relevantRoles = frame2Roles[theFrame];
+    if (theFrame!='none')
+        var relevantRoles = frame2Roles[theFrame];
+    else
+        var relevantRoles = [];
     reloadDropdown("#roleChooser", relevantRoles, "-Pick frame role-");
 }
 

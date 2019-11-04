@@ -107,3 +107,7 @@ label.inactive {
 .mwu {
     font-weight: bold;
 }
+
+.suggested {
+    border-style: groove;
+}

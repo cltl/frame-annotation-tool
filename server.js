@@ -257,13 +257,15 @@ var prepareAnnotations = function(srl_data, callback){
         var extRefs = pr['externalReferences']['externalRef'];
         console.log(JSON.stringify(extRefs));
         var ftype='';
-        if (!(Array.isArray(extRefs)))
-            ftype = extRefs['attr']['reference'];
-        else{
-            extRefs.forEach(function(extRef){
-                if (extRef['attr']['reftype']=='type')
-                    ftype=extRef['attr']['reference'];
-            });
+        if (extRefs){
+            if (!(Array.isArray(extRefs)))
+                ftype = extRefs['attr']['reference'];
+            else{
+                extRefs.forEach(function(extRef){
+                    if (extRef['attr']['reftype']=='type')
+                        ftype=extRef['attr']['reference'];
+                });
+            }
         }
         var targets=pr['span']['target'];
         if (!(Array.isArray(targets))) targets=[targets];
@@ -427,7 +429,8 @@ var annotateFrame=function(jsonData, annotations){
     aPredicate['attr']={};
     aPredicate['attr']['id']=pr_id;
     aPredicate['externalReferences']={'#text': '', 'externalRef': []};
-    aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'type'}});
+    if (frame!='none')
+        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'type'}});
     if (referents && referents.length>0)
         referents.forEach(function(ref){
             aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': 'framer', 'reftype': reftype}});
@@ -530,14 +533,16 @@ app.get('/listincidents', isAuthenticated, function(req, res){
 });
 
 app.get('/loadincident', isAuthenticated, function(req, res){
-    if (!req.query['inc']){
+    if (!req.query['inc'] || !req.query['etype']){
         res.sendStatus(400);//("Not OK: incident id not specified");
     } else{
         var incidentId = req.query['inc'];
+        var eventType = req.query['etype']
         var nafs=inc2doc[incidentId];
         loadAllNafs(nafs, req.user.user, function(data){
             console.log("All nafs loaded. returning the result now");
-            res.send({'nafs': data});
+            console.log(likelyFrames[eventType]['lu_to_dominant_frame']);
+            res.send({'nafs': data, 'lus': likelyFrames[eventType]['lu_to_dominant_frame']});
         });
     }
 });
@@ -626,6 +631,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
                     console.log(JSON.stringify(annotations));
                     var newData = addAnnotationsToJson(nafData, annotations);
+
                     var pr_id=newData['prid'];
                     var updatedJson=newData['json'];
                     saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
