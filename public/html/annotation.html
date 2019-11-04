@@ -22,7 +22,7 @@
     </div>
     <br/>
     <div class="row" id="pickrow">
-        <div class="col-sm-6">
+        <div class="col-sm-8">
             <div class="col-sm-3">
                 <select id="pickproj" onchange="updateIncidentList()">
                     <option value="-1">-Pick a project-</option>
@@ -35,14 +35,14 @@
             </div>
             <div class="col-sm-3">
                 <select id="pickfile">
-                    <option value="-1">-Pick an incident ID-</option>
+                    <option value="-1">-Pick an incident-</option>
                 </select>
             </div>
             <div class="col-sm-3">
                 <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
             </div>
         </div>
-        <div class="col-sm-6"><label id="infoMessage"></label></div>
+        <div class="col-sm-4"><label id="infoMessage"></label></div>
     </div>
     <div class="row justify-content-center" id="annrow">
         <div class="ann-input col-sm-8">
@@ -58,7 +58,7 @@
                     </select>
                 </div>
                 <div id="frameAnnotation" class="col-sm-9">
-                    <div class="col-sm-4">
+                    <div class="col-sm-7">
                         <label>Choose frame:</label><br/>
                         <select id="frameChooser">
                             <option value="-1" selected>-Pick frame-</option>
@@ -66,20 +66,16 @@
                             <option value="Change_of_leadership">Change of leadership</option>
                         </select>
                     </div>
-                    <div class="col-sm-3">
+                    <div class="col-sm-5">
                         <label>Relation type:</label><br/>
                         <select id="relChooser">
                             <option value="-1" selected>-Pick relation-</option>
                             <option value="refer">refersTo</option>
-                            <option value="refer">isReferredBy</option>
                             <option value="evoke">evokes</option>
-                            <option value="evoke">isEvokedBy</option>
                             <option value="type">isOfType</option>
                         </select>
-                    </div>
-                    <div class="col-sm-5">
                         <label>Wikidata referents:</label><br/>
-                        <span><i>If applicable, choose Wikidata referents by clicking on the participant/event links.</i></span>
+                        <span><i>If applicable, pick referents by clicking on the Wikidata links.</i></span>
                     </div>
                 </div>
                 <div id="feAnnotation" class="col-sm-9">
@@ -91,7 +87,7 @@
                     </div>
                     <div class="col-sm-5">
                         <label>Wikidata referents:</label><br/>
-                        <span><i>If applicable, choose Wikidata referents by clicking on the participant/event links.</i></span>
+                        <span><i>If applicable, pick referents by clicking on the Wikidata links.</i></span>
                     </div>
                 </div>
             </div>

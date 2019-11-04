@@ -47,6 +47,8 @@ inc2doc_file='data/inc2doc_index.json';
 inc2str_file='data/inc2str_index.json';
 type2inc_file='data/type2inc_index.json';
 proj2inc_file='data/proj2inc_index.json';
+likely_frames_file='pre_annotation/event_type_to_dominant_frame.json';
+frame_info_file='pre_annotation/frame_to_info.json';
 dataDir='data/naf/';
 annotationDir='annotation/'
 
@@ -97,6 +99,16 @@ fs.readFile(proj2inc_file, 'utf8', function (err, data) {
 fs.readFile(type2inc_file, 'utf8', function (err, data) {
     if (err) throw err; // we'll not consider error handling for now
     type2inc = JSON.parse(data);
+});
+
+fs.readFile(likely_frames_file, 'utf8', function (err, data){
+    if (err) throw err; // we'll not consider error handling for now
+    likelyFrames = JSON.parse(data);
+});
+
+fs.readFile(frame_info_file, 'utf8', function (err, data){
+    if (err) throw err; // we'll not consider error handling for now
+    allFramesInfo = JSON.parse(data);
 });
 
 // =====================================
@@ -527,6 +539,27 @@ app.get('/loadincident', isAuthenticated, function(req, res){
             console.log("All nafs loaded. returning the result now");
             res.send({'nafs': data});
         });
+    }
+});
+
+app.get('/loadframes', isAuthenticated, function(req, res){
+    if (!req.query['eventtype']){
+        res.sendStatus(400);
+    } else{
+        var etype = req.query['eventtype'];
+        var likelyIdsForEvent = likelyFrames[etype]["main_frame_ids"];
+        var allFrames = Object.keys(allFramesInfo);
+        var otherFrameIds = _.difference(allFrames, likelyIdsForEvent);
+        var likelyLabels=[];
+        var otherLabels=[];
+        for (var frameId in allFramesInfo){
+            var frameInfo = allFramesInfo[frameId];
+            if (likelyIdsForEvent.indexOf(parseInt(frameId))!=-1)
+                likelyLabels.push(frameInfo['frame_label']);
+            else
+                otherLabels.push(frameInfo['frame_label']);
+        }
+        res.send({'likely': likelyLabels.sort(), 'other': otherLabels.sort()});
     }
 });
 

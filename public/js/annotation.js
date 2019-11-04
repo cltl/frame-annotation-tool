@@ -21,6 +21,7 @@ $(function(){
     $("#anntype").on('change', function(){
 	    if (this.value=='fee'){
             $("#feAnnotation").hide();
+            loadFrames();
             $("#frameAnnotation").show();
 	    } else if (this.value=='role'){ 
             $("#frameAnnotation").hide();
@@ -45,6 +46,13 @@ $(function(){
 
 
 }); // This is where the load function ends!
+
+var loadFrames = function(){
+    var etype=$("#picktype").val();
+    $.get('/loadframes', {'eventtype': etype}, function(data, status){
+        reloadDropdownWithGroups("#frameChooser", data, "-Pick frame-");
+    });
+}
 
 
 var clearSelection = function(){
@@ -349,6 +357,21 @@ var reloadDropdown=function(elementId, sourceList, defaultOption){
         $el.append($("<option></option>")
             .attr("value", unit).text(unit));
     });
+}
+
+var reloadDropdownWithGroups=function(elementId, sourceJson, defaultOption){
+    var $el = $(elementId);
+    $el.empty(); // remove old options
+    $el.append($("<option value='-1' selected>" + defaultOption + "</option>"));
+    for (var group in sourceJson){
+        var groupData = sourceJson[group];
+        $el.append($('<option></option>').val('-1').html(group).prop('disabled', true));
+        $.each(groupData, function(anIndex) {
+            var unit=groupData[anIndex];
+            $el.append($("<option></option>")
+                .attr("value", unit).text(unit));
+        });
+    }
 }
 
 var refreshRoles = function(theFrame){
