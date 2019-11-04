@@ -5,6 +5,8 @@ type2Label={'Q132821': 'murder', 'Q168983': 'conflagration'};
 
 frame2Roles={"Killing": ["Cause", "Instrument", "Killer", "Means", "Victim"], "Change_of_leadership": ["Function", "New_leader", "Old_Leader", "Role"]};
 
+noFrameType="NO-FRAME";
+
 $(function(){
     $("#annrow").hide();
     $("#bigdiv").hide();
@@ -16,6 +18,8 @@ $(function(){
     $(document).on("click", "span.unclickable", function() {  //use a class, since your ID gets mangled
         $('span').removeClass("active");
         $(this).toggleClass("inactive");      //add the class to the clicked element
+        if ($(this).hasClass("inactive"))
+            activatePredicate($(this));
     });
 
     $("#anntype").on('change', function(){
@@ -44,7 +48,6 @@ $(function(){
         }
     });
 
-
 }); // This is where the load function ends!
 
 var loadFrames = function(){
@@ -54,15 +57,26 @@ var loadFrames = function(){
     });
 }
 
-
 var clearSelection = function(){
     $('span').removeClass("active");
     $('span').removeClass("inactive");
 }
 
+var activatePredicate = function(elem){
+    //var allMentions=retrieveSpansWithClass(".inactive");
+    //var aMention=allMentions[0];
+    var aMention=elem.attr('id');
+    var docId=aMention.split('.')[0].replace(/_/g, " ");
+    var tid=aMention.split('.')[2];
+    var frameType=annotations[docId][tid]['frametype'] || noFrameType;
+    var prId=docId + '@' + annotations[docId][tid]['predicate'];
+    var refs="";
+    $("#activeFrame").text(frameType);
+    $("#activePredicate").text(prId);
+    $("#frameWdt").val(refs);
+}
 
-var activatePredicate = function(){
-   alert("function in progress"); 
+var activatePredicateRightPanel=function(){
 }
 
 var updateIncidentList=function(){
@@ -82,11 +96,16 @@ var updateIncidentList=function(){
     }
 }
 
+var retrieveSpansWithClass=function(cls){
+    var allMentions = $(cls).map(function() {
+        return $(this).attr('id');
+    }).get();
+    return allMentions;
+}
+
 var removeAnnotations = function(){
     if ($("span.inactive").length>0){
-        var allMentions = $(".inactive").map(function() {
-            return $(this).attr('id');
-        }).get();
+        var allMentions=retrieveSpansWithClass(".inactive");
         var toRemove={};
         for (var i=0; i<allMentions.length; i++){
             var k = allMentions[i];
@@ -168,17 +187,24 @@ var getStructuredData = function(inc){
                 }
                 var myHtml="";
                 referents.forEach(function(ref){
-                    var splitted=ref.split('|');
-                    var valLink=splitted[0];
-                    var valText=splitted[1];
-                    if ($.trim(valText)=="") myHtml+=valLink;
-                    else myHtml += "<a href=\"" + valLink + "\" target=\"_blank\">" + valText + "</a><br/>";
+                    myHtml+=makeHtml(ref) + '<br/>';
                 });
                 $("#referents").html(myHtml);
             } else if (!($(this).attr('href').startsWith('http')))
                 e.preventDefault();
         });
     });
+}
+
+var makeHtml = function(ref){
+    var splitted=ref.split('|');
+    var valLink=splitted[0];
+    var valText=splitted[1];
+    if ($.trim(valText)=="") 
+        myHtml=valLink;
+    else 
+        myHtml = "<a href=\"" + valLink + "\" target=\"_blank\">" + valText + "</a>";
+    return myHtml;
 }
 
 var addToken = function(tid, token, annotated, lus) {
@@ -259,10 +285,18 @@ var showAnnotations = function(){
     for (var key in annotations){
         html+="<b>" + key + "</b><br/>";
         for (var ann in annotations[key]){
-            html+=ann + "," + (annotations[key][ann]['frametype'] || 'NO-FRAME') + "," + annotations[key][ann]['predicate'] + "<br/>" ;
+            var fullKey=key + '#' + ann;
+            html+="<span id=\"" + fullKey + "\" class=\"clickme\" onclick=activatePredicateRightPanel()>" + ann + "," + (annotations[key][ann]['frametype'] || noFrameType) + "," + annotations[key][ann]['predicate'] + "</span><br/>";
         }
     }
     $("#trails").html(html);
+
+    $(".clickme").on('click', function(){    
+        var clickedItem=$(this).text();
+        var thisInfo=clickedItem.split(',');
+        $("#activePredicate").text($(this).attr('id').split('#')[0] + '@' + thisInfo[2]);
+        $("#activeFrame").text(thisInfo[1]);
+    });
 }
 
 // Load incident - both for mention and structured annotation
@@ -330,7 +364,7 @@ var reloadInside=function(){
                 var elems=active.split('.');
                 var docId=elems[0].replace(/_/g, ' ');
                 var tid=elems[2];
-                annotations[docId][tid]={"frametype": $("#frameChooser").val(), "predicate": "pr" + (maxPredicateId+1).toString()};
+                annotations[docId][tid]={"frametype": $("#frameChooser").val(), "predicate": "pr" + (maxPredicateId+1).toString(), "referents": referents};
                 if (i==actives.length-1) showAnnotations();
             }
             newClass = 'event_' + $("#frameChooser").val();
@@ -392,6 +426,13 @@ var storeAndReload = function(ann, anntype){
                 var pr_id=myData['prid'];
                 var doc_id = myData['docid'];
                 $("#activePredicate").text(doc_id + '@' + pr_id);
+                var myHtml='';
+                referents.forEach(function(ref){
+                    myHtml+=makeHtml(ref) + '<br/>';
+                });
+
+                $("#frameWdt").html(myHtml);
+
             } else{
                 var pickedFrame=$("#activeFrame").text();
             }

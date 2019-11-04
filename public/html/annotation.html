@@ -93,16 +93,13 @@
             </div>
             <div class="row col-sm-12 plcHolder">X</div>
             <div id="buttons">
-                <div class="col-sm-3">
+                <div class="col-sm-4">
                     <button class="btn btn-success btn-ann" onclick="saveFrameAnnotation()">Save annotation</button>
                 </div>
-                <div class="col-sm-3">
+                <div class="col-sm-4">
                     <button class="btn btn-danger btn-rmv" onclick="removeAnnotations()">Remove annotation</button>
                 </div>
-                <div class="col-sm-3">
-                    <button class="btn btn-primary btn-activate" onclick="activatePredicate()">Activate predicate</button>
-                </div>
-                <div class="col-sm-3">
+                <div class="col-sm-4">
                     <button class="btn btn-info btn-aux" onclick="clearSelection()">Clear selection</button>
                 </div>
             </div>
@@ -115,12 +112,20 @@
     <div class="row" id="bigdiv">
         <div id="pnlLeft" class="col-sm-9"></div>
         <div id="pnlRight" class="col-sm-3">
-            <h4>Active frame </h4>
-            <label>Type:</label> <span id="activeFrame">none</span><br/>
-            <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
-            <label>Selected Wikidata referents:</label><br/><span id="referents"></span><br/>
-            <h4>SRL annotations</h4>
-            <div id="trails"></div>
+            <div class="refDiv">
+                <h4>Selected Wikidata referents</h4>
+                <span id="referents"></span><br/>
+            </div>
+            <div class="activeDiv">
+                <h4>Active frame </h4>
+                <label>Type:</label> <span id="activeFrame">none</span><br/>
+                <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
+                <label>Referents:</label><div id="frameWdt"></div><br/>
+            </div>
+            <div class="statusDiv">
+                <h4>SRL annotations</h4>
+                <div id="trails"></div>
+            </div>
         </div>
     </div>
 </div>
