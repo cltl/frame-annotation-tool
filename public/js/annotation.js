@@ -17,9 +17,12 @@ $(function(){
     });
     $(document).on("click", "span.unclickable", function() {  //use a class, since your ID gets mangled
         $('span').removeClass("active");
-        $(this).toggleClass("inactive");      //add the class to the clicked element
-        if ($(this).hasClass("inactive"))
+        var wasInactive=$(this).hasClass("inactive");
+        $('span').removeClass("inactive");
+        if (!wasInactive){
+            $(this).addClass("inactive");
             activatePredicate($(this));
+        }
     });
 
     $("#anntype").on('change', function(){
@@ -63,8 +66,6 @@ var clearSelection = function(){
 }
 
 var activatePredicate = function(elem){
-    //var allMentions=retrieveSpansWithClass(".inactive");
-    //var aMention=allMentions[0];
     var aMention=elem.attr('id');
     var docId=aMention.split('.')[0].replace(/_/g, " ");
     var tid=aMention.split('.')[2];
