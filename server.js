@@ -167,6 +167,8 @@ app.post('/login',
 
 app.get('/logout', function(req, res) {
 //    logAction(req.user.user, "LOGOUT");
+    req.session.destroy();
+
     req.logout();
     res.redirect('/');
 });
@@ -381,28 +383,38 @@ var makeSpanLayer = function(anObj, tids){
 }
 
 var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
+    var actionTime=new Date().toISOString().replace(/\..+/, '');
     var nafHeaders=jsonData['NAF']['nafHeader'];
     var lps=nafHeaders['linguisticProcessors'];
-    var processes=[];
-    var srl_lp=null;
     for (var l=0; l<lps.length; l++){
         var lp=lps[l];
-        if (lp['attr']['layer']=='srl'){
-            processses=lp['lp'];
-            if (!(Array.isArray(processes))) processes=[processes];
-            srl_lp=lp;
-            break;
+        if (lp['attr']['layer']=='srl'){ // SRL layer exists
+            if (!(Array.isArray(lp['lp']))) var processes=[lp['lp']];
+            else var processes=lp['lp'];
+
+            for (var p=0; p<processes.length; p++){
+                var process=processes[p];
+                var processId=process['attr']['id'];
+                if (processId==sessionId){ // session exists -> update it
+                    process['attr']['endTimestamp']=actionTime;
+                    return jsonData;
+                } else if (p==processes.length-1){ // we don't have this session yet -> store it
+                    var currentProcess={'attr': {'beginTimestamp': loginTime, 'endTimestamp': actionTime, 'name': 'annotator_' + annotator, 'version': 'guidelines_' + GUIDELINESVERSION, 'id': sessionId}};
+                    processes.push(currentProcess);
+                    lp['lp']=processes;
+                    return jsonData;
+                }
+            }
+        } else if (l==lps.length-1){
+            var processes=[];
+            srl_lp={'attr': {'layer': 'srl'}};
+            lps.push(srl_lp);
+            var currentProcess={'attr': {'beginTimestamp': loginTime, 'endTimestamp': actionTime, 'name': 'annotator_' + annotator, 'version': 'guidelines_' + GUIDELINESVERSION, 'id': sessionId}};
+            processes.push(currentProcess);
+            srl_lp['lp']=processes;
+            return jsonData;
         }
     }
-    if (!processes.length){
-        srl_lp={'attr': {'layer': 'srl'}};
-        lps.push(srl_lp);
-    }
-    var actionTime=new Date().toISOString().replace(/\..+/, '');
-    var currentProcess={'attr': {'beginTimestamp': loginTime, 'endTimestamp': actionTime, 'name': 'annotator_' + annotator, 'version': 'guidelines_' + GUIDELINESVERSION, 'id': sessionId}};
-    processes.push(currentProcess);
-    srl_lp['lp']=processes;
-    return jsonData;
 }
 
 var formatTime = function(rawDate){
