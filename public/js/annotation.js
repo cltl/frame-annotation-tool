@@ -20,8 +20,8 @@ $(function(){
         var wasInactive=$(this).hasClass("inactive");
         $('span').removeClass("inactive");
         if (!wasInactive){
-            $(this).addClass("inactive");
-            activatePredicate($(this));
+            //$(this).addClass("inactive");
+            activatePredicateFromText($(this));
         }
     });
 
@@ -65,19 +65,49 @@ var clearSelection = function(){
     $('span').removeClass("inactive");
 }
 
-var activatePredicate = function(elem){
+var activatePredicateRightPanel = function(theId){
+    $('span').removeClass("active");
+    var htmlElem=$("span[id='" + theId + "']");
+    var wasInactive=htmlElem.hasClass("inactive");
+    $('span').removeClass("inactive");
+    if (!wasInactive){
+        var elems=theId.split('#');
+        var docId = elems[0].replace(/_/g, " ");
+        var tid = elems[1];
+        activatePredicate(docId, tid);
+    }
+}
+
+var activatePredicateFromText = function(elem){
     var aMention=elem.attr('id');
     var docId=aMention.split('.')[0].replace(/_/g, " ");
     var tid=aMention.split('.')[2];
+    activatePredicate(docId, tid);
+}
+
+var activatePredicate = function(docId, tid){
+    console.log(docId, tid);
     var frameType=annotations[docId][tid]['frametype'] || noFrameType;
     var prId=docId + '@' + annotations[docId][tid]['predicate'];
     var refs="";
     $("#activeFrame").text(frameType);
     $("#activePredicate").text(prId);
     $("#frameWdt").val(refs);
+    
+    var docAnn=annotations[docId];
+
+    console.log(docAnn);
+    jQuery.each(docAnn, function(t, tdata) {
+        if (tdata['predicate']==prId.split('@')[1]){
+            var selector = "span[id$='" + t + "'][id^='" + docId.replace(/ /g, "_") + "']";
+            console.log(selector);
+            $(selector).addClass("inactive");
+        }
+    });
 }
 
-var activatePredicateRightPanel=function(){
+var confirmPreannotated=function(){
+
 }
 
 var updateIncidentList=function(){
@@ -102,30 +132,6 @@ var retrieveSpansWithClass=function(cls){
         return $(this).attr('id');
     }).get();
     return allMentions;
-}
-
-var removeAnnotations = function(){
-    if ($("span.inactive").length>0){
-        var allMentions=retrieveSpansWithClass(".inactive");
-        var toRemove={};
-        for (var i=0; i<allMentions.length; i++){
-            var k = allMentions[i];
-            var docId=k.split('.')[0];
-            if (!(toRemove[docId])) toRemove[docId]=[];
-            toRemove[docId].push(k.split('.')[2]);
-        }
-        $.post("/removeannotations", {'doctokens': toRemove })
-        .done(function(){
-            alert('Annotation removed. Now re-loading ');
-            reloadInside();
-            defaultValues();
-        })
-        .fail(function(){
-            alert('There was an error removing these annotations.');
-        });
-    } else {
-        printInfo("Select at least one span to remove");
-    }
 }
 
 var printInfo = function(msg){
@@ -286,18 +292,20 @@ var showAnnotations = function(){
     for (var key in annotations){
         html+="<b>" + key + "</b><br/>";
         for (var ann in annotations[key]){
-            var fullKey=key + '#' + ann;
-            html+="<span id=\"" + fullKey + "\" class=\"clickme\" onclick=activatePredicateRightPanel()>" + ann + "," + (annotations[key][ann]['frametype'] || noFrameType) + "," + annotations[key][ann]['predicate'] + "</span><br/>";
+            var fullKey=key.replace(/ /g, "_") + '#' + ann;
+            html+="<span id=\"" + fullKey + "\" class=\"clickme\" onclick=activatePredicateRightPanel(this.id)>" + ann + "," + (annotations[key][ann]['frametype'] || noFrameType) + "," + annotations[key][ann]['predicate'] + "</span><br/>";
         }
     }
     $("#trails").html(html);
 
+/*
     $(".clickme").on('click', function(){    
         var clickedItem=$(this).text();
         var thisInfo=clickedItem.split(',');
         $("#activePredicate").text($(this).attr('id').split('#')[0] + '@' + thisInfo[2]);
         $("#activeFrame").text(thisInfo[1]);
     });
+*/
 }
 
 // Load incident - both for mention and structured annotation

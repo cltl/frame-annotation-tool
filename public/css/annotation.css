@@ -127,3 +127,7 @@ label.inactive {
 .refDiv {
     background: #EBF5FB;
 }
+
+select {
+    width: 100%;
+}

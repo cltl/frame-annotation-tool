@@ -42,6 +42,7 @@ app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
 
 // Settings
+GUIDELINESVERSION='v1'
 PORT=8787
 inc2doc_file='data/inc2doc_index.json';
 inc2str_file='data/inc2str_index.json';
@@ -158,6 +159,7 @@ passport.deserializeUser(function(user, done) {
 app.post('/login', 
   passport.authenticate('local', { failureRedirect: '/' }),
   function(req, res) {
+    req.session.visited = new Date().toISOString().replace(/\..+/, '');
     //res.redirect('/dash');
     //logAction(req.user.user, "LOGIN");
     res.sendStatus(200);
@@ -378,36 +380,36 @@ var makeSpanLayer = function(anObj, tids){
     return anObj['span'];
 }
 
-var removeAnnotationFromJson = function(jsonData, removeTokens){
-    if (!('srl' in jsonData['NAF'])) return jsonData;
-    var predicates=jsonData['NAF']['srl']['predicate'];
-    var newPredicates=[];
-    for (var i=0; i<predicates.length; i++){
-        var thisPredicate = predicates[i];
-        var targets=thisPredicate['span']['target'];
-        if (!(Array.isArray(targets))) targets=[targets];
-        removeThis=false;
-        for (var t=0; t<targets.length; t++){
-            console.log(removeTokens + targets[t]['attr']['id']);
-            if (removeTokens.indexOf(targets[t]['attr']['id'])>-1){
-                removeThis=true;
-                break;
-            }
-        }
-        if (!(removeThis))
-            newPredicates.push(thisPredicate);
-        else
-            console.log('We will remove ' + thisPredicate);
-        if (i==predicates.length-1){
-            console.log(predicates);
-            console.log(newPredicates);
-            jsonData['NAF']['srl']['predicate']=newPredicates;
-            return jsonData;
+var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
+    var nafHeaders=jsonData['NAF']['nafHeader'];
+    var lps=nafHeaders['linguisticProcessors'];
+    var processes=[];
+    var srl_lp=null;
+    for (var l=0; l<lps.length; l++){
+        var lp=lps[l];
+        if (lp['attr']['layer']=='srl'){
+            processses=lp['lp'];
+            if (!(Array.isArray(processes))) processes=[processes];
+            srl_lp=lp;
+            break;
         }
     }
+    if (!processes.length){
+        srl_lp={'attr': {'layer': 'srl'}};
+        lps.push(srl_lp);
+    }
+    var actionTime=new Date().toISOString().replace(/\..+/, '');
+    var currentProcess={'attr': {'beginTimestamp': loginTime, 'endTimestamp': actionTime, 'name': 'annotator_' + annotator, 'version': 'guidelines_' + GUIDELINESVERSION, 'id': sessionId}};
+    processes.push(currentProcess);
+    srl_lp['lp']=processes;
+    return jsonData;
 }
 
-var annotateFrame=function(jsonData, annotations){
+var formatTime = function(rawDate){
+    return rawDate.toISOString().replace(/\..+/, '');
+}
+
+var annotateFrame=function(jsonData, annotations, sessionId){
     var frame = annotations['frame'];
     var reftype = annotations['reltype'];
     var tids = annotations['mentions'];
@@ -421,7 +423,6 @@ var annotateFrame=function(jsonData, annotations){
         var thePredicates=jsonData['NAF']['srl']['predicate'];
         if (!(Array.isArray(thePredicates))) thePredicates=[thePredicates];
         var pr_num=(parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
-        console.log('New predicate number ' + pr_num);
         var pr_id="pr" + pr_num;
     }
     var aPredicate = {};
@@ -430,10 +431,10 @@ var annotateFrame=function(jsonData, annotations){
     aPredicate['attr']['id']=pr_id;
     aPredicate['externalReferences']={'#text': '', 'externalRef': []};
     if (frame!='none')
-        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'type'}});
+        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type'}});
     if (referents && referents.length>0)
         referents.forEach(function(ref){
-            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': 'framer', 'reftype': reftype}});
+            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype}});
         });
     aPredicate['span']=makeSpanLayer(aPredicate, tids);
     
@@ -444,10 +445,11 @@ var annotateFrame=function(jsonData, annotations){
         jsonData['NAF']['srl']['predicate'].push(predicates);
     }
     jsonData['NAF']['srl']['predicate'].push(aPredicate);
+
     return {'prid': pr_id, 'json': jsonData};
 }
 
-var annotateRole=function(jsonData, annotations){
+var annotateRole=function(jsonData, annotations, sessionId){
     var roleData = annotations;
     if ('srl' in jsonData['NAF']){
         var predicates=jsonData['NAF']['srl']['predicate'];
@@ -470,12 +472,12 @@ var annotateRole=function(jsonData, annotations){
                 var referents= roleData['referents'];
                 var semRole=roleData['semRole'];
                 aRole['externalReferences']={'#text': '', 'externalRef': []};
-                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'type'}});
-                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': 'framer', 'reftype': 'evoke'}});
+                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type'}});
+                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
                 if (referents && referents.length>0)
 
                     referents.forEach(function(ref){
-                        aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': 'framer', 'reftype': 'reference'}});
+                        aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'reference'}});
                     });
                 predicates[i]['role'].push(aRole);
                 break;
@@ -487,13 +489,13 @@ var annotateRole=function(jsonData, annotations){
     }
 }
 
-var addAnnotationsToJson = function(jsonData, annotations){
+var addAnnotationsToJson = function(jsonData, annotations, sessionId){
     if (annotations['anntype']=='idiom'){  
         return jsonData;
     } else if (annotations['anntype']=='fee'){
-        return annotateFrame(jsonData, annotations);
+        return annotateFrame(jsonData, annotations, sessionId);
     } else{ // Role
-        return annotateRole(jsonData, annotations);
+        return annotateRole(jsonData, annotations, sessionId);
     }
 }
 
@@ -568,50 +570,12 @@ app.get('/loadframes', isAuthenticated, function(req, res){
     }
 });
 
-app.post('/removeannotations', isAuthenticated, function(req, res){
-    var thisUser=req.user.user;
-    console.log("Removing request received from " + thisUser);
-    var doctokens=req.body.doctokens;
-    console.log(doctokens);
-    for (var docId_underline in doctokens){
-        var docId=docId_underline.replace(/_/g, " ");;
-        loadNAFFile(docId, req.user.user, false, function(nafData){
-            var userAnnotationDir=annotationDir + thisUser + "/";
-
-            var langAndTitle=docId.split('/');
-            var lang=langAndTitle[0];
-            var title=langAndTitle[1];
-
-            var userAnnotationDirLang = userAnnotationDir + lang + '/';
-
-            mkdirp(userAnnotationDirLang, function (err) {
-                if (err) 
-                    console.error('Error with creating a directory' + err);
-                else {
-                    var userAnnotationFile=userAnnotationDirLang + title + '.naf';
-                    console.log('File ' + docId + ' loaded. Now updating and saving.');
-                    var tokens = doctokens[docId_underline];
-                    var updatedJson = removeAnnotationFromJson(nafData, tokens);
-                    saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
-                        console.log('Error obtained with saving: ' + error);
-                        if (error){
-                            res.sendStatus(400);
-                        } else {
-                            res.sendStatus(200);
-                        }
-                    });
-                }
-            });
-        });
-    }
-});
-
 app.post('/storeannotations', isAuthenticated, function(req, res){
     var thisUser=req.user.user;
+    var loginTime = req.session.visited;
     console.log("Storing request received from " + thisUser);
     if (req.body.incident){
 	    var annotations = req.body.annotations || {};
-        console.log(JSON.stringify(annotations));
         var firstMention=annotations['mentions'][0];
         var docidAndTid = firstMention.split('.');
         var docId=docidAndTid[0].replace(/_/g, " ");
@@ -629,11 +593,9 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
                 else {
                     var userAnnotationFile=userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
-                    console.log(JSON.stringify(annotations));
-                    var newData = addAnnotationsToJson(nafData, annotations);
-
+                    var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
+                    var updatedJson=saveSessionInfo(newData['json'], req.sessionID, thisUser, loginTime);
                     var pr_id=newData['prid'];
-                    var updatedJson=newData['json'];
                     saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
                         console.log('Error obtained with saving: ' + error);
                         if (error){
@@ -655,7 +617,6 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
 app.get('/getstrdata', isAuthenticated, function(req, res){
     var inc = req.query['inc'];
     var jsonResult=inc2str[inc];
-    //var jsonResult={'time': 'yesterday', 'location': 'Marseille'};
     res.send(jsonResult);
 });
 
