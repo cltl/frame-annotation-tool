@@ -5,6 +5,8 @@ Annotation tool in JavaScript and Node.js for annotation of frames in Dutch docu
 
 To install all the needed packages, please run `npm install`. This will install all dependencies listed in `package.json`.
 
+Also, run `bash install.sh` to download additional files.
+
 ### Starting the server
 
 To start the server, simply run `node server.js` or `npm start`.
