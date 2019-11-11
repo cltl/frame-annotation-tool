@@ -254,7 +254,7 @@ var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
                 callback(result);
         }
     }    
-});
+}
 
 var prepareAnnotations = function(srl_data, callback){
     var result={};
@@ -296,7 +296,7 @@ var prepareAnnotations = function(srl_data, callback){
     }
 }
 
-var json2info = function(jsonObj, callback){
+var json2info = function(jsonObj, nafName, callback){
     var tokens = jsonObj['NAF']['text']['wf'];
     var tokenData = getTokenData(tokens);
 
@@ -366,7 +366,7 @@ function loadNAFFile(nafName, theUser, adaptJson, callback){
 
         var jsonObj = xmlParser.parse(xmlData, xmlOptions);
         if (adaptJson){
-            json2info(jsonObj, function(info){
+            json2info(jsonObj, nafName, function(info){
                 callback(info);
             });
         } else {
