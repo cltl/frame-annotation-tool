@@ -44,10 +44,10 @@ app.use('/logs', express.static('logs'));
 // Settings
 GUIDELINESVERSION='v1'
 PORT=8787
-inc2doc_file='data/inc2doc_index.json';
-inc2str_file='data/inc2str_index.json';
-type2inc_file='data/type2inc_index.json';
-proj2inc_file='data/proj2inc_index.json';
+inc2doc_file='data/json/inc2doc_index.json';
+inc2str_file='data/json/inc2str_index.json';
+type2inc_file='data/json/type2inc_index.json';
+proj2inc_file='data/json/proj2inc_index.json';
 likely_frames_file='pre_annotation/event_type_to_dominant_frame.json';
 frame_info_file='pre_annotation/frame_to_info.json';
 dataDir='data/naf/';

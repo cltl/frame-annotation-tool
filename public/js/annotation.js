@@ -70,12 +70,13 @@ var activatePredicateRightPanel = function(theId){
     var htmlElem=$("span[id='" + theId + "']");
     var wasInactive=htmlElem.hasClass("inactive");
     $('span').removeClass("inactive");
+    $('span').removeClass("role");
     if (!wasInactive){
         var elems=theId.split('#');
         var docId = elems[0].replace(/_/g, " ");
         var tid = elems[1];
         activatePredicate(docId, tid);
-    }
+    } 
 }
 
 var activatePredicateFromText = function(elem){
@@ -86,7 +87,6 @@ var activatePredicateFromText = function(elem){
 }
 
 var activatePredicate = function(docId, tid){
-    console.log(docId, tid);
     var frameType=annotations[docId][tid]['frametype'] || noFrameType;
     var prId=docId + '@' + annotations[docId][tid]['predicate'];
     var refs="";
@@ -96,13 +96,17 @@ var activatePredicate = function(docId, tid){
     
     var docAnn=annotations[docId];
 
-    console.log(docAnn);
-    jQuery.each(docAnn, function(t, tdata) {
-        if (tdata['predicate']==prId.split('@')[1]){
-            var selector = "span[id$='" + t + "'][id^='" + docId.replace(/ /g, "_") + "']";
-            console.log(selector);
-            $(selector).addClass("inactive");
-        }
+    $.get('/getroles', {'docid': docId, 'prid': prId}, function(data, status) {
+        jQuery.each(data, function(tid){
+            $("#" + tid).addClass('role');
+            jQuery.each(docAnn, function(t, tdata) {
+                if (tdata['predicate']==prId.split('@')[1]){
+                    var selector = "span[id$='" + t + "'][id^='" + docId.replace(/ /g, "_") + "']";
+                    console.log(selector);
+                    $(selector).addClass("inactive");
+                }
+            });
+        });
     });
 }
 
@@ -328,7 +332,6 @@ var loadIncident = function(){
 }
 
 // SAVE ANNOTATION
-
 var defaultValues = function(){
     $("#anntype").val('-1');
     $("#frameChooser").val('-1');
