@@ -6,13 +6,20 @@ from rdflib import Graph
 from rdflib import URIRef, BNode, Literal, XSD
 from scipy import stats
 import numpy as np
+import networkx as nx
 
+import os
+import lxml
+from lxml import etree
 import spacy_to_naf
+from resources.NAF_indexer import naf_classes
 
-eventtype2json={'election': 'change_of_leadership', 'murder': 'killing'}
+import config
+
+eventtype2json=config.qid2fn
 
 class IncidentCollection:
-    
+
     def __init__(self,
                 incident_type,
                 incident_type_uri,
@@ -23,13 +30,16 @@ class IncidentCollection:
         self.incident_type_uri=incident_type_uri
         self.languages=languages
         self.incidents=incidents
-        
-    
-    def compute_stats(self):
+
+        self.direct_type2shortest_path = {}
+        self.direct_type2descendants = {}
+
+
+    def compute_stats(self, verbose=0):
         """
         Compute statistics on the incident collection.
         """
-        
+
         num_with_wikipedia=0
         wiki_from_both_methods=0
         wiki_from_api_only=0
@@ -37,8 +47,10 @@ class IncidentCollection:
 
         num_with_prim_rt=0
         num_prim_rt=[]
-        num_with_annotations=0       
- 
+        num_with_annotations=0
+
+        direct_types=[]
+
         countries=[]
         num_wikis=[]
         num_languages=defaultdict(int)
@@ -51,7 +63,10 @@ class IncidentCollection:
 
         all_info=0
 
-        jsonfilename='wdt_fn_mappings/%s.json' % eventtype2json[self.incident_type]
+        if self.incident_type in eventtype2json.keys():
+            jsonfilename='wdt_fn_mappings/%s.json' % eventtype2json[self.incident_type]
+        else:
+            jsonfilename='wdt_fn_mappings/any.json'
 
         with open(jsonfilename, 'rb') as f:
             wdt_fn_mappings_COL=json.load(f)
@@ -61,11 +76,14 @@ class IncidentCollection:
         num_incidents=len(self.incidents)
         for incident in self.incidents:
             langs=set()
-            print('incident ID: ', incident.wdt_id)
+            if verbose >= 1:
+                print('incident ID: ', incident.wdt_id)
             for ref_text in incident.reference_texts:
-                print('URI', ref_text.uri)
+                if verbose >= 1:
+                    print('URI', ref_text.uri)
                 if ref_text.content:
-                    print(ref_text.name, ', FOUND BY: ', ref_text.found_by)
+                    if verbose >= 1:
+                        print(ref_text.name, ', FOUND BY: ', ref_text.found_by)
                     num_with_wikipedia+=1
                 if len(ref_text.primary_ref_texts):
                     num_with_prim_rt+=1
@@ -94,7 +112,14 @@ class IncidentCollection:
                     extra_info_dists[p].append(v)
                     count_values[p]+=1
                 count_occurences[p]+=1
-        if num_with_prim_rt: 
+
+            if isinstance(incident.direct_types, set):
+                for value in incident.direct_types:
+                    direct_types.append(value)
+            else:
+                direct_types.append(incident.direct_types)
+
+        if num_with_prim_rt:
             desc_prim_rt=stats.describe(np.array(num_prim_rt))
             cntr_prim_rt=Counter(num_prim_rt)
             cntr_prim_rt = dict(sorted(cntr_prim_rt.items()))
@@ -103,25 +128,139 @@ class IncidentCollection:
             cntr_prim_rt=None
         countries_dist=Counter(countries).most_common(10)
         numwiki_dist=Counter(num_wikis)
-        
+
         extra_info_dist_agg={}
         for k, v in extra_info_dists.items():
             extra_info_dist_agg[k]=Counter(v).most_common(10)
 
-        return num_incidents, num_with_wikipedia, Counter(found_bys), num_with_prim_rt, num_with_annotations, desc_prim_rt, cntr_prim_rt, countries_dist, numwiki_dist, num_languages, extra_info_dist_agg, count_occurences, count_values, all_info
-    
+        return num_incidents, num_with_wikipedia, Counter(found_bys), Counter(direct_types), num_with_prim_rt, num_with_annotations, desc_prim_rt, cntr_prim_rt, countries_dist, numwiki_dist, num_languages, extra_info_dist_agg, count_occurences, count_values, all_info
+
+
+    def event_expressions_or_meanings_distribution(self, event_type, lang, 
+                                                   add_descendants=False, verbose=0):
+        """
+
+        :param list event_types: list of event type
+        :param str lang: nl | en | it
+        :param bool add_descendants: if True, also include all descendants via the subclass of relation
+        """
+        wdt_ids = self.event_type2wdt_ids[event_type]
+
+        the_descendants = set()
+        if add_descendants:
+            the_descendants = self.direct_type2descendants[event_type]
+            descendants_wdt_ids = set()
+            for the_descendant in the_descendants:
+                descendants_wdt_ids.update(self.event_type2wdt_ids.get(the_descendant, set()))
+
+            wdt_ids.update(descendants_wdt_ids)
+
+        if verbose >= 2:
+            print(f'found {len(wdt_ids)} incidents for {event_type}')
+            if add_descendants:
+                print(f'found {len(the_descendants)} different descendant event types') 
+                print(f'number of incidents in descendants: {len(descendants_wdt_ids)}')
+            
+
+        naf_coll_obj = naf_classes.NAF_collection()
+        for incident_obj in self.incidents:
+            if incident_obj.wdt_id in wdt_ids:
+                for ref_text_obj in incident_obj.reference_texts:
+                    if ref_text_obj.language == lang:
+                        if ref_text_obj.naf is not None:
+                            naf_coll_obj.add_naf_objects([ref_text_obj.naf])
+
+        naf_coll_obj.merge_distributions('terms')
+        naf_coll_obj.merge_distributions('predicates')
+
+        return naf_coll_obj
+
+
+
+    def update_incidents_with_subclass_of_info(self, g, top_node='wd:Q1656682', verbose=0):
+        """
+        update incident object with 'attributes':
+         - "shortest_path_to_top_node": shortest path between direct types and chosen top node
+         - "descendants": all descendants of both direct types
+         - "depth_level" : length of shortest path to top node
+
+        :param networkx.classes.digraph.DiGrap g: directed graph
+        :param top_node: node to which you want to query the path, e.g., the event node
+        """
+        all_direct_types = {
+            direct_type
+            for incident_obj in self.incidents
+            for direct_type in incident_obj.direct_types
+        }
+
+        assert g.has_node(top_node), f'top node {top_node} not found in subclass of graph'
+
+        if verbose >= 2:
+            print(f'found {len(all_direct_types)} direct instance types')
+
+        self.direct_type2shortest_path = {}
+        self.direct_type2descendants = {}
+
+        for direct_type in all_direct_types:
+
+            assert direct_type.startswith('wd:'), f'incorrect node identifier {direct_type}, should start with wd:'
+
+            if not g.has_node(direct_type):
+                shortest_path = []
+                the_descendants = set()
+
+            else:
+                try:
+                    shortest_path = nx.shortest_path(g, top_node, direct_type)
+                    shortest_path.remove(direct_type)
+                    assert direct_type not in shortest_path, f'direct_type {direct_type} should not be in its own path'
+                except nx.NetworkXNoPath:
+                    shortest_path = []
+
+                the_descendants = nx.descendants(g, direct_type)
+
+            self.direct_type2shortest_path[direct_type] = shortest_path
+            self.direct_type2descendants[direct_type] = the_descendants
+
+        path_lengths = []
+        for incident_obj in self.incidents:
+
+            for direct_type in incident_obj.direct_types:
+                incident_obj.descendants.update(self.direct_type2descendants[direct_type])
+
+                shortest_path = self.direct_type2shortest_path[direct_type]
+
+                if not incident_obj.shortest_path_to_top_node:
+                    incident_obj.shortest_path_to_top_node = shortest_path
+                else:
+                    if len(shortest_path) < len(incident_obj.shortest_path_to_top_node):
+                        incident_obj.shortest_path_to_top_node = shortest_path
+
+                incident_obj.depth_level = len(incident_obj.shortest_path_to_top_node)
+
+            path_lengths.append(len(incident_obj.shortest_path_to_top_node))
+
+        if verbose >= 2:
+            print()
+            print(f'added ancestors to event node for {len(path_lengths)} incidents: {len(set(path_lengths))} number of unique types')
+            print(Counter(path_lengths))
+
     def serialize(self, filename=None):
         """
         Serialize a collection of incidents to a .ttl file.
         """
 
-        jsonfilename='wdt_fn_mappings/%s.json' % eventtype2json[self.incident_type]
+        if self.incident_type in eventtype2json.keys():
+            jsonfilename='wdt_fn_mappings/%s.json' % eventtype2json[self.incident_type]
+        else:
+            jsonfilename='wdt_fn_mappings/any.json'
 
+        print(jsonfilename)
         with open(jsonfilename, 'rb') as f:
             wdt_fn_mappings_COL=json.load(f)
 
         g = Graph()
-        
+
         # Namespaces definition
         SEM=Namespace('http://semanticweb.cs.vu.nl/2009/11/sem/')
         WDT_ONT=Namespace('http://www.wikidata.org/wiki/')
@@ -141,7 +280,7 @@ class IncidentCollection:
         inc_type_uri=URIRef(self.incident_type_uri)
 
         country_literal=Literal('country')
-        
+
         for incident in self.incidents:
             event_id = URIRef('http://www.wikidata.org/entity/%s' % incident.wdt_id)
 
@@ -158,7 +297,7 @@ class IncidentCollection:
                 g.add(( wikipedia_article, DCT.language, Literal(ref_text.language) ))
                 g.add(( wikipedia_article, DCT.type, URIRef('http://purl.org/dc/dcmitype/Text') ))
                 for source in ref_text.primary_ref_texts:
-                    g.add(( wikipedia_article, DCT.source, URIRef(source) ))        
+                    g.add(( wikipedia_article, DCT.source, URIRef(source) ))
 
             # event type information
             g.add( (event_id, RDF.type, SEM.Event) )
@@ -196,20 +335,38 @@ class IncidentCollection:
         else: # else print to the console
             print(g.serialize(format='turtle'))
 
+
+
+    def get_index_event_type2wdt_ids(self):
+        event_type2wdt_ids = defaultdict(set)
+        for incident_obj in self.incidents:
+            for direct_type in incident_obj.direct_types:
+                event_type2wdt_ids[direct_type].add(incident_obj.wdt_id)
+
+        return event_type2wdt_ids
+
+
+
 class Incident:
 
-    def __init__(self, 
+    def __init__(self,
                 incident_type,
                 wdt_id,
                 reference_texts=[],
-                extra_info={}):
+                extra_info={},
+                direct_types=set()):
         self.incident_type=incident_type
         self.wdt_id=wdt_id
         self.reference_texts=reference_texts
         self.extra_info=extra_info
+        self.direct_types=direct_types
+
+        self.shortest_path_to_top_node = []
+        self.descendants = set()
+        self.depth_level = None
 
 class ReferenceText:
-    
+
     def __init__(self,
                 uri='',
                 web_archive_uri='',
@@ -235,6 +392,8 @@ class ReferenceText:
         self.wiki_langlinks=wiki_langlinks
         self.found_by=found_by
         self.annotations=annotations
+        self.distributions = {}
+        self.naf = None
 
     def process_spacy_and_convert_to_naf(self,
                                          nlp,
@@ -264,3 +423,4 @@ class ReferenceText:
                 outfile.write(spacy_to_naf.NAF_to_string(NAF=root))
 
         return root
+

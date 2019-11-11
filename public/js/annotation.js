@@ -292,20 +292,16 @@ var showAnnotations = function(){
     for (var key in annotations){
         html+="<b>" + key + "</b><br/>";
         for (var ann in annotations[key]){
-            var fullKey=key.replace(/ /g, "_") + '#' + ann;
-            html+="<span id=\"" + fullKey + "\" class=\"clickme\" onclick=activatePredicateRightPanel(this.id)>" + ann + "," + (annotations[key][ann]['frametype'] || noFrameType) + "," + annotations[key][ann]['predicate'] + "</span><br/>";
+            var docId=key.replace(/ /g, "_");
+            var fullKey=docId + '#' + ann;
+
+            var aText = ''; // TODO: update this to show the token text
+            var row = aText + "," + ann + "," + (annotations[key][ann]['frametype'] || noFrameType) + "," + annotations[key][ann]['predicate'];
+            html+="<span id=\"" + fullKey + "\" class=\"clickme\" onclick=activatePredicateRightPanel(this.id)>" + row + "</span><br/>";
         }
     }
     $("#trails").html(html);
 
-/*
-    $(".clickme").on('click', function(){    
-        var clickedItem=$(this).text();
-        var thisInfo=clickedItem.split(',');
-        $("#activePredicate").text($(this).attr('id').split('#')[0] + '@' + thisInfo[2]);
-        $("#activeFrame").text(thisInfo[1]);
-    });
-*/
 }
 
 // Load incident - both for mention and structured annotation
@@ -314,11 +310,10 @@ var loadIncident = function(){
     if (inc!="-1"){
         annotations={};
         loadTextsFromFile(inc, function(){
-            $("#trails").html('');
-            showAnnotations();
             $("#incid").html(inc);
             $("#infoMessage").html("");
             getStructuredData(inc);
+            showAnnotations();
             $("#annrow").show();
             $("#bigdiv").show();
             $("#frameAnnotation").hide();

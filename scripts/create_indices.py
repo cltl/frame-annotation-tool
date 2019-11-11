@@ -3,12 +3,14 @@ import pickle
 import json
 from collections import defaultdict
 
-bin_dir='../data'
-doc_dir='../data/naf'
-inc2doc_file='%s/inc2doc_index.json' % bin_dir
-inc2str_file='%s/inc2str_index.json' % bin_dir
-proj2inc_file='%s/proj2inc_index.json' % bin_dir
-type2inc_file='%s/type2inc_index.json' % bin_dir
+data_dir='../data'
+bin_dir='%s/bin' % data_dir
+doc_dir='%s/naf' % data_dir
+json_dir='%s/json' % data_dir
+inc2doc_file='%s/inc2doc_index.json' % json_dir
+inc2str_file='%s/inc2str_index.json' % json_dir
+proj2inc_file='%s/proj2inc_index.json' % json_dir
+type2inc_file='%s/type2inc_index.json' % json_dir
 
 inc2doc={}
 inc2str={}
