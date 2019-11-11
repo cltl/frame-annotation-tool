@@ -97,7 +97,7 @@ var activatePredicate = function(docId, tid){
     var docAnn=annotations[docId];
 
     $.get('/getroles', {'docid': docId, 'prid': prId}, function(data, status) {
-        jQuery.each(data, function(tid){
+        jQuery.each(data["roles"], function(tid){
             $("#" + tid).addClass('role');
             jQuery.each(docAnn, function(t, tdata) {
                 if (tdata['predicate']==prId.split('@')[1]){

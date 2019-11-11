@@ -178,7 +178,7 @@ app.get('/logout', function(req, res) {
 // =====================================
 
 var isAdmin = function (u){
-    return (['piek', 'roxane', 'filip', 'marten'].indexOf(u)>-1);
+    return (['piek', 'filip', 'marten'].indexOf(u)>-1);
 }
 
 // route middleware to make sure a user is logged in
@@ -200,7 +200,6 @@ var getTokenData = function(tokens){
     var tokenData={};
     for (var i=0; i<tokens.length; i++){
         var token=tokens[i];
-        //var txt=token['#text'];
         var tid=token['attr']['id'];
         var sent=token['attr']['sent'];
         tokenData[tid]={'sent': sent, 'text': token['__cdata']};
@@ -208,45 +207,54 @@ var getTokenData = function(tokens){
     return tokenData;
 }
 
-/*
-var getAnnotatedRolesForPredicate=function(srl_data, the_id, callback){
+var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
+    var srl_data=[];
+    if (jsonObj['NAF']['srl'])
+        srl_data=jsonObj['NAF']['srl']['predicate'];
+
     var result={};
     if (!srl_data || srl_data.length==0)
         callback(result);
+
     if (!(Array.isArray(srl_data))) srl_data=[srl_data];
+
     for (var i=0; i<srl_data.length; i++){
         var pr = srl_data[i];
         var pr_id=pr['attr']['id'];
-        if (pr_id!=the_id) continue;
-        if (!(pr[i]['role'])) callback(result);
-        var roles=pr[i]['role'];
-        for (var role_i=0; role_i<roles.length; role_i++){
-            var role=roles[role_i];
-            var targets=role['span']['target'];
-            if (!(Array.isArray(targets))) targets=[targets];
-            
-            var extRefs = role['externalReferences']['externalRef'];
-            var roleType='';
-            if (!(Array.isArray(extRefs)))
-                roleType = extRefs['attr']['reference'].split('@')[1];
-            else{
-                extRefs.forEach(function(extRef){
-                    if (extRef['attr']['reftype']=='type')
-                        roleType=extRef['attr']['reference'].split('@')[1];
-                });
-            }
-            for (var j=0; j<targets.length; j++){
-                var tid=targets[j];
-                var tidEntry = roleType;
-                result[tid]=tidEntry;
-                if (j+1==targets.length){
-                    callback(result);
+        if (pr_id==the_id){
+            if (!(pr[i]['role'])) callback(result);
+
+            var roles=pr[i]['role'];
+            for (var role_i=0; role_i<roles.length; role_i++){
+                var role=roles[role_i];
+                var targets=role['span']['target'];
+                if (!(Array.isArray(targets))) targets=[targets];
+                
+                var extRefs = role['externalReferences']['externalRef'];
+                var roleType='';
+                if (!(Array.isArray(extRefs)))
+                    roleType = extRefs['attr']['reference'].split('@')[1];
+                else{
+                    extRefs.forEach(function(extRef){
+                        if (extRef['attr']['reftype']=='type')
+                            roleType=extRef['attr']['reference'].split('@')[1];
+                    });
+                }
+                for (var j=0; j<targets.length; j++){
+                    var tid=targets[j];
+                    var tidEntry = roleType;
+                    result[tid]=tidEntry;
+                    if (j+1==targets.length){
+                        callback(result);
+                    }
                 }
             }
+        } else {
+            if (i==srl_data.length-1)
+                callback(result);
         }
     }    
 });
-*/
 
 var prepareAnnotations = function(srl_data, callback){
     var result={};
@@ -288,6 +296,63 @@ var prepareAnnotations = function(srl_data, callback){
     }
 }
 
+var json2info = function(jsonObj, callback){
+    var tokens = jsonObj['NAF']['text']['wf'];
+    var tokenData = getTokenData(tokens);
+
+    var terms = jsonObj['NAF']['terms']['term'];
+    var srl=[];
+    if (jsonObj['NAF']['srl'])
+        srl=jsonObj['NAF']['srl']['predicate'];
+    var termData = {};
+
+    var ready_title_terms=[];
+    var ready_body_terms=[];
+
+    var wikiTitle=jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
+    if (!wikiTitle)
+        console.log(jsonObj);
+    for (var i=0; i<terms.length; i++){
+        var term=terms[i];
+
+        var termId=term['attr']['id'];
+
+        var targets=[term['span']['target']];
+        var components=term['component'];
+        if (components){
+            for (var c=0; c<components.length; c++){
+                var comp=components[c];
+                var compId=comp['attr']['id'];
+                var lemma=comp['attr']['lemma'];
+                var tokenId=targets[0]['attr']['id'];
+                var sent=tokenData[tokenId]['sent'];
+                var termData={'text': lemma, 'tid': compId, 'sent': sent}; 
+                if (sent=='1') ready_title_terms.push(termData);
+                else ready_body_terms.push(termData);
+            }
+        } else {
+            var termTokens=[];
+            for (var t=0; t<targets.length; t++){
+                var target=targets[t];
+                var targetId=target['attr']['id'];
+                var targetInfo=tokenData[targetId];
+                var sent=targetInfo['sent'];
+                termTokens.push(targetInfo['text']);
+            }
+            var termData={'text': termTokens.join(' '), 'tid': termId, 'sent': sent};
+            if (sent=='1') ready_title_terms.push(termData);
+            else ready_body_terms.push(termData);
+        }
+        if (i==terms.length-1){
+            console.log(i + ' is at the end. Prepare annotations for this file. Srl:');
+            prepareAnnotations(srl, function(ready_srl){
+                console.log('All annotations ready');
+                callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl, 'source': wikiTitle, 'sourcetype': wikiTitle.includes('wikipedia') ? "secondary" : "primary"});
+            });
+        }
+    }
+}
+
 function loadNAFFile(nafName, theUser, adaptJson, callback){
     var filename=annotationDir + theUser + '/' + nafName + '.naf';
     if (!(fs.existsSync(filename))){
@@ -300,62 +365,10 @@ function loadNAFFile(nafName, theUser, adaptJson, callback){
         }
 
         var jsonObj = xmlParser.parse(xmlData, xmlOptions);
-
         if (adaptJson){
-            var tokens = jsonObj['NAF']['text']['wf'];
-            var tokenData = getTokenData(tokens);
-
-            var terms = jsonObj['NAF']['terms']['term'];
-            var srl=[];
-            if (jsonObj['NAF']['srl'])
-                srl=jsonObj['NAF']['srl']['predicate'];
-            var termData = {};
-
-            var ready_title_terms=[];
-            var ready_body_terms=[];
-
-            var wikiTitle=jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
-            if (!wikiTitle)
-                console.log(jsonObj);
-            for (var i=0; i<terms.length; i++){
-                var term=terms[i];
-
-                var termId=term['attr']['id'];
-
-                var targets=[term['span']['target']];
-                var components=term['component'];
-                if (components){
-                    for (var c=0; c<components.length; c++){
-                        var comp=components[c];
-                        var compId=comp['attr']['id'];
-                        var lemma=comp['attr']['lemma'];
-                        var tokenId=targets[0]['attr']['id'];
-                        var sent=tokenData[tokenId]['sent'];
-                        var termData={'text': lemma, 'tid': compId, 'sent': sent}; 
-                        if (sent=='1') ready_title_terms.push(termData);
-                        else ready_body_terms.push(termData);
-                    }
-                } else {
-                    var termTokens=[];
-                    for (var t=0; t<targets.length; t++){
-                        var target=targets[t];
-                        var targetId=target['attr']['id'];
-                        var targetInfo=tokenData[targetId];
-                        var sent=targetInfo['sent'];
-                        termTokens.push(targetInfo['text']);
-                    }
-                    var termData={'text': termTokens.join(' '), 'tid': termId, 'sent': sent};
-                    if (sent=='1') ready_title_terms.push(termData);
-                    else ready_body_terms.push(termData);
-                }
-                if (i==terms.length-1){
-                    console.log(i + ' is at the end. Prepare annotations for this file. Srl:');
-                    prepareAnnotations(srl, function(ready_srl){
-                        console.log('All annotations ready');
-                        callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl, 'source': wikiTitle, 'sourcetype': wikiTitle.includes('wikipedia') ? "secondary" : "primary"});
-                    });
-                }
-            }
+            json2info(jsonObj, function(info){
+                callback(info);
+            });
         } else {
             callback(jsonObj);
         }
@@ -579,6 +592,20 @@ app.get('/loadframes', isAuthenticated, function(req, res){
                 otherLabels.push(frameInfo['frame_label']);
         }
         res.send({'likely': likelyLabels.sort(), 'other': otherLabels.sort()});
+    }
+});
+
+app.get('/getroles', isAuthenticated, function(req, res){
+    if (!req.query['docid'] || !req.query['prid']){
+        res.sendStatus(400);
+    } else{
+        var docid = req.query['docid'];
+        loadNAFFile(docid, req.user.user, false, function(rawData){
+            var the_id=req.query['prid'];
+            getAnnotatedRolesForPredicate(rawData, the_id, false, function(roleData){
+                res.send({"roles": roleData});
+            });
+        });
     }
 });
 
