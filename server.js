@@ -212,48 +212,63 @@ var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
     if (jsonObj['NAF']['srl'])
         srl_data=jsonObj['NAF']['srl']['predicate'];
 
-    var result={};
-    if (!srl_data || srl_data.length==0)
-        callback(result);
+    if (!srl_data || srl_data.length==0){
+        console.log('EMPTY');
+        callback({});
+    } else {
+        if (!(Array.isArray(srl_data))) srl_data=[srl_data];
 
-    if (!(Array.isArray(srl_data))) srl_data=[srl_data];
-
-    for (var i=0; i<srl_data.length; i++){
-        var pr = srl_data[i];
-        var pr_id=pr['attr']['id'];
-        if (pr_id==the_id){
-            if (!(pr[i]['role'])) callback(result);
-
-            var roles=pr[i]['role'];
-            for (var role_i=0; role_i<roles.length; role_i++){
-                var role=roles[role_i];
-                var targets=role['span']['target'];
-                if (!(Array.isArray(targets))) targets=[targets];
-                
-                var extRefs = role['externalReferences']['externalRef'];
-                var roleType='';
-                if (!(Array.isArray(extRefs)))
-                    roleType = extRefs['attr']['reference'].split('@')[1];
-                else{
-                    extRefs.forEach(function(extRef){
-                        if (extRef['attr']['reftype']=='type')
-                            roleType=extRef['attr']['reference'].split('@')[1];
-                    });
+        for (var i=0; i<srl_data.length; i++){
+            var pr = srl_data[i];
+            var pr_id=pr['attr']['id'];
+            console.log(pr_id);
+            if (pr_id==the_id){
+                var roles=pr['role'];
+                getRoleData(roles, function(result){
+                    callback(result);
+                });
+            } 
+            /*else {
+                if (i==srl_data.length-1){
+                    console.log('NADA');
+                    callback({});
                 }
-                for (var j=0; j<targets.length; j++){
-                    var tid=targets[j];
-                    var tidEntry = roleType;
-                    result[tid]=tidEntry;
-                    if (j+1==targets.length){
-                        callback(result);
-                    }
+            }*/
+        }    
+    }
+}
+
+var getRoleData = function(roles, callback){
+    var result={};
+    if (!roles || roles.length==0) callback(result);
+    else{
+        for (var role_i=0; role_i<roles.length; role_i++){
+            var role=roles[role_i];
+            
+            var extRefs = role['externalReferences']['externalRef'];
+            var roleType='';
+            if (!(Array.isArray(extRefs)))
+                roleType = extRefs['attr']['reference'].split('@')[1];
+            else{
+                extRefs.forEach(function(extRef){
+                    if (extRef['attr']['reftype']=='type')
+                        roleType=extRef['attr']['reference'].split('@')[1];
+                });
+            } 
+
+            var targets=role['span']['target'];
+            if (!(Array.isArray(targets))) targets=[targets];
+            console.log(JSON.stringify(targets));
+            for (var j=0; j<targets.length; j++){
+                var tid=targets[j]['attr']['id'];
+                var tidEntry = roleType;
+                result[tid]=tidEntry;
+                if (j==targets.length-1 && role_i==roles.length-1){
+                    callback(result);
                 }
             }
-        } else {
-            if (i==srl_data.length-1)
-                callback(result);
         }
-    }    
+    }
 }
 
 var prepareAnnotations = function(srl_data, callback){
@@ -267,7 +282,6 @@ var prepareAnnotations = function(srl_data, callback){
         var pr = srl_data[i];
         var pr_id=pr['attr']['id'];
         var extRefs = pr['externalReferences']['externalRef'];
-        console.log(JSON.stringify(extRefs));
         var ftype='';
         if (extRefs){
             if (!(Array.isArray(extRefs)))
@@ -568,7 +582,6 @@ app.get('/loadincident', isAuthenticated, function(req, res){
         var nafs=inc2doc[incidentId];
         loadAllNafs(nafs, req.user.user, function(data){
             console.log("All nafs loaded. returning the result now");
-            console.log(likelyFrames[eventType]['lu_to_dominant_frame']);
             res.send({'nafs': data, 'lus': likelyFrames[eventType]['lu_to_dominant_frame']});
         });
     }
@@ -595,6 +608,24 @@ app.get('/loadframes', isAuthenticated, function(req, res){
     }
 });
 
+app.get('/allframeroles', isAuthenticated, function(req, res){
+    var toReturn={};
+    for (var frameId in allFramesInfo){
+        var frameInfo = allFramesInfo[frameId];
+        var frameLabel=frameInfo['frame_label'];
+        var roles=frameInfo['roles'];
+
+        var roleLabels=[];
+        for (var i=0; i<roles.length; i++){
+            var roleInfo = roles[i];
+            var roleLabel=roleInfo['role_label'];
+            roleLabels.push(roleLabel);
+        }
+        toReturn[frameLabel]=roleLabels;
+    }
+    res.send(toReturn);
+});
+
 app.get('/getroles', isAuthenticated, function(req, res){
     if (!req.query['docid'] || !req.query['prid']){
         res.sendStatus(400);
@@ -602,7 +633,7 @@ app.get('/getroles', isAuthenticated, function(req, res){
         var docid = req.query['docid'];
         loadNAFFile(docid, req.user.user, false, function(rawData){
             var the_id=req.query['prid'];
-            getAnnotatedRolesForPredicate(rawData, the_id, false, function(roleData){
+            getAnnotatedRolesForPredicate(rawData, the_id, function(roleData){
                 res.send({"roles": roleData});
             });
         });

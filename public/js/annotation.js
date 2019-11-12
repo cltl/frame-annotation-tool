@@ -3,8 +3,6 @@ referents=[];
 wdt_prefix="http://wikidata.org/wiki/";
 type2Label={'Q132821': 'murder', 'Q168983': 'conflagration'};
 
-frame2Roles={"Killing": ["Cause", "Instrument", "Killer", "Means", "Victim"], "Change_of_leadership": ["Function", "New_leader", "Old_Leader", "Role"]};
-
 noFrameType="NO-FRAME";
 
 $(function(){
@@ -51,6 +49,10 @@ $(function(){
         }
     });
 
+    $.get('/allframeroles', {}, function(data, status){
+        frame2Roles=data;
+    });
+
 }); // This is where the load function ends!
 
 var loadFrames = function(){
@@ -86,24 +88,38 @@ var activatePredicateFromText = function(elem){
     activatePredicate(docId, tid);
 }
 
+var selectSpanByRegex=function(start, end){
+    var selector = "span[id$='" + start + "'][id^='" + end + "']";
+    console.log(selector);
+    return $(selector);
+}
+
 var activatePredicate = function(docId, tid){
     var frameType=annotations[docId][tid]['frametype'] || noFrameType;
-    var prId=docId + '@' + annotations[docId][tid]['predicate'];
+    var prId= annotations[docId][tid]['predicate'];
+    var combinedPrId=docId + '@' + prId;
     var refs="";
     $("#activeFrame").text(frameType);
-    $("#activePredicate").text(prId);
+    $("#activePredicate").text(combinedPrId);
     $("#frameWdt").val(refs);
     
     var docAnn=annotations[docId];
 
+    if (frameType)
+        refreshRoles(frameType);
+
+    var docIdUnderscore = docId.replace(/ /g, "_");
+
+    $('span').removeClass('role');
     $.get('/getroles', {'docid': docId, 'prid': prId}, function(data, status) {
-        jQuery.each(data["roles"], function(tid){
-            $("#" + tid).addClass('role');
+        console.log(data);
+        jQuery.each(data["roles"], function(tid, roleType){
+            var $roleMention=selectSpanByRegex(tid, docIdUnderscore);
+            $roleMention.addClass('role');
             jQuery.each(docAnn, function(t, tdata) {
                 if (tdata['predicate']==prId.split('@')[1]){
-                    var selector = "span[id$='" + t + "'][id^='" + docId.replace(/ /g, "_") + "']";
-                    console.log(selector);
-                    $(selector).addClass("inactive");
+                    var $predMention=selectSpanByRegex(t, docIdUnderscore);
+                    $predMention.addClass('inactive');
                 }
             });
         });
@@ -389,11 +405,13 @@ var reloadDropdown=function(elementId, sourceList, defaultOption){
     var $el = $(elementId);
     $el.empty(); // remove old options
     $el.append($("<option value='-1' selected>" + defaultOption + "</option>"));
-    $.each(sourceList, function(anIndex) {
-        var unit = sourceList[anIndex];
-        $el.append($("<option></option>")
-            .attr("value", unit).text(unit));
-    });
+    if (sourceList && sourceList.length){
+        $.each(sourceList, function(anIndex) {
+            var unit = sourceList[anIndex];
+            $el.append($("<option></option>")
+                .attr("value", unit).text(unit));
+        });
+    }
 }
 
 var reloadDropdownWithGroups=function(elementId, sourceJson, defaultOption){
