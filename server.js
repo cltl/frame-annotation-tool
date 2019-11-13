@@ -283,14 +283,22 @@ var prepareAnnotations = function(srl_data, callback){
         var pr_id=pr['attr']['id'];
         var extRefs = pr['externalReferences']['externalRef'];
         var ftype='';
+        var frefers=[];
         if (extRefs){
-            if (!(Array.isArray(extRefs)))
+            if (!(Array.isArray(extRefs))) //if there is a single entry, it has to be type
                 ftype = extRefs['attr']['reference'];
             else{
-                extRefs.forEach(function(extRef){
+                //var lastSession=extRefs[extRefs.length-1]['attr']['source'];
+                for (var e=0; e<extRefs.length; e++){
+                    var extRef=extRefs[e];
+                    //if (lastSession!=extRef['attr']['source'])
+                    //    break;
+
                     if (extRef['attr']['reftype']=='type')
                         ftype=extRef['attr']['reference'];
-                });
+                    if (extRef['attr']['reftype']=='refer')
+                        frefers=[extRef['attr']['reference']]; // TODO: make it work for multiple referents
+                }
             }
         }
         var targets=pr['span']['target'];
@@ -298,7 +306,7 @@ var prepareAnnotations = function(srl_data, callback){
 
         for (var j=0; j<targets.length; j++){
             var tid=targets[j]['attr']['id'];
-            var tidEntry = {'frametype': ftype, 'predicate': pr_id};
+            var tidEntry = {'frametype': ftype, 'predicate': pr_id, 'referents': frefers};
             result[tid]=tidEntry;
             if (j+1==targets.length){
                 done_i++;
@@ -449,10 +457,12 @@ var formatTime = function(rawDate){
 }
 
 var annotateFrame=function(jsonData, annotations, sessionId){
+
     var frame = annotations['frame'];
     var reftype = annotations['reltype'];
     var tids = annotations['mentions'];
     var referents= annotations['referents'];
+    var activePredicate=annotations['predicate'];
     if (!('srl' in jsonData['NAF'])){
         jsonData['NAF']['srl']={};
         jsonData['NAF']['srl']['#text']='';
@@ -461,31 +471,53 @@ var annotateFrame=function(jsonData, annotations, sessionId){
     } else {
         var thePredicates=jsonData['NAF']['srl']['predicate'];
         if (!(Array.isArray(thePredicates))) thePredicates=[thePredicates];
-        var pr_num=(parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
-        var pr_id="pr" + pr_num;
+
+        if (!activePredicate){
+            var pr_num=(parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
+            var pr_id="pr" + pr_num;
+        }
     }
+
+    if (!activePredicate) { // create a new predicate entry
+        var aPredicate=createNewPredicateEntry(pr_id, frame, sessionId, reftype, referents, tids);
+        jsonData['NAF']['srl']['predicate'].push(aPredicate);
+        return {'prid': pr_id, 'json': jsonData};
+    } else { //update existing one
+        var thePredicates=jsonData['NAF']['srl']['predicate'];
+        for (var i=0; i<thePredicates.length; i++){
+            var aPredicate=thePredicates[i];
+            if (aPredicate['attr']['id']==activePredicate){
+                var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents);
+                return {'prid': activePredicate, 'json': jsonData};
+            }
+        }
+    }
+    
+}
+
+var addExternalRefs = function(aPredicate, frame, sessionId, reftype, referents){
+    if (frame!='none')
+        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type'}});
+    if (referents && referents.length>0){
+        referents.forEach(function(ref){
+            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype}});
+        });
+    }
+    return aPredicate;
+}
+
+var createNewPredicateEntry = function(pr_id, frame, sessionId, reftype, referents, tids){
     var aPredicate = {};
     aPredicate['#text']='';
     aPredicate['attr']={};
     aPredicate['attr']['id']=pr_id;
     aPredicate['externalReferences']={'#text': '', 'externalRef': []};
-    if (frame!='none')
-        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type'}});
-    if (referents && referents.length>0)
-        referents.forEach(function(ref){
-            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype}});
-        });
+    var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents);
+
     aPredicate['span']=makeSpanLayer(aPredicate, tids);
     
     aPredicate['role']=[];
-    var predicates=jsonData['NAF']['srl']['predicate'];
-    if (!(Array.isArray(predicates))){
-        jsonData['NAF']['srl']['predicate']=[]
-        jsonData['NAF']['srl']['predicate'].push(predicates);
-    }
-    jsonData['NAF']['srl']['predicate'].push(aPredicate);
-
-    return {'prid': pr_id, 'json': jsonData};
+    return aPredicate;
 }
 
 var annotateRole=function(jsonData, annotations, sessionId){

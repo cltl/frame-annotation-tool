@@ -73,6 +73,10 @@ label.inactive {
     background: #0ff;
 }
 
+.event_Offenses {
+    background: #77f;
+}
+
 .role {
     background: #f0f;
 }
@@ -83,10 +87,6 @@ label.inactive {
 
 .event_d {
     background: #ffffb3;
-}
-
-.event_m {
-    background: #77f;
 }
 
 .event_o {
