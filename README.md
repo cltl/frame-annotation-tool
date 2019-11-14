@@ -9,11 +9,11 @@ Also, run `bash install.sh` to download additional files.
 
 ### Starting the server
 
-To start the server, simply run `node server.js` or `npm start`.
+To start the server, simply run `node frame.js` or `npm start`.
 
 ### Directory structure
 
-* `server.js` is the main Node.js server file.
+* `frame.js` is the main Node.js server file.
 * the folder `public` contains all static code (HTML, Javascript) and static files to be served (images and PDF files).
 * the filder `data` contains the input data for the tool. Specifically, it contains all the *.bin files and a `naf` folder that contains the NAF files. It also contains the `inc2doc_index.json` file that we create with the `scripts/`.
 * `scripts` has loading scripts that prepare the data for the tool.
