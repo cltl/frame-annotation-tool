@@ -11,20 +11,20 @@ contains the pre-annotation in two forms:
     * pre-annotation with a proposed frame
       ```xml
       <predicate id="pr14">
-      <span>
-        <target id="t34"/>
-      </span>
-      <externalReferences>
-        <externalRef reference="Performers_and_roles" resource="FrameNet" source="pre-annotator" reftype="evoke"/>
-      </externalReferences>
-    </predicate>
-    ```
+        <span>
+          <target id="t34"/>
+        </span>
+        <externalReferences>
+          <externalRef reference="Performers_and_roles" resource="FrameNet" source="pre-annotator" reftype="evoke"/>
+        </externalReferences>
+      </predicate>
+      ```
     
     * pre-annotation without a proposed frame
-        ```xml
+       ```xml
       <predicate id="pr15">
-      <span>
-        <target id="t38"/>
-      </span>
+        <span>
+          <target id="t38"/>
+        </span>
       </predicate>
        ```
