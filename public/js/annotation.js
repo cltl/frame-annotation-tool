@@ -121,7 +121,7 @@ var activatePredicate = function(docId, tid){
     
     $("#activeFrame").text(frameType);
     $("#activePredicate").text(combinedPrId);
-    $("#frameWdt").text(refs.join('<br/>'));
+    $("#frameWdt").html(refs.join('<br/>'));
     
     var docAnn=annotations[docId];
 
@@ -340,7 +340,7 @@ var showAnnotations = function(){
             var docId=key.replace(/ /g, "_");
             var fullKey=docId + '#' + ann;
 
-            var $elem = selectSpanUniqueID(docId, ann); // TODO: update this to show the token text
+            var $elem = selectSpanUniqueID(docId, ann); 
             var aText=$elem.text();
             //var aText='';
             var row = aText + "," + ann + "," + (annotations[key][ann]['frametype'] || noFrameType) + "," + annotations[key][ann]['predicate'];

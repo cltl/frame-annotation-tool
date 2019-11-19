@@ -265,6 +265,15 @@ var getRoleData = function(roles, callback){
     }
 }
 
+var moreRecent = function(a, b){
+    if (!a) return true;
+    else{
+        var adate=new Date(a);
+        var bdate=new Date(b);
+        return adate<=bdate;
+    }
+}
+
 var prepareAnnotations = function(srl_data, callback){
     var result={};
     if (!srl_data || srl_data.length==0)
@@ -282,19 +291,31 @@ var prepareAnnotations = function(srl_data, callback){
             if (!(Array.isArray(extRefs))) //if there is a single entry, it has to be type
                 ftype = extRefs['attr']['reference'];
             else{
-                //var lastSession=extRefs[extRefs.length-1]['attr']['source'];
+                var lastAnnotation=null;
+                var lastTimepoint=null;
+                var referenceRels={};
                 for (var e=0; e<extRefs.length; e++){
                     var extRef=extRefs[e];
-                    //if (lastSession!=extRef['attr']['source'])
-                    //    break;
 
-                    if (extRef['attr']['reftype']=='type')
-                        ftype=extRef['attr']['reference'];
-                    if (extRef['attr']['reftype']=='refer')
-                        frefers=[extRef['attr']['reference']]; // TODO: make it work for multiple referents
+                    if (extRef['attr']['reftype']=='type'){
+                        if (moreRecent(lastTimepoint, extRef['attr']['timestamp'])){
+                            ftype=extRef['attr']['reference'];
+                            lastTimepoint=extRef['attr']['timestamp'];
+                        }
+                    }
+                    else if (extRef['attr']['reftype']=='refer'){
+                        var theTime=extRef['attr']['timestamp'];
+                        if (!referenceRels[theTime]){
+                            referenceRels[theTime]=[extRef['attr']['reference']];
+                        } else {
+                            referenceRels[theTime].push(extRef['attr']['reference']);
+                        }
+                    }
                 }
             }
         }
+        if (referenceRels[lastTimepoint]) 
+            frefers=referenceRels[lastTimepoint];
         var targets=pr['span']['target'];
         if (!(Array.isArray(targets))) targets=[targets];
 
@@ -477,7 +498,6 @@ var annotateFrame=function(jsonData, annotations, sessionId){
         jsonData['NAF']['srl']['predicate'].push(aPredicate);
         return {'prid': pr_id, 'json': jsonData};
     } else { //update existing one
-        var thePredicates=jsonData['NAF']['srl']['predicate'];
         for (var i=0; i<thePredicates.length; i++){
             var aPredicate=thePredicates[i];
             if (aPredicate['attr']['id']==activePredicate){
@@ -497,6 +517,7 @@ var addExternalRefs = function(aPredicate, frame, sessionId, reftype, referents,
             aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype, 'timestamp': timestamp}});
         });
     }
+    console.log(JSON.stringify(aPredicate));
     return aPredicate;
 }
 
@@ -681,6 +702,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
                     var userAnnotationFile=userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
                     var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
+                    console.log(JSON.stringify(newData));
                     var updatedJson=saveSessionInfo(newData['json'], req.sessionID, thisUser, loginTime);
                     var pr_id=newData['prid'];
                     saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
