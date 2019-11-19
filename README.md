@@ -20,13 +20,10 @@ To start the server, simply run `node frame.js` or `npm start`.
 
 ### Reloading the data
 
-Reloading the tool data requires four steps:
-1. Re-create the .naf files and move them to `data/naf' (remove the old ones first)
-2. Re-create the .json files and move them to `data/json' (remove the old ones first)
+Reloading the tool data requires three steps:
+1. Run the `main.py` script from the [MWEP](https://github.com/cltl/multilingual-wiki-event-pipeline) project
+2. Run the script `reload.sh` to update our data (.json and .naf) files with the new files created in step 1. Note: make sure you update the directories in the script to correspond to your local file structure.
 3. [optionally] remove the old data in `annotation`
-
-Steps 1 and 2 essentially require running of the `main.py` file from the [MWEP](https://github.com/cltl/multilingual-wiki-event-pipeline) project, and copying the resulting data to the directory `data` of this tool.
-The reloading of data is automated by the script `reload.sh`.
 
 ### Acknowledgements
 
