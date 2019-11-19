@@ -1,6 +1,6 @@
-tmp_data/
 annotation/
-data/
+data/naf
+data/json
 allowed.json
 package-lock.json
 node_modules/

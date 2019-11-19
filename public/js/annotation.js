@@ -293,14 +293,14 @@ var loadTextsFromFile = function(inc, callback){
         var all_html = ""; 
         var c=0;
         var data=res['nafs'];
-        var lus=res['lus'];
+        //var lus=res['lus'];
         for (var doc_num in data) {
             
             var docId=data[doc_num]['name'];
 
             var docLang=docId.split('/')[0];
 
-            var lusLang=Object.keys(lus[docLang]) || [];
+            var lusLang=[];
 
             annotations[docId]=data[doc_num]['annotations'];
 

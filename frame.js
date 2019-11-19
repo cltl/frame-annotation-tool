@@ -48,9 +48,12 @@ inc2doc_file='data/json/inc2doc_index.json';
 inc2str_file='data/json/inc2str_index.json';
 type2inc_file='data/json/type2inc_index.json';
 proj2inc_file='data/json/proj2inc_index.json';
-likely_frames_file='pre_annotation/event_type_to_dominant_frame.json';
-frame_info_file='pre_annotation/frame_to_info.json';
+
+likely_frames_file='data/frames/dominant_frame_info.json';
+frame_info_file='data/frames/frame_to_info.json';
+
 dataDir='data/naf/';
+
 annotationDir='annotation/'
 
 var xmlOptions = {
@@ -104,7 +107,7 @@ fs.readFile(type2inc_file, 'utf8', function (err, data) {
 
 fs.readFile(likely_frames_file, 'utf8', function (err, data){
     if (err) throw err; // we'll not consider error handling for now
-    likelyFrames = JSON.parse(data);
+    allFrames = JSON.parse(data);
 });
 
 fs.readFile(frame_info_file, 'utf8', function (err, data){
@@ -160,13 +163,10 @@ app.post('/login',
   passport.authenticate('local', { failureRedirect: '/' }),
   function(req, res) {
     req.session.visited = new Date().toISOString().replace(/\..+/, '');
-    //res.redirect('/dash');
-    //logAction(req.user.user, "LOGIN");
     res.sendStatus(200);
   });
 
 app.get('/logout', function(req, res) {
-//    logAction(req.user.user, "LOGOUT");
     req.session.destroy();
 
     req.logout();
@@ -228,12 +228,6 @@ var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
                     callback(result);
                 });
             } 
-            /*else {
-                if (i==srl_data.length-1){
-                    console.log('NADA');
-                    callback({});
-                }
-            }*/
         }    
     }
 }
@@ -477,9 +471,9 @@ var annotateFrame=function(jsonData, annotations, sessionId){
             var pr_id="pr" + pr_num;
         }
     }
-
+    var timestamp=new Date().toISOString().replace(/\..+/, '');
     if (!activePredicate) { // create a new predicate entry
-        var aPredicate=createNewPredicateEntry(pr_id, frame, sessionId, reftype, referents, tids);
+        var aPredicate=createNewPredicateEntry(pr_id, frame, sessionId, reftype, referents, tids, timestamp);
         jsonData['NAF']['srl']['predicate'].push(aPredicate);
         return {'prid': pr_id, 'json': jsonData};
     } else { //update existing one
@@ -487,7 +481,7 @@ var annotateFrame=function(jsonData, annotations, sessionId){
         for (var i=0; i<thePredicates.length; i++){
             var aPredicate=thePredicates[i];
             if (aPredicate['attr']['id']==activePredicate){
-                var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents);
+                var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents, timestamp);
                 return {'prid': activePredicate, 'json': jsonData};
             }
         }
@@ -495,24 +489,24 @@ var annotateFrame=function(jsonData, annotations, sessionId){
     
 }
 
-var addExternalRefs = function(aPredicate, frame, sessionId, reftype, referents){
+var addExternalRefs = function(aPredicate, frame, sessionId, reftype, referents, timestamp){
     if (frame!='none')
-        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type'}});
+        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
     if (referents && referents.length>0){
         referents.forEach(function(ref){
-            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype}});
+            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype, 'timestamp': timestamp}});
         });
     }
     return aPredicate;
 }
 
-var createNewPredicateEntry = function(pr_id, frame, sessionId, reftype, referents, tids){
+var createNewPredicateEntry = function(pr_id, frame, sessionId, reftype, referents, tids, timestamp){
     var aPredicate = {};
     aPredicate['#text']='';
     aPredicate['attr']={};
     aPredicate['attr']['id']=pr_id;
     aPredicate['externalReferences']={'#text': '', 'externalRef': []};
-    var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents);
+    var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents, timestamp);
 
     aPredicate['span']=makeSpanLayer(aPredicate, tids);
     
@@ -522,6 +516,7 @@ var createNewPredicateEntry = function(pr_id, frame, sessionId, reftype, referen
 
 var annotateRole=function(jsonData, annotations, sessionId){
     var roleData = annotations;
+    var timestamp=new Date().toISOString().replace(/\..+/, '');
     if ('srl' in jsonData['NAF']){
         var predicates=jsonData['NAF']['srl']['predicate'];
         if (!Array.isArray(predicates))
@@ -543,12 +538,12 @@ var annotateRole=function(jsonData, annotations, sessionId){
                 var referents= roleData['referents'];
                 var semRole=roleData['semRole'];
                 aRole['externalReferences']={'#text': '', 'externalRef': []};
-                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type'}});
-                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
+                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
+//                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
                 if (referents && referents.length>0)
 
                     referents.forEach(function(ref){
-                        aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'reference'}});
+                        aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'reference', 'timestamp': timestamp}});
                     });
                 predicates[i]['role'].push(aRole);
                 break;
@@ -614,7 +609,7 @@ app.get('/loadincident', isAuthenticated, function(req, res){
         var nafs=inc2doc[incidentId];
         loadAllNafs(nafs, req.user.user, function(data){
             console.log("All nafs loaded. returning the result now");
-            res.send({'nafs': data, 'lus': likelyFrames[eventType]['lu_to_dominant_frame']});
+            res.send({'nafs': data});
         });
     }
 });
@@ -624,19 +619,9 @@ app.get('/loadframes', isAuthenticated, function(req, res){
         res.sendStatus(400);
     } else{
         var etype = req.query['eventtype'];
-        var likelyIdsForEvent = likelyFrames[etype]["main_frame_ids"];
-        var allFrames = Object.keys(allFramesInfo);
-        var otherFrameIds = _.difference(allFrames, likelyIdsForEvent);
-        var likelyLabels=[];
-        var otherLabels=[];
-        for (var frameId in allFramesInfo){
-            var frameInfo = allFramesInfo[frameId];
-            if (likelyIdsForEvent.indexOf(parseInt(frameId))!=-1)
-                likelyLabels.push(frameInfo['frame_label']);
-            else
-                otherLabels.push(frameInfo['frame_label']);
-        }
-        res.send({'likely': likelyLabels.sort(), 'other': otherLabels.sort()});
+        var likelyFrames = allFrames[etype]["likely"];
+        var otherFrames = allFrames[etype]["other"];
+        res.send({'likely': likelyFrames, 'other': otherFrames.sort()});
     }
 });
 
