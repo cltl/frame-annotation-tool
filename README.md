@@ -26,6 +26,7 @@ Reloading the tool data requires four steps:
 3. [optionally] remove the old data in `annotation`
 
 Steps 1 and 2 essentially require running of the `main.py` file from the [MWEP](https://github.com/cltl/multilingual-wiki-event-pipeline) project, and copying the resulting data to the directory `data` of this tool.
+The reloading of data is automated by the script `reload.sh`.
 
 ### Acknowledgements
 
