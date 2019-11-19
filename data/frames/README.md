@@ -9,8 +9,7 @@
 * **naf** has three subfolders **en**, **it**, and **nl**. The English subfolder
 contains the pre-annotation in two forms:
     * pre-annotation with a proposed frame
-      ```
-      xml
+      ```xml
       <predicate id="pr14">
       <span>
         <target id="t34"/>
@@ -18,8 +17,7 @@ contains the pre-annotation in two forms:
       <externalReferences>
         <externalRef reference="Performers_and_roles" resource="FrameNet" source="pre-annotator" reftype="evoke"/>
       </externalReferences>
-    </predicate>
-        ```
+    </predicate>```
     * pre-annotation without a proposed frame
         ```xml
       <predicate id="pr15">
