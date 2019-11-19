@@ -17,7 +17,9 @@ contains the pre-annotation in two forms:
       <externalReferences>
         <externalRef reference="Performers_and_roles" resource="FrameNet" source="pre-annotator" reftype="evoke"/>
       </externalReferences>
-    </predicate>```
+    </predicate>
+    ```
+    
     * pre-annotation without a proposed frame
         ```xml
       <predicate id="pr15">
