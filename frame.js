@@ -238,7 +238,7 @@ var getRoleData = function(roles, callback){
     else{
         for (var role_i=0; role_i<roles.length; role_i++){
             var role=roles[role_i];
-            
+            var roleId=role["attr"]["id"]; 
             var extRefs = role['externalReferences']['externalRef'];
             var roleType='';
             if (!(Array.isArray(extRefs)))
@@ -256,7 +256,7 @@ var getRoleData = function(roles, callback){
             for (var j=0; j<targets.length; j++){
                 var tid=targets[j]['attr']['id'];
                 var tidEntry = roleType;
-                result[tid]=tidEntry;
+                result[tid]=roleId;
                 if (j==targets.length-1 && role_i==roles.length-1){
                     callback(result);
                 }
@@ -467,8 +467,46 @@ var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
     }
 }
 
-var formatTime = function(rawDate){
-    return rawDate.toISOString().replace(/\..+/, '');
+var addExternalRefs = function(aPredicate, frame, sessionId, reftype, referents, timestamp){
+    if (frame!='none')
+        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
+    if (referents && referents.length>0){
+        referents.forEach(function(ref){
+            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype, 'timestamp': timestamp}});
+        });
+    }
+    return aPredicate;
+}
+
+var createNewPredicateEntry = function(pr_id, frame, sessionId, reftype, referents, tids, timestamp){
+    var aPredicate = {};
+    aPredicate['#text']='';
+    aPredicate['attr']={};
+    aPredicate['attr']['id']=pr_id;
+    aPredicate['externalReferences']={'#text': '', 'externalRef': []};
+    var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents, timestamp);
+
+    aPredicate['span']=makeSpanLayer(aPredicate, tids);
+    
+    aPredicate['role']=[];
+    return aPredicate;
+}
+
+var createNewRoleEntry=function(rl_id, semRole, sessionId, referents, mentions, timestamp){
+    var aRole={};
+    aRole['#text']='';
+    aRole['attr']={}
+    aRole['attr']['id']=rl_id;
+    aRole['span']=makeSpanLayer(aRole, mentions);
+    aRole['externalReferences']={'#text': '', 'externalRef': []};
+    aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
+//    aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
+    if (referents && referents.length>0){
+        referents.forEach(function(ref){
+            aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'reference', 'timestamp': timestamp}});
+        });
+    }
+    return aRole;
 }
 
 var annotateFrame=function(jsonData, annotations, sessionId){
@@ -509,30 +547,15 @@ var annotateFrame=function(jsonData, annotations, sessionId){
     
 }
 
-var addExternalRefs = function(aPredicate, frame, sessionId, reftype, referents, timestamp){
-    if (frame!='none')
-        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
+var addExternalRefsRole=function(aRole, semRole, sessionId, referents, timestamp){
+    if (semRole!='none')
+        aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
     if (referents && referents.length>0){
         referents.forEach(function(ref){
-            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype, 'timestamp': timestamp}});
+            aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'reference', 'timestamp': timestamp}});
         });
     }
-    console.log(JSON.stringify(aPredicate));
-    return aPredicate;
-}
-
-var createNewPredicateEntry = function(pr_id, frame, sessionId, reftype, referents, tids, timestamp){
-    var aPredicate = {};
-    aPredicate['#text']='';
-    aPredicate['attr']={};
-    aPredicate['attr']['id']=pr_id;
-    aPredicate['externalReferences']={'#text': '', 'externalRef': []};
-    var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents, timestamp);
-
-    aPredicate['span']=makeSpanLayer(aPredicate, tids);
-    
-    aPredicate['role']=[];
-    return aPredicate;
+    return aRole;
 }
 
 var annotateRole=function(jsonData, annotations, sessionId){
@@ -543,34 +566,28 @@ var annotateRole=function(jsonData, annotations, sessionId){
         if (!Array.isArray(predicates))
             predicates=[predicates];
         for (var i=0; i<predicates.length; i++){
-            console.log('is predicate ok if the id is ' + predicates[i]['attr']['id']);
             if (predicates[i]['attr']['id']==roleData['prid']){
-                console.log('Enriching role with id ' + roleData['prid']);
                 if (!('role' in predicates[i]))
                     predicates[i]['role']=[];
                 else if (!(Array.isArray(predicates[i]['role'])))
                     predicates[i]['role']=[predicates[i]['role']];
                 var existingRoles=predicates[i]['role'];
-                var aRole={};
-                aRole['#text']='';
-                aRole['attr']={}
-                aRole['attr']['id']='rl' + (existingRoles.length + 1).toString();
-                aRole['span']=makeSpanLayer(aRole, roleData['mentions']);
-                var referents= roleData['referents'];
-                var semRole=roleData['semRole'];
-                aRole['externalReferences']={'#text': '', 'externalRef': []};
-                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
-//                aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
-                if (referents && referents.length>0)
-
-                    referents.forEach(function(ref){
-                        aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'reference', 'timestamp': timestamp}});
-                    });
-                predicates[i]['role'].push(aRole);
-                break;
+                if (!roleData['rlid']){ // create a new role entry
+                    var rl_id='rl' + (existingRoles.length + 1).toString();
+                    var aRole=createNewRoleEntry(rl_id, roleData['semRole'], sessionId, roleData['referents'], roleData['mentions'], timestamp);
+                    predicates[i]['role'].push(aRole);
+                    return {'prid': roleData['prid'], 'json': jsonData};
+                } else{ //update existing role entry
+                    for (var i=0; i<existingRoles.length; i++){
+                        var aRole=existingRoles[i];
+                        if (aRole['attr']['id']==roleData['rlid']){
+                            var aRole=addExternalRefsRole(aRole, roleData['semRole'], sessionId, roleData['referents'], timestamp);
+                            return {'prid': roleData['prid'], 'json': jsonData};
+                        }
+                    }
+                }
             }
         }
-        return {'prid': roleData['prid'], 'json': jsonData};
     } else{
         return {'prid': roleData['prid'], 'json': jsonData};
     }
