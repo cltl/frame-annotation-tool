@@ -15,13 +15,23 @@ $(function(){
     });
     $(document).on("click", "span.unclickable", function() {  //use a class, since your ID gets mangled
         $('span').removeClass("active");
-        var wasInactive=$(this).hasClass("inactive");
+        var wasInactive=$(this).hasClass("inactive"); // inactive means previously annotated and selected
+        var isRole=$(this).hasClass('role');
         $('span').removeClass("inactive");
-        $('.role').removeClass('role');
-        if (!wasInactive){
-            activatePredicateFromText($(this));
-        }
-
+        if (wasInactive){ //deselecting an annotated thing
+            if (!isRole){
+                $('.role').removeClass('role');
+            } else { //deselect a role
+                $("#activeRole").text('');
+            }
+        } else{
+            if (!isRole){
+                $('.role').removeClass('role');
+                activatePredicateFromText($(this));
+            } else{
+                activateRoleFromText($(this));
+            }
+        } 
     });
 
     $("#anntype").on('change', function(){
@@ -56,6 +66,7 @@ $(function(){
 
 }); // This is where the load function ends!
 
+/*
 jQuery.expr[':'].regex = function(elem, index, match) {
     var matchParams = match[3].split(','),
         validLabels = /^(data|css):/,
@@ -68,6 +79,7 @@ jQuery.expr[':'].regex = function(elem, index, match) {
         regex = new RegExp(matchParams.join('').replace(/^\s+|\s+$/g,''), regexFlags);
     return regex.test(jQuery(elem)[attr.method](attr.property));
 }
+*/
 
 var loadFrames = function(){
     var etype=$("#picktype").val();
@@ -102,6 +114,24 @@ var activatePredicateFromText = function(elem){
     activatePredicate(docId, tid);
 }
 
+var activateRoleFromText = function(elem){
+    var aMention=elem.attr('id');
+    var docIdUnderscore=aMention.split('.')[0];
+    var tid=aMention.split('.')[2];
+    var roleId=currentPredRoles[tid];
+    $('#activeRole').text(roleId);
+//    elem.addClass('inactive');
+    jQuery.each(currentPredRoles, function(t, rlid) {
+        if (rlid==roleId){
+            var $roleMention=selectSpanUniqueID(docIdUnderscore, t);
+            $roleMention.addClass('inactive');
+            $("span[id='" + docIdUnderscore + "#" + t + "']").addClass('inactive');
+        }
+    });
+
+}
+
+
 var selectSpanUniqueID = function(docId, tid){
     return $("#pnlLeft span[id='" + unique2tool[docId + '#' + tid] + "']");
 }
@@ -130,12 +160,11 @@ var activatePredicate = function(docId, tid){
 
     var docIdUnderscore = docId.replace(/ /g, "_");
 
-    $('span').removeClass('role');
     $.get('/getroles', {'docid': docId, 'prid': prId}, function(data, status) {
-        console.log(data);
-        jQuery.each(data["roles"], function(tid, roleType){
+        currentPredRoles=data['roles'];
+        jQuery.each(data["roles"], function(tid, roleId){
             var $roleMention=selectSpanUniqueID(docIdUnderscore, tid);
-            $roleMention.addClass('role');
+            $roleMention.addClass('role').addClass('unclickable').removeClass('clickable');
         });
     });
     jQuery.each(docAnn, function(t, tdata) {
@@ -182,66 +211,83 @@ var printInfo = function(msg){
         $("#infoMessage").addClass("bad_info");
 }
 
+var addReferent = function(){
+    var newRef=$("#newReferent").val();
+    var inc=$("#pickfile").val();
+    $.post('/addreferent', {'newref': newRef, 'inc': inc}) 
+    .done(function(data) {
+        alert( "New referent saved." );
+        renderStructuredData(inc, data);
+    })
+    .fail(function(err) {
+        alert( "Error! Referent not saved.");
+    });
+}
+
+var renderStructuredData = function(inc, data){
+    var str_html='';
+    var allValues = new Set();
+
+    var incTypeId=$("#picktype").val();
+    var incTypeLabel=type2Label[incTypeId] || incTypeId;
+    
+    var incType=wdt_prefix + incTypeId;
+    var incId=wdt_prefix + inc;
+
+    str_html += "<label id=\"incType\">incident type:</label> ";
+    str_html+="<a href=\"" + incType + "\" class=\"strLink\">" + incTypeLabel + "</a>";
+    str_html+="<br/>";
+
+    str_html += "<label id=\"incId\">incident ID:</label> ";
+    str_html+="<a href=\"" + incId + "\" class=\"strLink\">" + incId + "</a>";
+    str_html+="<br/>";
+
+    for (var property in data) {
+        var vals=data[property];
+        var split_data=property.split(':');
+        if (split_data[0]=='pm') continue;
+        var clean_property=split_data[1];
+        str_html += "<label id=\"strloc\">" + clean_property + ":</label> ";
+        for (var i=0; i<vals.length; i++){
+            var splitted=vals[i].split('|');
+            if (i>0) str_html += ", ";
+            var valLink=splitted[0];
+            var valText=splitted[1];
+            if ($.trim(valText)=="") str_html+=valLink;
+            else str_html += "<a href=\"" + valLink + "\" class=\"strLink\" target=\"_blank\">" + valText + "</a>";
+            allValues.add(vals[i]);
+        }
+        str_html+="<br/>";
+    }
+    $("#strinfo").html(str_html);
+
+    $(".strLink").click(function(e){
+        if (!e.ctrlKey && !e.metaKey){
+            e.preventDefault();
+            var link=$(this).attr('href');
+            var text=$(this).text();
+            if ($(this).hasClass('referent')){
+                $(this).removeClass('referent');
+                var index = referents.indexOf(link + '|' + text);
+                if (index !== -1) referents.splice(index, 1);
+            } else {
+                referents.push(link + '|' + text);
+                $(this).addClass('referent');
+            }
+            var myHtml="";
+            referents.forEach(function(ref){
+                myHtml+=makeHtml(ref) + '<br/>';
+            });
+            $("#referents").html(myHtml);
+        } else if (!($(this).attr('href').startsWith('http')))
+            e.preventDefault();
+    });
+}
+
 var getStructuredData = function(inc){
     $.get('/getstrdata', {'inc': inc}, function(data, status) {
         //var data=JSON.parse(data);
-        var str_html='';
-        var allValues = new Set();
-
-        var incTypeId=$("#picktype").val();
-        var incTypeLabel=type2Label[incTypeId] || incTypeId;
-        
-        var incType=wdt_prefix + incTypeId;
-        var incId=wdt_prefix + inc;
-
-        str_html += "<label id=\"incType\">incident type:</label> ";
-        str_html+="<a href=\"" + incType + "\" class=\"strLink\">" + incTypeLabel + "</a>";
-        str_html+="<br/>";
-
-        str_html += "<label id=\"incId\">incident ID:</label> ";
-        str_html+="<a href=\"" + incId + "\" class=\"strLink\">" + incId + "</a>";
-        str_html+="<br/>";
-
-        for (var property in data) {
-            var vals=data[property];
-            var split_data=property.split(':');
-            if (split_data[0]=='pm') continue;
-            var clean_property=split_data[1];
-            str_html += "<label id=\"strloc\">" + clean_property + ":</label> ";
-            for (var i=0; i<vals.length; i++){
-                var splitted=vals[i].split('|');
-                if (i>0) str_html += ", ";
-                var valLink=splitted[0];
-                var valText=splitted[1];
-                if ($.trim(valText)=="") str_html+=valLink;
-                else str_html += "<a href=\"" + valLink + "\" class=\"strLink\" target=\"_blank\">" + valText + "</a>";
-                allValues.add(vals[i]);
-            }
-            str_html+="<br/>";
-        }
-        $("#strinfo").html(str_html);
-
-        $(".strLink").click(function(e){
-            if (!e.ctrlKey && !e.metaKey){
-                e.preventDefault();
-                var link=$(this).attr('href');
-                var text=$(this).text();
-                if ($(this).hasClass('referent')){
-                    $(this).removeClass('referent');
-                    var index = referents.indexOf(link + '|' + text);
-                    if (index !== -1) referents.splice(index, 1);
-                } else {
-                    referents.push(link + '|' + text);
-                    $(this).addClass('referent');
-                }
-                var myHtml="";
-                referents.forEach(function(ref){
-                    myHtml+=makeHtml(ref) + '<br/>';
-                });
-                $("#referents").html(myHtml);
-            } else if (!($(this).attr('href').startsWith('http')))
-                e.preventDefault();
-        });
+        renderStructuredData(inc, data);
     });
 }
 
@@ -384,6 +430,7 @@ var defaultValues = function(){
     referents=[];
     $("#referents").html("");
     $(".referent").removeClass("referent");
+    $("#activeRole").text('');
 }
 
 var getMaxPredicateID=function(docAnnotations){
@@ -438,6 +485,13 @@ var reloadInside=function(){
             }
             newClass = 'event_' + $("#frameChooser").val();
         } else if ($("#anntype").val()=='role'){
+            for (var i=0; i<mentions.length; i++){
+                var token=mentions[i];
+                var elems=token.split('.');
+                var tid=elems[2];
+                var activeRole=$("#activeRole").text();
+                currentPredRoles[tid]=activeRole;
+            }
             newClass = 'role';
         } 
         //$("span.inactive").children().remove();
@@ -572,6 +626,8 @@ var validateAnnotation = function(anntype){
                 } else if (anntype=='role') {
                     var role = $("#activeFrame").text() + "@" + $('#roleChooser').val();
                     var anAnnotation = {'anntype': anntype, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': allMentions, 'semRole': role, 'referents': wdtLinks};
+                    if ($("#activeRole").text())
+                        anAnnotation['rlid']=$("#activeRole").text();
                 } else { //idiom
                     var anAnnotation = {'anntype': anntype, 'mentions': allMentions};
                 }

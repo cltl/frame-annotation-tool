@@ -56,6 +56,8 @@ dataDir='data/naf/';
 
 annotationDir='annotation/'
 
+customRefs={};
+
 var xmlOptions = {
     attributeNamePrefix : "",
     attrNodeName: "attr", //default is 'false'
@@ -163,9 +165,11 @@ app.post('/login',
   passport.authenticate('local', { failureRedirect: '/' }),
   function(req, res) {
     req.session.visited = new Date().toISOString().replace(/\..+/, '');
+    var refFilePath=annotationDir + req.user.user + '/customrefs.json';
+    fs.closeSync(fs.openSync(refFilePath, 'a'));
     res.sendStatus(200);
-  });
-
+});
+ 
 app.get('/logout', function(req, res) {
     req.session.destroy();
 
@@ -207,6 +211,45 @@ var getTokenData = function(tokens){
     return tokenData;
 }
 
+var getRoleData = function(roles, callback){
+    var result={};
+    if (!(Array.isArray(roles))) roles=[roles];
+    if (!roles || roles.length==0) callback(result);
+    else{
+        for (var role_i=0; role_i<roles.length; role_i++){
+            var role=roles[role_i];
+            var roleId=role["attr"]["id"]; 
+            var targets=role['span']['target'];
+            if (!(Array.isArray(targets))) targets=[targets];
+            console.log(JSON.stringify(targets));
+            for (var j=0; j<targets.length; j++){
+                var tid=targets[j]['attr']['id'];
+                console.log(tid);
+                result[tid]=roleId;
+                console.log('result' + JSON.stringify(result));
+                if (j==targets.length-1 && role_i==roles.length-1){
+                    callback(result);
+                }
+            }
+
+            /*getMostRecentAnnotations(role['externalReferences']['externalRef'], function(rawRoleType, roleRefer){
+                var roleType=rawRoleType.split('@')[1];
+                var targets=role['span']['target'];
+                if (!(Array.isArray(targets))) targets=[targets];
+                console.log(JSON.stringify(targets));
+                for (var j=0; j<targets.length; j++){
+                    var tid=targets[j]['attr']['id'];
+                    result[tid]=roleId;
+                    if (j==targets.length-1 && role_i==roles.length-1){
+                        callback(result);
+                    }
+                }
+            }); */
+        }
+    }
+}
+
+
 var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
     var srl_data=[];
     if (jsonObj['NAF']['srl'])
@@ -217,13 +260,13 @@ var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
         callback({});
     } else {
         if (!(Array.isArray(srl_data))) srl_data=[srl_data];
-
         for (var i=0; i<srl_data.length; i++){
             var pr = srl_data[i];
             var pr_id=pr['attr']['id'];
-            console.log(pr_id);
             if (pr_id==the_id){
                 var roles=pr['role'];
+                console.log('get role data ' + the_id);
+                console.log(JSON.stringify(roles));
                 getRoleData(roles, function(result){
                     callback(result);
                 });
@@ -232,38 +275,6 @@ var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
     }
 }
 
-var getRoleData = function(roles, callback){
-    var result={};
-    if (!roles || roles.length==0) callback(result);
-    else{
-        for (var role_i=0; role_i<roles.length; role_i++){
-            var role=roles[role_i];
-            var roleId=role["attr"]["id"]; 
-            var extRefs = role['externalReferences']['externalRef'];
-            var roleType='';
-            if (!(Array.isArray(extRefs)))
-                roleType = extRefs['attr']['reference'].split('@')[1];
-            else{
-                extRefs.forEach(function(extRef){
-                    if (extRef['attr']['reftype']=='type')
-                        roleType=extRef['attr']['reference'].split('@')[1];
-                });
-            } 
-
-            var targets=role['span']['target'];
-            if (!(Array.isArray(targets))) targets=[targets];
-            console.log(JSON.stringify(targets));
-            for (var j=0; j<targets.length; j++){
-                var tid=targets[j]['attr']['id'];
-                var tidEntry = roleType;
-                result[tid]=roleId;
-                if (j==targets.length-1 && role_i==roles.length-1){
-                    callback(result);
-                }
-            }
-        }
-    }
-}
 
 var moreRecent = function(a, b){
     if (!a) return true;
@@ -272,6 +283,44 @@ var moreRecent = function(a, b){
         var bdate=new Date(b);
         return adate<=bdate;
     }
+}
+
+var getMostRecentAnnotations = function(extRefs, callback){
+    var ftype='';
+    var frefers=[];
+    if (extRefs){
+        if (!(Array.isArray(extRefs))) //if there is a single entry, it has to be type
+            ftype = extRefs['attr']['reference'];
+        else{
+            var lastAnnotation=null;
+            var lastTimepoint=null;
+            var referenceRels={};
+            for (var e=0; e<extRefs.length; e++){
+                var extRef=extRefs[e];
+
+                if (extRef['attr']['reftype']=='type'){
+                    if (moreRecent(lastTimepoint, extRef['attr']['timestamp'])){
+                        ftype=extRef['attr']['reference'];
+                        lastTimepoint=extRef['attr']['timestamp'];
+                    }
+                }
+                else if (extRef['attr']['reftype']=='refer'){
+                    var theTime=extRef['attr']['timestamp'];
+                    if (!referenceRels[theTime]){
+                        referenceRels[theTime]=[extRef['attr']['reference']];
+                    } else {
+                        referenceRels[theTime].push(extRef['attr']['reference']);
+                    }
+                }
+                if (e==extRefs.length-1){
+                    if (referenceRels[lastTimepoint]) 
+                        frefers=referenceRels[lastTimepoint];
+                    callback(ftype, frefers);
+                }
+            }
+        }
+    } 
+    else callback(ftype, frefers);
 }
 
 var prepareAnnotations = function(srl_data, callback){
@@ -284,52 +333,23 @@ var prepareAnnotations = function(srl_data, callback){
     for (var i=0; i<srl_data.length; i++){
         var pr = srl_data[i];
         var pr_id=pr['attr']['id'];
-        var extRefs = pr['externalReferences']['externalRef'];
-        var ftype='';
-        var frefers=[];
-        if (extRefs){
-            if (!(Array.isArray(extRefs))) //if there is a single entry, it has to be type
-                ftype = extRefs['attr']['reference'];
-            else{
-                var lastAnnotation=null;
-                var lastTimepoint=null;
-                var referenceRels={};
-                for (var e=0; e<extRefs.length; e++){
-                    var extRef=extRefs[e];
-
-                    if (extRef['attr']['reftype']=='type'){
-                        if (moreRecent(lastTimepoint, extRef['attr']['timestamp'])){
-                            ftype=extRef['attr']['reference'];
-                            lastTimepoint=extRef['attr']['timestamp'];
-                        }
-                    }
-                    else if (extRef['attr']['reftype']=='refer'){
-                        var theTime=extRef['attr']['timestamp'];
-                        if (!referenceRels[theTime]){
-                            referenceRels[theTime]=[extRef['attr']['reference']];
-                        } else {
-                            referenceRels[theTime].push(extRef['attr']['reference']);
-                        }
-                    }
-                }
-            }
-        }
-        if (referenceRels[lastTimepoint]) 
-            frefers=referenceRels[lastTimepoint];
         var targets=pr['span']['target'];
         if (!(Array.isArray(targets))) targets=[targets];
 
-        for (var j=0; j<targets.length; j++){
-            var tid=targets[j]['attr']['id'];
-            var tidEntry = {'frametype': ftype, 'predicate': pr_id, 'referents': frefers};
-            result[tid]=tidEntry;
-            if (j+1==targets.length){
-                done_i++;
-                if (done_i==srl_data.length) {
-                    callback(result);
+        getMostRecentAnnotations(pr['externalReferences']['externalRef'], function(ftype, frefers){
+            for (var j=0; j<targets.length; j++){
+                var tid=targets[j]['attr']['id'];
+                var tidEntry = {'frametype': ftype, 'predicate': pr_id, 'referents': frefers};
+                result[tid]=tidEntry;
+                if (j+1==targets.length){
+                    done_i++;
+                    if (done_i==srl_data.length) {
+                        callback(result);
+                    }
                 }
             }
-        }
+        });
+
     }
 }
 
@@ -503,7 +523,7 @@ var createNewRoleEntry=function(rl_id, semRole, sessionId, referents, mentions, 
 //    aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
     if (referents && referents.length>0){
         referents.forEach(function(ref){
-            aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'reference', 'timestamp': timestamp}});
+            aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'refer', 'timestamp': timestamp}});
         });
     }
     return aRole;
@@ -740,10 +760,55 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
     }
 });
 
-app.get('/getstrdata', isAuthenticated, function(req, res){
-    var inc = req.query['inc'];
+var getStructuredData = function(u, inc, callback){
     var jsonResult=inc2str[inc];
-    res.send(jsonResult);
+    var refFilePath=annotationDir + u + '/customrefs.json';
+    fs.readFile(refFilePath, 'utf-8', function(err, data){
+        data=data.trim();
+        if (data && data!=''){
+            console.log('string ' + data);
+            customRefs=JSON.parse(data);
+            if (customRefs[inc])
+                jsonResult['user:custom']=customRefs[inc];
+        }
+        callback(jsonResult);
+    });
+}
+
+app.get('/getstrdata', isAuthenticated, function(req, res){
+    getStructuredData(req.user.user, req.query['inc'], function(data){
+        res.send(data);
+    });
+});
+
+app.post('/addreferent', isAuthenticated, function(req, res){
+    var newRef=req.body.newref;
+    var inc=req.body.inc;
+    var u = req.user.user;
+
+    var newRefLink = inc + '#' + req.sessionID + '#' + newRef;
+    var aReferent=newRefLink + '|' + newRef;
+
+    var refFilePath=annotationDir + u + '/customrefs.json';
+    var customRefs={};
+    fs.readFile(refFilePath, 'utf-8', function(err, data){
+        if (err) throw err; // we'll not consider error handling for now
+        if (data && data!=''){
+            customRefs=JSON.parse(data);
+            if (customRefs[inc])
+                customRefs[inc].push(aReferent);
+            else
+                customRefs[inc]=[aReferent];
+        } else{
+            customRefs={inc: [aReferent]};
+        }
+        fs.writeFile(refFilePath, JSON.stringify(customRefs), function(err){
+            if (err) console.log(err);
+            getStructuredData(u, inc, function(data){
+                res.send(data);
+            });
+        });
+    });
 });
 
 // =====================================

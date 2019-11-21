@@ -109,9 +109,15 @@
         <div class="col-sm-4">
             <div id="strinfo"></div>
         </div>
-        <div class="row col-sm-12">
+        <div class="col-sm-8">
             <input type="checkbox" name="chkPreann" value="showPreann" checked><label>Show pre-annotations</label>&nbsp;&nbsp;
             <input type="checkbox" name="chkUserAnn" value="showUserAnn" checked><label>Show your annotations</label>&nbsp;&nbsp;
+        </div>
+        <div class="col-sm-2">
+            <input type="text" id="newReferent" placeholder="e.g., John Doe"/>
+        </div>
+        <div class="col-sm-2">
+            <button class="btn btn-primary" onclick="addReferent()">Add referent</button>
         </div>
     </div>
     <br/>
@@ -127,6 +133,7 @@
                 <label>Type:</label> <span id="activeFrame">none</span><br/>
                 <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
                 <label>Referents:</label><div id="frameWdt"></div><br/>
+                <label>Active role:</label> <span id="activeRole"></span><br/>
             </div>
             <div class="statusDiv">
                 <h4>SRL annotations</h4>

@@ -57,6 +57,11 @@ span.inactive {
     background: #BB8FCE;
 }
 
+span.inactive-role {
+    background: #BB8FCE;
+}
+
+
 label.active {
     background: #0f0;
 }
@@ -129,5 +134,9 @@ label.inactive {
 }
 
 select {
+    width: 100%;
+}
+
+#newReferent {
     width: 100%;
 }
