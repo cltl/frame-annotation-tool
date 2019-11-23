@@ -217,6 +217,7 @@ var addReferent = function(){
     $.post('/addreferent', {'newref': newRef, 'inc': inc}) 
     .done(function(data) {
         alert( "New referent saved." );
+        $("#newReferent").val('');
         renderStructuredData(inc, data);
     })
     .fail(function(err) {

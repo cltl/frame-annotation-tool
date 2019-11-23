@@ -213,11 +213,14 @@ var getTokenData = function(tokens){
 
 var getRoleData = function(roles, callback){
     var result={};
+    console.log(JSON.stringify(roles));
     if (!(Array.isArray(roles))) roles=[roles];
     if (!roles || roles.length==0) callback(result);
     else{
         for (var role_i=0; role_i<roles.length; role_i++){
+            console.log(role_i);
             var role=roles[role_i];
+            console.log(JSON.stringify(role));
             var roleId=role["attr"]["id"]; 
             var targets=role['span']['target'];
             if (!(Array.isArray(targets))) targets=[targets];
@@ -259,12 +262,14 @@ var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
         console.log('EMPTY');
         callback({});
     } else {
+        console.log(JSON.stringify(srl_data));
         if (!(Array.isArray(srl_data))) srl_data=[srl_data];
         for (var i=0; i<srl_data.length; i++){
             var pr = srl_data[i];
             var pr_id=pr['attr']['id'];
             if (pr_id==the_id){
                 var roles=pr['role'];
+                console.log(JSON.stringify(pr));
                 console.log('get role data ' + the_id);
                 console.log(JSON.stringify(roles));
                 getRoleData(roles, function(result){
@@ -427,6 +432,7 @@ function loadNAFFile(nafName, theUser, adaptJson, callback){
                 callback(info);
             });
         } else {
+            console.log(jsonObj);
             callback(jsonObj);
         }
     });
@@ -553,7 +559,10 @@ var annotateFrame=function(jsonData, annotations, sessionId){
     var timestamp=new Date().toISOString().replace(/\..+/, '');
     if (!activePredicate) { // create a new predicate entry
         var aPredicate=createNewPredicateEntry(pr_id, frame, sessionId, reftype, referents, tids, timestamp);
-        jsonData['NAF']['srl']['predicate'].push(aPredicate);
+        var allPredicates=jsonData['NAF']['srl']['predicate'];
+        console.log(allPredicates);
+        console.log(aPredicate);
+        allPredicates.push(aPredicate);
         return {'prid': pr_id, 'json': jsonData};
     } else { //update existing one
         for (var i=0; i<thePredicates.length; i++){
@@ -708,6 +717,7 @@ app.get('/getroles', isAuthenticated, function(req, res){
         var docid = req.query['docid'];
         loadNAFFile(docid, req.user.user, false, function(rawData){
             var the_id=req.query['prid'];
+            console.log(JSON.stringify(rawData));
             getAnnotatedRolesForPredicate(rawData, the_id, function(roleData){
                 res.send({"roles": roleData});
             });
@@ -790,22 +800,21 @@ app.post('/addreferent', isAuthenticated, function(req, res){
     var aReferent=newRefLink + '|' + newRef;
 
     var refFilePath=annotationDir + u + '/customrefs.json';
-    var customRefs={};
     fs.readFile(refFilePath, 'utf-8', function(err, data){
         if (err) throw err; // we'll not consider error handling for now
-        if (data && data!=''){
-            customRefs=JSON.parse(data);
-            if (customRefs[inc])
-                customRefs[inc].push(aReferent);
-            else
-                customRefs[inc]=[aReferent];
+        var customRefs=JSON.parse(data);
+        if (customRefs[inc]){
+            customRefs[inc].push(aReferent);
+            console.log('incident updated', customRefs[inc]);
         } else{
-            customRefs={inc: [aReferent]};
+            customRefs[inc]=[aReferent];
+            console.log('new incident info added', customRefs[inc]);
         }
         fs.writeFile(refFilePath, JSON.stringify(customRefs), function(err){
             if (err) console.log(err);
-            getStructuredData(u, inc, function(data){
-                res.send(data);
+            getStructuredData(u, inc, function(newData){
+                console.log(newData);
+                res.send(newData);
             });
         });
     });
