@@ -165,6 +165,15 @@ app.post('/login',
   passport.authenticate('local', { failureRedirect: '/' }),
   function(req, res) {
     req.session.visited = new Date().toISOString().replace(/\..+/, '');
+    var userAnnotationDir=annotationDir + req.user.user + "/";
+
+    mkdirp(userAnnotationDir, function (err) {
+    if (err) console.error('Error with creating a directory' + err);
+    else {
+        var refFilePath=userAnnotationDir + 'customrefs.json';
+        fs.closeSync(fs.openSync(refFilePath, 'a'));
+    }
+    });
     res.sendStatus(200);
 });
  
@@ -744,8 +753,6 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
             mkdirp(userAnnotationDirLang, function (err) {
                 if (err) console.error('Error with creating a directory' + err);
                 else {
-                    var refFilePath=userAnnotationDir + 'customrefs.json';
-                    fs.closeSync(fs.openSync(refFilePath, 'a'));
                     var userAnnotationFile=userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
                     var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
@@ -802,7 +809,9 @@ app.post('/addreferent', isAuthenticated, function(req, res){
     var refFilePath=annotationDir + u + '/customrefs.json';
     fs.readFile(refFilePath, 'utf-8', function(err, data){
         if (err) throw err; // we'll not consider error handling for now
-        var customRefs=JSON.parse(data);
+        var customRefs={};
+        if (data && data!='')
+            customRefs=JSON.parse(data);
         if (customRefs[inc]){
             customRefs[inc].push(aReferent);
             console.log('incident updated', customRefs[inc]);
