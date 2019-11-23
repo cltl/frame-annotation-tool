@@ -165,8 +165,6 @@ app.post('/login',
   passport.authenticate('local', { failureRedirect: '/' }),
   function(req, res) {
     req.session.visited = new Date().toISOString().replace(/\..+/, '');
-    var refFilePath=annotationDir + req.user.user + '/customrefs.json';
-    fs.closeSync(fs.openSync(refFilePath, 'a'));
     res.sendStatus(200);
 });
  
@@ -746,6 +744,8 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
             mkdirp(userAnnotationDirLang, function (err) {
                 if (err) console.error('Error with creating a directory' + err);
                 else {
+                    var refFilePath=userAnnotationDir + 'customrefs.json';
+                    fs.closeSync(fs.openSync(refFilePath, 'a'));
                     var userAnnotationFile=userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
                     var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
