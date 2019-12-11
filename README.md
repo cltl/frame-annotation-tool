@@ -5,6 +5,10 @@ Annotation tool in JavaScript and Node.js for annotation of frames in Dutch docu
 
 To install all the needed packages, please run `npm install`. This will install all dependencies listed in `package.json`.
 
+Other things needed for the tool to work (if you don't know how to get these, contact Filip or Piek):
+* The `data` folder should be in this directory and contain a subfolder `json`. 
+* There should be an authentication file `allowed.json` that contains the users and their passwords as key-value pairs. 
+
 *That should be it ;)*
 
 ### Starting the server
