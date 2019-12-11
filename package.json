@@ -4,8 +4,8 @@
   "description": "Annotation tool in JavaScript and Node.js for annotation of frames in Dutch documents. Developed within the [Dutch Framenet](http://dutchframenet.nl) project.",
   "main": "server.js",
   "scripts": {
-    "test": "node server.js",
-    "start": "node server.js"
+    "test": "node frame.js",
+    "start": "node frame.js"
   },
   "repository": {
     "type": "git",
