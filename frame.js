@@ -298,64 +298,78 @@ var moreRecent = function(a, b){
 }
 
 var getMostRecentAnnotations = function(extRefs, callback){
-    var ftype='';
-    var frefers=[];
-    if (extRefs){
-        if (!(Array.isArray(extRefs))) //if there is a single entry, it has to be type
-            ftype = extRefs['attr']['reference'];
-        else{
-            var lastAnnotation=null;
-            var lastTimepoint=null;
-            var referenceRels={};
-            for (var e=0; e<extRefs.length; e++){
-                var extRef=extRefs[e];
+    var ftype = '';
+    var frefers = [];
 
-                if (extRef['attr']['reftype']=='type'){
-                    if (moreRecent(lastTimepoint, extRef['attr']['timestamp'])){
-                        ftype=extRef['attr']['reference'];
-                        lastTimepoint=extRef['attr']['timestamp'];
+    if (extRefs){
+        // If there is a single entry, it has to be type
+        if (!(Array.isArray(extRefs))) {
+            ftype = extRefs['attr']['reference'];
+
+            callback(ftype, frefers);
+        } else {
+            var lastAnnotation = null;
+            var lastTimepoint = null;
+            var referenceRels = {};
+            for (var e = 0; e < extRefs.length; e++){
+                var extRef = extRefs[e];
+
+                if (extRef['attr']['reftype'] == 'type'){
+                    if (moreRecent(lastTimepoint, extRef['attr']['timestamp'])) {
+                        ftype = extRef['attr']['reference'];
+                        lastTimepoint = extRef['attr']['timestamp'];
                     }
-                }
-                else if (extRef['attr']['reftype']=='refer'){
-                    var theTime=extRef['attr']['timestamp'];
-                    if (!referenceRels[theTime]){
-                        referenceRels[theTime]=[extRef['attr']['reference']];
+                } else if (extRef['attr']['reftype'] == 'refer'){
+                    var theTime = extRef['attr']['timestamp'];
+
+                    if (!referenceRels[theTime]) {
+                        referenceRels[theTime] = [extRef['attr']['reference']];
                     } else {
                         referenceRels[theTime].push(extRef['attr']['reference']);
                     }
                 }
-                if (e==extRefs.length-1){
-                    if (referenceRels[lastTimepoint]) 
+                
+                if (e == extRefs.length - 1) {
+                    if (referenceRels[lastTimepoint]) {
                         frefers=referenceRels[lastTimepoint];
+                    }
+
                     callback(ftype, frefers);
                 }
             }
         }
-    } 
-    else callback(ftype, frefers);
+    } else {
+        callback(ftype, frefers);
+    }
 }
 
 var prepareAnnotations = function(srl_data, callback){
-    var result={};
-    if (!srl_data || srl_data.length==0)
+    var result = {};
+
+    if (!srl_data || srl_data.length==0) {
         callback(result);
-    if (!(Array.isArray(srl_data))) srl_data=[srl_data];
+    }
 
-    var done_i=0;
-    for (var i=0; i<srl_data.length; i++){
+    if (!(Array.isArray(srl_data))) srl_data = [srl_data];
+
+    var done_i = 0;
+    for (var i = 0; i < srl_data.length; i++) {
         var pr = srl_data[i];
-        var pr_id=pr['attr']['id'];
-        var targets=pr['span']['target'];
-        if (!(Array.isArray(targets))) targets=[targets];
+        var pr_id = pr['attr']['id'];
+        var targets = pr['span']['target'];
 
-        getMostRecentAnnotations(pr['externalReferences']['externalRef'], function(ftype, frefers){
-            for (var j=0; j<targets.length; j++){
-                var tid=targets[j]['attr']['id'];
+        if (!(Array.isArray(targets))) {
+            targets = [targets];
+        }
+
+        getMostRecentAnnotations(pr['externalReferences']['externalRef'], function(ftype, frefers) {
+            for (var j = 0; j < targets.length; j++){
+                var tid = targets[j]['attr']['id'];
                 var tidEntry = {'frametype': ftype, 'predicate': pr_id, 'referents': frefers};
-                result[tid]=tidEntry;
-                if (j+1==targets.length){
+                result[tid] = tidEntry;
+                if (j+1 == targets.length){
                     done_i++;
-                    if (done_i==srl_data.length) {
+                    if (done_i == srl_data.length) {
                         callback(result);
                     }
                 }
@@ -370,51 +384,70 @@ var json2info = function(jsonObj, nafName, callback){
     var tokenData = getTokenData(tokens);
 
     var terms = jsonObj['NAF']['terms']['term'];
-    var srl=[];
-    if (jsonObj['NAF']['srl'])
-        srl=jsonObj['NAF']['srl']['predicate'];
+    var srl = [];
+
+    if (jsonObj['NAF']['srl']) {
+        srl = jsonObj['NAF']['srl']['predicate'];
+    }
+
     var termData = {};
 
-    var ready_title_terms=[];
-    var ready_body_terms=[];
+    var ready_title_terms = [];
+    var ready_body_terms = [];
 
-    var wikiTitle=jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
-    if (!wikiTitle)
+    var wikiTitle = jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
+    if (!wikiTitle) {
         console.log(jsonObj);
-    for (var i=0; i<terms.length; i++){
-        var term=terms[i];
+    }
+    
+    // Iterate over term layer
+    for (var i = 0; i < terms.length; i++){
+        var term = terms[i];
 
-        var termId=term['attr']['id'];
+        var termId = term['attr']['id'];
+        var targets = [term['span']['target']];
+        var components = term['component'];
 
-        var targets=[term['span']['target']];
-        var components=term['component'];
-        if (components){
-            for (var c=0; c<components.length; c++){
-                var comp=components[c];
-                var compId=comp['attr']['id'];
-                var lemma=comp['attr']['lemma'];
-                var tokenId=targets[0]['attr']['id'];
-                var sent=tokenData[tokenId]['sent'];
-                var termData={'text': lemma, 'tid': compId, 'sent': sent}; 
-                if (sent=='1') ready_title_terms.push(termData);
+        if (components) {
+            for (var c = 0; c < components.length; c++){
+                var comp = components[c];
+                var compId = comp['attr']['id'];
+                var lemma = comp['attr']['lemma'];
+                var tokenId = targets[0]['attr']['id'];
+                var sent = tokenData[tokenId]['sent'];
+                var termData = {'text': lemma, 'tid': compId, 'sent': sent};
+
+                if (sent == '1') {
+                    ready_title_terms.push(termData);
+                }
+
                 else ready_body_terms.push(termData);
             }
-        } else {
-            var termTokens=[];
-            for (var t=0; t<targets.length; t++){
-                var target=targets[t];
-                var targetId=target['attr']['id'];
-                var targetInfo=tokenData[targetId];
-                var sent=targetInfo['sent'];
+        }
+        
+        else {
+            var termTokens = [];
+            for (var t = 0; t < targets.length; t++){
+                var target = targets[t];
+                var targetId = target['attr']['id'];
+                var targetInfo = tokenData[targetId];
+                var sent = targetInfo['sent'];
                 termTokens.push(targetInfo['text']);
             }
-            var termData={'text': termTokens.join(' '), 'tid': termId, 'sent': sent};
-            if (sent=='1') ready_title_terms.push(termData);
-            else ready_body_terms.push(termData);
+
+            var termData = {'text': termTokens.join(' '), 'tid': termId, 'sent': sent};
+            
+            if (sent == '1') {
+                ready_title_terms.push(termData);
+            } else {
+                ready_body_terms.push(termData);
+            }
         }
-        if (i==terms.length-1){
-            console.log(i + ' is at the end. Prepare annotations for this file. Srl:');
-            prepareAnnotations(srl, function(ready_srl){
+
+        if (i == terms.length - 1){
+            console.log(i + ' is at the end. Prepare annotations for ' + nafName + '. Srl:');
+
+            prepareAnnotations(srl, function(ready_srl) {
                 console.log('All annotations ready');
                 callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl, 'source': wikiTitle, 'sourcetype': wikiTitle.includes('wikipedia') ? "secondary" : "primary"});
             });
@@ -423,11 +456,11 @@ var json2info = function(jsonObj, nafName, callback){
 }
 
 function loadNAFFile(nafName, theUser, adaptJson, callback){
-    var filename=annotationDir + theUser + '/' + nafName + '.naf';
+    var filename = annotationDir + theUser + '/' + nafName + '.naf';
     if (!(fs.existsSync(filename))){
         var filename=dataDir + nafName + '.naf';
     }
-    console.log(filename);
+
     fs.readFile(filename, 'utf-8', function(err, xmlData) {
         if (err) {
             console.error(err);
@@ -446,12 +479,14 @@ function loadNAFFile(nafName, theUser, adaptJson, callback){
 }
 
 var loadAllNafs = function(nafs, theUser, callback){
-    var data=[];
-    console.log(nafs); 
-    for (var i=0; i<nafs.length; i++){
+    var data = [];
+
+    for (var i = 0; i < nafs.length; i++){
         loadNAFFile(nafs[i], theUser, true, function(nafData){
             data.push(nafData);
-            if (data.length==nafs.length) callback(data);
+            if (data.length == nafs.length) {
+                callback(data);
+            }
         });
     }
 }
@@ -542,40 +577,55 @@ var createNewRoleEntry=function(rl_id, semRole, sessionId, referents, mentions, 
     return aRole;
 }
 
-var annotateFrame=function(jsonData, annotations, sessionId){
-
+var annotateFrame = function(jsonData, annotations, sessionId){
     var frame = annotations['frame'];
     var reftype = annotations['reltype'];
     var tids = annotations['mentions'];
-    var referents= annotations['referents'];
-    var activePredicate=annotations['predicate'];
-    if (!('srl' in jsonData['NAF'])){
-        jsonData['NAF']['srl']={};
-        jsonData['NAF']['srl']['#text']='';
-        jsonData['NAF']['srl']['predicate']=[];
-        var pr_id="pr1";
-    } else {
-        var thePredicates=jsonData['NAF']['srl']['predicate'];
-        if (!(Array.isArray(thePredicates))) thePredicates=[thePredicates];
+    var referents = annotations['referents'];
+    var activePredicate = annotations['predicate'];
 
-        if (!activePredicate){
-            var pr_num=(parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
-            var pr_id="pr" + pr_num;
-        }
+    // Create SRL layer if not exists
+    if (!('srl' in jsonData['NAF'])){
+        jsonData['NAF']['srl'] = {};
+        jsonData['NAF']['srl']['#text'] = '';
+        jsonData['NAF']['srl']['predicate'] = [];
+
+        var pr_id = "pr1";
     }
-    var timestamp=new Date().toISOString().replace(/\..+/, '');
-    if (!activePredicate) { // create a new predicate entry
-        var aPredicate=createNewPredicateEntry(pr_id, frame, sessionId, reftype, referents, tids, timestamp);
-        var allPredicates=jsonData['NAF']['srl']['predicate'];
-        console.log(allPredicates);
-        console.log(aPredicate);
-        allPredicates.push(aPredicate);
+    
+    // Find pr_id for new predicate
+    else {
+        var thePredicates = jsonData['NAF']['srl']['predicate'];
+
+        if (!(Array.isArray(thePredicates))) { 
+            thePredicates = [thePredicates];
+        }
+
+        // Selected term is not yet a predicate
+        if (!activePredicate){
+            var pr_num = (parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
+            var pr_id = "pr" + pr_num;
+        }
+
+        jsonData['NAF']['srl']['predicate'] = thePredicates
+    }
+
+    var timestamp = new Date().toISOString().replace(/\..+/, '');
+
+    // Create new predicate if selected term is not predicate already
+    if (!activePredicate) {
+        var aPredicate = createNewPredicateEntry(pr_id, frame, sessionId, reftype, referents, tids, timestamp);
+        jsonData['NAF']['srl']['predicate'].push(aPredicate);
         return {'prid': pr_id, 'json': jsonData};
-    } else { //update existing one
-        for (var i=0; i<thePredicates.length; i++){
-            var aPredicate=thePredicates[i];
+    }
+
+    // Update selected term
+    else {
+        for (var i=0; i < thePredicates.length; i++){
+            var aPredicate = thePredicates[i];
+
             if (aPredicate['attr']['id']==activePredicate){
-                var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents, timestamp);
+                var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reftype, referents, timestamp);
                 return {'prid': activePredicate, 'json': jsonData};
             }
         }
@@ -677,10 +727,13 @@ app.get('/listincidents', isAuthenticated, function(req, res){
 app.get('/loadincident', isAuthenticated, function(req, res){
     if (!req.query['inc'] || !req.query['etype']){
         res.sendStatus(400);//("Not OK: incident id not specified");
-    } else{
+    }
+    
+    else {
         var incidentId = req.query['inc'];
         var eventType = req.query['etype']
-        var nafs=inc2doc[incidentId];
+        var nafs = inc2doc[incidentId];
+
         loadAllNafs(nafs, req.user.user, function(data){
             console.log("All nafs loaded. returning the result now");
             res.send({'nafs': data});
@@ -733,34 +786,44 @@ app.get('/getroles', isAuthenticated, function(req, res){
 });
 
 app.post('/storeannotations', isAuthenticated, function(req, res){
-    var thisUser=req.user.user;
+    var thisUser = req.user.user;
     var loginTime = req.session.visited;
+
     console.log("Storing request received from " + thisUser);
+
     if (req.body.incident){
 	    var annotations = req.body.annotations || {};
-        var firstMention=annotations['mentions'][0];
+        var firstMention = annotations['mentions'][0];
         var docidAndTid = firstMention.split('.');
-        var docId=docidAndTid[0].replace(/_/g, " ");
-        loadNAFFile(docId, req.user.user, false, function(nafData){
-            var userAnnotationDir=annotationDir + thisUser + "/";
+        var docId = docidAndTid[0].replace(/_/g, " ");
 
-            var langAndTitle=docId.split('/');
-            var lang=langAndTitle[0];
-            var title=langAndTitle[1];
+        loadNAFFile(docId, req.user.user, false, function(nafData){
+            var userAnnotationDir = annotationDir + thisUser + "/";
+
+            var langAndTitle = docId.split('/');
+            var lang = langAndTitle[0];
+            var title = langAndTitle[1];
 
             var userAnnotationDirLang = userAnnotationDir + lang + '/';
 
             mkdirp(userAnnotationDirLang, function (err) {
-                if (err) console.error('Error with creating a directory' + err);
+                if (err) {
+                    console.error('Error with creating a directory' + err);
+                }
+
                 else {
                     var userAnnotationFile=userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
+
                     var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
-                    console.log(JSON.stringify(newData));
+                    //console.log(JSON.stringify(newData));
+
                     var updatedJson=saveSessionInfo(newData['json'], req.sessionID, thisUser, loginTime);
                     var pr_id=newData['prid'];
+
                     saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
-                        console.log('Error obtained with saving: ' + error);
+                        // console.log('Error obtained with saving: ' + error);
+
                         if (error){
                             res.status(400).json({'error': error});
                         } else {
