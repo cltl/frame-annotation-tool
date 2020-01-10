@@ -1,6 +1,7 @@
 annotation/
 data/naf
 data/json
+data/naf-with-annotations
 allowed.json
 package-lock.json
 node_modules/
