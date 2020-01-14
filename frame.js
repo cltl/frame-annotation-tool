@@ -262,36 +262,47 @@ var getRoleData = function(roles, callback){
     }
 }
 
+// Get the roles of an annotated frame
+// Parameters: object, string, callback
+var getAnnotatedRolesForPredicate = function(jsonObj, the_id, callback){
+    var srl_data = [];
 
-var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
-    var srl_data=[];
-
+    // Get SRL layer
     if (jsonObj['NAF']['srl'])
-        srl_data=jsonObj['NAF']['srl']['predicate'];
+        srl_data = jsonObj['NAF']['srl']['predicate'];
 
-    if (!srl_data || srl_data.length==0){
+    // Return empty if SRL layer is empty
+    if (!srl_data || srl_data.length == 0){
         console.log('EMPTY');
         callback({});
     } else {
-        console.log(JSON.stringify(srl_data));
-        if (!(Array.isArray(srl_data))) srl_data=[srl_data];
-        for (var i=0; i<srl_data.length; i++){
+        if (!(Array.isArray(srl_data))) srl_data = [srl_data];
+
+        // Find predicate in SRL where pr_id == the_id
+        for (var i = 0; i < srl_data.length; i++){
             var pr = srl_data[i];
-            var pr_id=pr['attr']['id'];
-            if (pr_id==the_id){
-                var roles=pr['role'];
-                console.log(JSON.stringify(pr));
-                console.log('get role data ' + the_id);
-                console.log(JSON.stringify(roles));
-                getRoleData(roles, function(result){
-                    callback(result);
-                });
+            var pr_id = pr['attr']['id'];
+
+            if (pr_id == the_id){
+                var roles = pr['role'];
+                
+                if (!roles) {
+                    callback({});
+                } else {
+                    console.log(JSON.stringify(pr));
+                    console.log('get role data ' + the_id);
+                    console.log(JSON.stringify(roles));
+
+                    getRoleData(roles, function(result){
+                        callback(result);
+                    });
+                }
             } 
         }    
     }
 }
 
-// Check if date a is more recent than date b
+// Check if date b is more recent than date a
 var moreRecent = function(date_a, date_b) {
     if (!date_a)
         return true;
@@ -299,7 +310,77 @@ var moreRecent = function(date_a, date_b) {
         return new Date(date_a) <= new Date(date_b);
 }
 
-var getMostRecentAnnotations = function(extRefs, callback){
+// Check if a term in a span of a predicate is in the most recent predicate
+var predicateIsMostRecentPredicate = function(srl, pr_id, targets) {
+    if (!Array.isArray(srl)) srl = [srl['predicate']];
+
+    var lastTimepoint = null;
+
+    console.log("+++++++++++++++++++++++++++++++++++++");
+    console.log("PRID: " + pr_id + "\n");
+
+    // Get most recent pr update
+    for (i = 0; i < srl.length; i++) {
+        if (srl[i]['attr']['id'] == pr_id) {
+            var ext_refs = srl[i]['externalReferences']['externalRef'];
+            if (!Array.isArray(ext_refs)) ext_refs = [ext_refs];
+
+            for (j = 0; j < ext_refs.length; j++) {
+                if (moreRecent(lastTimepoint, ext_refs[j]['attr']['timestamp'])) {
+                    lastTimepoint = ext_refs[j]['attr']['timestamp'];
+                }
+            }
+        }
+    }
+
+    // Loop over all targets in predicate
+    for (i = 0; i < targets.length; i++) {
+        var cur_tid = targets[i]['attr']['id'];
+
+        // Loop over all predicates in SRL layer
+        for (j = 0; j < srl.length; j++) {
+            var curr_pred = srl[j];
+            var curr_pred_id = curr_pred["attr"]["id"];
+            var curr_pred_refs = curr_pred['externalReferences']['externalRef'];
+
+            if (!Array.isArray(curr_pred_refs)) curr_pred_refs = [curr_pred_refs];
+
+            // If cur_prid is not pr_id
+            if (curr_pred['attr']['id'] !== pr_id) {
+                var pr_span = curr_pred['span']['target'];
+
+                // If predicate span contains cur_tid
+                for (k = 0; k < pr_span.length; k++) {
+                    if (pr_span[k]['attr']['id'] == cur_tid) {
+                        // Get most recent cur_pr update
+                        var latest_timestamp = null;
+
+                        // Get latest timestamp of pr_ext_refs
+                        for (l = 0; l < curr_pred_refs.length; l++) {
+                            var curr_timestamp = curr_pred_refs[l]['attr']['timestamp'];
+                            if (moreRecent(latest_timestamp, curr_timestamp)) {
+                                latest_timestamp = curr_timestamp;
+                            }
+                        }
+
+                        console.log("======================================================")
+                        console.log("Checking " + cur_tid + " of " + pr_id + " in " + curr_pred_id);
+                        console.log("Timestamp of " + pr_id + ": " + lastTimepoint);
+                        console.log("Timestamp of " + curr_pred_id + ": " + latest_timestamp);
+                        console.log("Result: " + moreRecent(lastTimepoint, latest_timestamp));
+                        if (moreRecent(lastTimepoint, latest_timestamp)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return true;
+}
+
+var getMostRecentAnnotations = function(extRefs, callback) {
     var ftype = '';
     var frefers = [];
 
@@ -312,10 +393,11 @@ var getMostRecentAnnotations = function(extRefs, callback){
             var lastAnnotation = null;
             var lastTimepoint = null;
             var referenceRels = {};
-            for (var e = 0; e < extRefs.length; e++){
+
+            for (var e = 0; e < extRefs.length; e++) {
                 var extRef = extRefs[e];
 
-                if (extRef['attr']['reftype'] == 'type'){
+                if (extRef['attr']['reftype'] == 'type') {
                     if (moreRecent(lastTimepoint, extRef['attr']['timestamp'])) {
                         ftype = extRef['attr']['reference'];
                         lastTimepoint = extRef['attr']['timestamp'];
@@ -332,10 +414,10 @@ var getMostRecentAnnotations = function(extRefs, callback){
                 
                 if (e == extRefs.length - 1) {
                     if (referenceRels[lastTimepoint]) {
-                        frefers=referenceRels[lastTimepoint];
+                        frefers = referenceRels[lastTimepoint];
                     }
 
-                    callback(ftype, frefers);
+                    callback(ftype, frefers, lastTimepoint);
                 }
             }
         }
@@ -363,20 +445,24 @@ var prepareAnnotations = function(srl_data, callback){
             targets = [targets];
         }
 
-        getMostRecentAnnotations(pr['externalReferences']['externalRef'], function(ftype, frefers) {
-            for (var j = 0; j < targets.length; j++){
+        getMostRecentAnnotations(pr['externalReferences']['externalRef'], function(ftype, frefers, timestamp) {
+            for (var j = 0; j < targets.length; j++) {
                 var tid = targets[j]['attr']['id'];
-                var tidEntry = {'frametype': ftype, 'predicate': pr_id, 'referents': frefers};
-                result[tid] = tidEntry;
-                if (j+1 == targets.length){
+
+                if (predicateIsMostRecentPredicate(srl_data, pr_id, targets, timestamp)) {
+                    var tidEntry = {'frametype': ftype, 'predicate': pr_id, 'referents': frefers};
+                    result[tid] = tidEntry;
+                }
+
+                if (j + 1 == targets.length) {
                     done_i++;
+
                     if (done_i == srl_data.length) {
                         callback(result);
                     }
                 }
             }
         });
-
     }
 }
 
@@ -482,11 +568,14 @@ function loadNAFFile(nafName, theUser, adaptJson, callback){
     });
 }
 
-var loadAllNafs = function(nafs, theUser, callback){
+// Load multiple NAFs
+var loadMultipleNafs = function(nafs, theUser, callback){
     var data = [];
 
-    for (var i = 0; i < nafs.length; i++){
-        loadNAFFile(nafs[i], theUser, true, function(nafData){
+    // Load each NAF file and return if all files are loaded
+    for (var i = 0; i < nafs.length; i++) {
+        loadNAFFile(nafs[i], theUser, true, function(nafData) {
+
             data.push(nafData);
             if (data.length == nafs.length) {
                 callback(data);
@@ -542,9 +631,13 @@ var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
 // Add external references layer to JSON predicate object
 // Parameters: object, string, string, string, string
 var addExternalRefs = function(aPredicate, frame, sessionId, reltype, timestamp) {
-    if (frame != 'none')
-        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': reltype, 'timestamp': timestamp}});
+    externalRefs = aPredicate['externalReferences']['externalRef']
+    if (!Array.isArray(externalRefs)) externalRefs = [externalRefs]; 
 
+    if (frame != 'none')
+        externalRefs.push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': reltype, 'timestamp': timestamp}});
+    
+    aPredicate['externalReferences']['externalRef'] = externalRefs;
     return aPredicate;
 }
 
@@ -625,13 +718,13 @@ var annotateFrame = function(jsonData, annotations, sessionId){
         return {'prid': pr_id, 'json': jsonData};
     }
 
-    // Update selected term
+    // Update existing predicate
     else {
-        for (var i=0; i < thePredicates.length; i++){
+        for (var i = 0; i < thePredicates.length; i++) {
             var aPredicate = thePredicates[i];
 
-            if (aPredicate['attr']['id']==activePredicate){
-                var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, referents, timestamp);
+            if (aPredicate['attr']['id'] == activePredicate) {
+                var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, timestamp);
                 return {'prid': activePredicate, 'json': jsonData};
             }
         }
@@ -714,33 +807,36 @@ var saveNAFAnnotation = function(userAnnotationFile, updatedJson, callback){
 // QUERY ENDPOINTS =====================
 // =====================================
 
-app.get('/listprojectsandtypes', isAuthenticated, function(req, res){
-    var projects=Object.keys(proj2inc);
-    var types=Object.keys(type2inc);
+// Endpoint to get all projects and its types
+app.get('/listprojectsandtypes', isAuthenticated, function(req, res) {
+    var projects = Object.keys(proj2inc);
+    var types = Object.keys(type2inc);
     res.send({'proj': Array.from(projects), 'types': Array.from(types)});
 });
 
-app.get('/listincidents', isAuthenticated, function(req, res){
-    var aType=req.query['mytype'];
-    var aProj=req.query['myproj'];
-    var incWithDocs=Object.keys(inc2doc);
-    var incOfType=Array.from(type2inc[aType]);
-    var incOfProj=Array.from(proj2inc[aProj]);
-    var selected=_.intersection(incWithDocs, incOfType, incOfProj);
+// Endpoint to get all incidents of a certain type in a project
+app.get('/listincidents', isAuthenticated, function(req, res) {
+    var aType = req.query['mytype'];
+    var aProj = req.query['myproj'];
+    var incWithDocs = Object.keys(inc2doc);
+    var incOfType = Array.from(type2inc[aType]);
+    var incOfProj = Array.from(proj2inc[aProj]);
+    var selected = _.intersection(incWithDocs, incOfType, incOfProj);
     res.send({'new': Array.from(selected), 'old': []});
 });
 
-app.get('/loadincident', isAuthenticated, function(req, res){
+// Endpoint to load an incident
+app.get('/loadincident', isAuthenticated, function(req, res) {
+    // Incident ID not provided
     if (!req.query['inc'] || !req.query['etype']){
-        res.sendStatus(400);//("Not OK: incident id not specified");
+        res.sendStatus(400); //("Not OK: incident id not specified");
     }
     
     else {
         var incidentId = req.query['inc'];
-        var eventType = req.query['etype']
         var nafs = inc2doc[incidentId];
 
-        loadAllNafs(nafs, req.user.user, function(data){
+        loadMultipleNafs(nafs, req.user.user, function(data){
             console.log("All nafs loaded. returning the result now");
             res.send({'nafs': data});
         });
@@ -776,15 +872,17 @@ app.get('/allframeroles', isAuthenticated, function(req, res){
     res.send(toReturn);
 });
 
+// Endpoint to get roles of a certain frame
 app.get('/getroles', isAuthenticated, function(req, res){
     if (!req.query['docid'] || !req.query['prid']){
         res.sendStatus(400);
-    } else{
+    } else {
         var docid = req.query['docid'];
+
         loadNAFFile(docid, req.user.user, false, function(rawData){
-            var the_id=req.query['prid'];
-            console.log(JSON.stringify(rawData));
-            getAnnotatedRolesForPredicate(rawData, the_id, function(roleData){
+            var the_id = req.query['prid'];
+
+            getAnnotatedRolesForPredicate(rawData, the_id, function(roleData) {
                 res.send({"roles": roleData});
             });
         });

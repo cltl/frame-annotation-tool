@@ -61,6 +61,9 @@ span.inactive-role {
     background: #BB8FCE;
 }
 
+span.modifying {
+    color: white;
+}
 
 label.active {
     background: #0f0;

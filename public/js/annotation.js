@@ -1,41 +1,82 @@
-annotations={};
-referents=[];
-wdt_prefix="http://wikidata.org/wiki/";
-type2Label={'Q132821': 'murder', 'Q168983': 'conflagration'};
+annotations = {};
+referents = [];
+wdt_prefix = "http://wikidata.org/wiki/";
+type2Label = {'Q132821': 'murder', 'Q168983': 'conflagration'};
 
-noFrameType="NO-FRAME";
+selectionModeModify = false;
+modifyingSpan = [];
+
+noFrameType = "NO-FRAME";
 
 $(function(){
     $("#annrow").hide();
     $("#bigdiv").hide();
 
-    $(document).on("click", "span.clickable", function() {  //use a class, since your ID gets mangled
-        $('span').removeClass("inactive");
-        $(this).toggleClass("active");      //add the class to the clicked element
+    // On unannotated markable click
+    $(document).on("click", "span.clickable", function() {
+        if (!selectionModeModify) {
+            $('span').removeClass("inactive");
+            $(this).toggleClass("active");
+        } else {
+            $(this).toggleClass("active");
+        }
     });
-    $(document).on("click", "span.unclickable", function() {  //use a class, since your ID gets mangled
-        $('span').removeClass("active");
-        var wasInactive=$(this).hasClass("inactive"); // inactive means previously annotated and selected
-        var isRole=$(this).hasClass('role');
-        $('span').removeClass("inactive");
-        if (wasInactive){ //deselecting an annotated thing
-            if (!isRole){
-                $('.role').removeClass('role');
-            } else { //deselect a role
-                $("#activeRole").text('');
+
+    // On annotated markable click
+    $(document).on("click", "span.unclickable", function() {
+        if (!selectionModeModify) {
+            selectionModeModify = true;
+
+            // Remove classes from all spans
+            $('span').removeClass("inactive");
+            $('span').removeClass("active");
+
+            // inactive means previously annotated and selected
+            var wasInactive = $(this).hasClass("inactive");
+            var isRole = $(this).hasClass('role');
+
+            // Deselecting an annotated thing
+            if (wasInactive) {
+                if (!isRole){
+                    $('.role').removeClass('role');
+                } else {
+                    //deselect a role
+                    $("#activeRole").text('');
+                }
+            } else {
+                if (!isRole){
+                    $('.role').removeClass('role');
+                    activatePredicateFromText($(this));
+                } else{
+                    activateRoleFromText($(this));
+                }
             }
-        } else{
-            if (!isRole){
-                $('.role').removeClass('role');
-                activatePredicateFromText($(this));
-            } else{
-                activateRoleFromText($(this));
+
+            modifyingSpan = $("#pnlLeft .inactive").map(function() {
+                return $(this).attr('id');
+            }).get();
+
+            $(this).addClass("modifying");
+            $(this).addClass("active");
+        } else {
+            var modificationBase = $(this).hasClass("modifying");
+
+            if (!modificationBase) {
+                // Make selected word part of selection
+                $(this).toggleClass("inactive")
+                $(this).toggleClass("active");
+            } else {
+                // Reset entire selection
+                $('span').removeClass('modifying');
+                $('span').removeClass('active');
+                $('span').removeClass('inactive');
+                selectionModeModify = false;
             }
-        } 
+        }
     });
 
     $("#anntype").on('change', function(){
-	    if (this.value=='fee'){
+	    if (this.value == 'fee'){
             $("#feAnnotation").hide();
             loadFrames();
             $("#frameAnnotation").show();
@@ -46,7 +87,8 @@ $(function(){
             $("#feAnnotation").hide();
 		    $("#frameAnnotation").hide();
 	    }
-	});
+    });
+    
     $.get('/listprojectsandtypes', {}, function(data, status) { 
         var projects=data['proj'];
         var types=data['types'];
@@ -81,19 +123,31 @@ jQuery.expr[':'].regex = function(elem, index, match) {
 }
 */
 
-var loadFrames = function(){
-    var etype=$("#picktype").val();
+var arraysMatch = function (arr1, arr2) {
+    if (arr1.length != arr2.length)
+        return false;
+
+	for (var i = 0; i < arr1.length; i++)
+        if (arr1[i] !== arr2[i])
+            return false;
+
+	return true;
+};
+
+var loadFrames = function() {
+    var etype = $("#picktype").val();
     $.get('/loadframes', {'eventtype': etype}, function(data, status){
         reloadDropdownWithGroups("#frameChooser", data, "-Pick frame-");
     });
 }
 
-var clearSelection = function(){
+var clearSelection = function() {
     $('span').removeClass("active");
     $('span').removeClass("inactive");
+    $('span').removeClass("modifying");
 }
 
-var activatePredicateRightPanel = function(theId){
+var activatePredicateRightPanel = function(theId) {
     $('span').removeClass("active");
     var htmlElem=$("span[id='" + theId + "']");
     var wasInactive=htmlElem.hasClass("inactive");
@@ -107,14 +161,14 @@ var activatePredicateRightPanel = function(theId){
     } 
 }
 
-var activatePredicateFromText = function(elem){
+var activatePredicateFromText = function(elem) {
     var aMention=elem.attr('id');
     var docId=aMention.split('.')[0].replace(/_/g, " ");
     var tid=aMention.split('.')[2];
     activatePredicate(docId, tid);
 }
 
-var activateRoleFromText = function(elem){
+var activateRoleFromText = function(elem) {
     var aMention=elem.attr('id');
     var docIdUnderscore=aMention.split('.')[0];
     var tid=aMention.split('.')[2];
@@ -303,59 +357,65 @@ var makeHtml = function(ref){
     return myHtml;
 }
 
+// Add token to a string of spans
 var addToken = function(tid, token, annotated, lus) {
-    if (token=='\n') return '<br/>';
+    if (token == '\n') return '<br/>';
+
     else {
-        var shortTid=tid.split('.')[2];
-        
-        if (!annotated[shortTid]){
+        var shortTid = tid.split('.')[2];
+
+        if (!annotated[shortTid]) {
             if (lus.indexOf(token)!=-1 || lus.indexOf(token.toLowerCase())!=-1) // pre-annotate
                 return "<span id=" + tid + " class=\"clickable suggested\">" + token + "</span> ";
             else
                 return "<span id=" + tid + " class=\"clickable\">" + token + "</span> ";
         } else {
-            var mwuClass="mwu";
+            // Bold text if annotated
+            var mwuClass = "mwu";
             return "<span id=" + tid + " class=\"event_" + annotated[shortTid]['frametype'] + " unclickable " + mwuClass + "\">" + token + "</span> ";
         }
     }
 }
 
+// Add a list of tokens to a string of spans
 var addTokens = function(tokens, docId, anns, lus){
     var text = "";
+
     for (var token_num in tokens) {
-        var token_info=tokens[token_num];
-        var tokenId=docId.replace(/ /g, "_") + '.' + token_info.sent + '.' + token_info.tid;
-        var newToken=addToken(tokenId, token_info.text, anns, lus);
-        var uniqueId=docId.replace(/ /g, "_") + '#' + token_info.tid;
-        unique2tool[uniqueId]=tokenId;
-        text+=newToken;
+        var token_info = tokens[token_num];
+        var tokenId = docId.replace(/ /g, "_") + '.' + token_info.sent + '.' + token_info.tid;
+        var newToken = addToken(tokenId, token_info.text, anns, lus);
+        var uniqueId = docId.replace(/ /g, "_") + '#' + token_info.tid;
+        unique2tool[uniqueId] = tokenId;
+        text += newToken;
     }
+
     return text;
 }
 
 var loadTextsFromFile = function(inc, callback){
     $("#pnlLeft").html("");
+
     $.get("/loadincident", {'inc': inc, 'etype': $("#picktype").val()}, function(res, status) {
-        unique2tool={};
+        unique2tool = {};
         var all_html = ""; 
-        var c=0;
-        var data=res['nafs'];
+        var c = 0;
+        var data = res['nafs'];
         //var lus=res['lus'];
+
+        // Load each document
         for (var doc_num in data) {
-            
-            var docId=data[doc_num]['name'];
+            var docId = data[doc_num]['name'];
+            var docLang = docId.split('/')[0];
+            var lusLang = [];
 
-            var docLang=docId.split('/')[0];
+            annotations[docId] = data[doc_num]['annotations'];
 
-            var lusLang=[];
+            var source = data[doc_num]['source'];
+            var sourcetype = data[doc_num]['sourcetype'];
 
-            annotations[docId]=data[doc_num]['annotations'];
-
-            var source=data[doc_num]['source'];
-            var sourcetype=data[doc_num]['sourcetype'];
-
-            var title_tokens=data[doc_num]['title'];
-            title=addTokens(title_tokens, docId, data[doc_num]['annotations'], lusLang);
+            var title_tokens = data[doc_num]['title'];
+            title = addTokens(title_tokens, docId, data[doc_num]['annotations'], lusLang);
 
             var header = "<div class=\"panel panel-default\" id=\"" + doc_num + "\">";
             header += "<div class=\"panel-heading\"><h4 class=\"panel-title\">" + title; 
@@ -369,6 +429,7 @@ var loadTextsFromFile = function(inc, callback){
 
             all_html += header + body;    
         }
+
         $("#pnlLeft").html(all_html);
         if (Object.keys(annotations).length==data.length){ 
             callback();
@@ -587,66 +648,81 @@ var sameSentence = function(allMentions){
 }
 
 var validateAnnotation = function(anntype){
-     if (anntype=='-1'){
+     if (anntype == '-1'){
          return [false, "Please pick an annotation type"];
-    } else{
-        if (anntype=='fee' & $("#frameChooser").val()=='-1'){
-            return [false, "Please pick a frame"];
-        } else if (anntype=='role' & $("#roleChooser").val()=='-1'){
-            return [false, "Please pick a role"];
-        } else if (anntype=='fee' & $("#relChooser").val()=='-1'){
-            return [false, "Please pick a frame relation type"];
-        } else {
-
-            var allMentionsCreate = $(".active").map(function() {
-                return $(this).attr('id');
-            }).get();
-            var allMentionsUpdate=$("#pnlLeft .inactive").map(function() {
-                return $(this).attr('id');
-            }).get();
-
-            var activePredicate='';
-            var allMentions=[];
-            if (allMentionsCreate.length>0){
-                allMentions=allMentionsCreate;
-            } else if (allMentionsUpdate.length>0){
-                allMentions=allMentionsUpdate;
-                activePredicate=($("#activePredicate").text()).split('@')[1];
-            } else {
-                return [false, "Please select at least one mention"];
+    } else {
+        // Frame annotation
+        if (anntype == 'fee') {
+            // Frame not chosen
+            if ($("#frameChooser").val() == '-1') {
+                return [false, "Please pick a frame"];
             }
-            if (!sameSentence(allMentions)) {
-                return [false, "All terms of a frame must be in the same sentence"];
-            } else {
-                var wdtLinks = referents.map(x => x.split('|')[0]);
-                if (anntype=='fee'){
-                    var frame = $("#frameChooser").val();
-                    var reltype= $("#relChooser").val();
-                    var anAnnotation = {'anntype': anntype, 'frame': frame, 'reltype': reltype, 'mentions': allMentions, 'referents': wdtLinks, 'predicate': activePredicate};
-                    console.log(JSON.stringify(anAnnotation));
-                } else if (anntype=='role') {
-                    var role = $("#activeFrame").text() + "@" + $('#roleChooser').val();
-                    var anAnnotation = {'anntype': anntype, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': allMentions, 'semRole': role, 'referents': wdtLinks};
-                    if ($("#activeRole").text())
-                        anAnnotation['rlid']=$("#activeRole").text();
-                } else { //idiom
-                    var anAnnotation = {'anntype': anntype, 'mentions': allMentions};
-                }
-                return [true, anAnnotation];
+            
+            // Relation not chosen
+            else if ($("#relChooser").val()=='-1') {
+                return [false, "Please pick a frame relation type"];
             }
         }
+        
+        // Role annotation
+        else if (anntype == 'role') {
+            if ($("#roleChooser").val()=='-1') {
+                return [false, "Please pick a role"];
+            }
+        }
+
+        // Get all selected markables
+        var selected = $(".active").map(function() {
+            return $(this).attr('id');
+        }).get();
+
+        var activePredicate = '';
+        var allMentions = [];
+
+        if (!(selected.length > 0)) {
+            return [false, "Please select at least one mention"];
+        }
+
+        if (selectionModeModify) {
+            if (arraysMatch(selected, modifyingSpan)) {
+                activePredicate = ($("#activePredicate").text()).split('@')[1];
+            }
+        }
+
+        if (!sameSentence(selected)) {
+            return [false, "All terms of a frame must be in the same sentence"];
+        } else {
+            var wdtLinks = referents.map(x => x.split('|')[0]);
+            var annotationData = {};
+
+            if (anntype == 'fee'){
+                var frame = $("#frameChooser").val();
+                var reltype = $("#relChooser").val();
+                annotationData = {'anntype': anntype, 'frame': frame, 'reltype': reltype, 'mentions': selected, 'referents': wdtLinks, 'predicate': activePredicate};
+            } else if (anntype=='role') {
+                var role = $("#activeFrame").text() + "@" + $('#roleChooser').val();
+                annotationData = {'anntype': anntype, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': selected, 'semRole': role, 'referents': wdtLinks};
+                
+                if ($("#activeRole").text())
+                    annotationData['rlid'] = $("#activeRole").text();
+            } else {
+                annotationData = {'anntype': anntype, 'mentions': allMentions};
+            }
+
+            return [true, annotationData];
+        }
     }
-   
 }
 
 var saveFrameAnnotation = function(){
     var anntype = $("#anntype").val();
-    var validation=validateAnnotation(anntype);
-    var isValid=validation[0];
-    if (isValid){
-        console.log('storing ' + validation[1]);
+    var validation = validateAnnotation(anntype);
+    var isValid = validation[0];
+
+    if (isValid) {
+        console.log('storing ' + JSON.stringify(validation[1]));
         storeAndReload(validation[1], anntype);
-    } else{
+    } else {
         printInfo(validation[1]);
     }
 }
