@@ -208,23 +208,26 @@ function isAuthenticated(req, res, next) {
 // =====================================
 
 var getTokenData = function(tokens){
-    var tokenData={};
-    for (var i=0; i<tokens.length; i++){
-        var token=tokens[i];
-        var tid=token['attr']['id'];
-        var sent=token['attr']['sent'];
-        tokenData[tid]={'sent': sent, 'text': token['__cdata']};
+    var tokenData = {};
+
+    for (var i = 0; i < tokens.length; i++){
+        var token = tokens[i];
+        var tid = token['attr']['id'];
+        var sent = token['attr']['sent'];
+        tokenData[tid] = {'sent': sent, 'text': token['__cdata']};
     }
+
     return tokenData;
 }
 
 var getRoleData = function(roles, callback){
-    var result={};
-    console.log(JSON.stringify(roles));
-    if (!(Array.isArray(roles))) roles=[roles];
-    if (!roles || roles.length==0) callback(result);
+    var result = {};
+    
+    if (!(Array.isArray(roles))) roles = [roles];
+    if (!roles || roles.length == 0) callback(result);
+
     else{
-        for (var role_i=0; role_i<roles.length; role_i++){
+        for (var role_i = 0; role_i < roles.length; role_i++) {
             console.log(role_i);
             var role=roles[role_i];
             console.log(JSON.stringify(role));
@@ -262,6 +265,7 @@ var getRoleData = function(roles, callback){
 
 var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
     var srl_data=[];
+
     if (jsonObj['NAF']['srl'])
         srl_data=jsonObj['NAF']['srl']['predicate'];
 
@@ -287,25 +291,22 @@ var getAnnotatedRolesForPredicate=function(jsonObj, the_id, callback){
     }
 }
 
-
-var moreRecent = function(a, b){
-    if (!a) return true;
-    else{
-        var adate=new Date(a);
-        var bdate=new Date(b);
-        return adate<=bdate;
-    }
+// Check if date a is more recent than date b
+var moreRecent = function(date_a, date_b) {
+    if (!date_a)
+        return true;
+    else
+        return new Date(date_a) <= new Date(date_b);
 }
 
 var getMostRecentAnnotations = function(extRefs, callback){
     var ftype = '';
     var frefers = [];
 
-    if (extRefs){
+    if (extRefs) {
         // If there is a single entry, it has to be type
         if (!(Array.isArray(extRefs))) {
             ftype = extRefs['attr']['reference'];
-
             callback(ftype, frefers);
         } else {
             var lastAnnotation = null;
@@ -379,6 +380,8 @@ var prepareAnnotations = function(srl_data, callback){
     }
 }
 
+// Get NAF metadata from JSON object
+// Parameters: object, string, callback
 var json2info = function(jsonObj, nafName, callback){
     var tokens = jsonObj['NAF']['text']['wf'];
     var tokenData = getTokenData(tokens);
@@ -396,9 +399,6 @@ var json2info = function(jsonObj, nafName, callback){
     var ready_body_terms = [];
 
     var wikiTitle = jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
-    if (!wikiTitle) {
-        console.log(jsonObj);
-    }
     
     // Iterate over term layer
     for (var i = 0; i < terms.length; i++){
@@ -455,24 +455,28 @@ var json2info = function(jsonObj, nafName, callback){
     }
 }
 
+// Load a NAF file and return JSON
+// Parameters: string, string, bool, callback
 function loadNAFFile(nafName, theUser, adaptJson, callback){
     var filename = annotationDir + theUser + '/' + nafName + '.naf';
+
     if (!(fs.existsSync(filename))){
-        var filename=dataDir + nafName + '.naf';
+        var filename = dataDir + nafName + '.naf';
     }
 
     fs.readFile(filename, 'utf-8', function(err, xmlData) {
         if (err) {
             console.error(err);
         }
-
+        
+        // Parse xml to JSON
         var jsonObj = xmlParser.parse(xmlData, xmlOptions);
-        if (adaptJson){
+
+        if (adaptJson) {
             json2info(jsonObj, nafName, function(info){
                 callback(info);
             });
         } else {
-            console.log(jsonObj);
             callback(jsonObj);
         }
     });
@@ -535,28 +539,30 @@ var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
     }
 }
 
-var addExternalRefs = function(aPredicate, frame, sessionId, reftype, referents, timestamp){
-    if (frame!='none')
-        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
-    if (referents && referents.length>0){
-        referents.forEach(function(ref){
-            aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': reftype, 'timestamp': timestamp}});
-        });
-    }
+// Add external references layer to JSON predicate object
+// Parameters: object, string, string, string, string
+var addExternalRefs = function(aPredicate, frame, sessionId, reltype, timestamp) {
+    if (frame != 'none')
+        aPredicate['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': reltype, 'timestamp': timestamp}});
+
     return aPredicate;
 }
 
-var createNewPredicateEntry = function(pr_id, frame, sessionId, reftype, referents, tids, timestamp){
+// Create JSON object for new predicate
+// Parameters: string, string, string, string, list, string
+var createNewPredicateEntry = function(pr_id, frame, sessionId, reltype, tids, timestamp) {
     var aPredicate = {};
-    aPredicate['#text']='';
-    aPredicate['attr']={};
-    aPredicate['attr']['id']=pr_id;
-    aPredicate['externalReferences']={'#text': '', 'externalRef': []};
-    var aPredicate=addExternalRefs(aPredicate, frame, sessionId, reftype, referents, timestamp);
 
-    aPredicate['span']=makeSpanLayer(aPredicate, tids);
-    
-    aPredicate['role']=[];
+    aPredicate['#text'] = '';
+    aPredicate['attr'] = {};
+    aPredicate['attr']['id'] = pr_id;
+    aPredicate['externalReferences'] = {'#text': '', 'externalRef': []};
+
+    var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, timestamp);
+
+    aPredicate['span'] = makeSpanLayer(aPredicate, tids);
+    aPredicate['role'] = [];
+
     return aPredicate;
 }
 
@@ -577,12 +583,14 @@ var createNewRoleEntry=function(rl_id, semRole, sessionId, referents, mentions, 
     return aRole;
 }
 
+// Annotate selected terms with a frame in JSON object
+// Parameters: object, object, string
 var annotateFrame = function(jsonData, annotations, sessionId){
     var frame = annotations['frame'];
-    var reftype = annotations['reltype'];
+    var reltype = annotations['reltype'];
     var tids = annotations['mentions'];
-    var referents = annotations['referents'];
     var activePredicate = annotations['predicate'];
+    var pr_id = "";
 
     // Create SRL layer if not exists
     if (!('srl' in jsonData['NAF'])){
@@ -590,19 +598,16 @@ var annotateFrame = function(jsonData, annotations, sessionId){
         jsonData['NAF']['srl']['#text'] = '';
         jsonData['NAF']['srl']['predicate'] = [];
 
-        var pr_id = "pr1";
+        pr_id = "pr1";
     }
     
-    // Find pr_id for new predicate
     else {
         var thePredicates = jsonData['NAF']['srl']['predicate'];
 
-        if (!(Array.isArray(thePredicates))) { 
-            thePredicates = [thePredicates];
-        }
+        if (!(Array.isArray(thePredicates))) thePredicates = [thePredicates];
 
-        // Selected term is not yet a predicate
-        if (!activePredicate){
+        // Selected term(s) is not yet a predicate
+        if (!activePredicate) {
             var pr_num = (parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
             var pr_id = "pr" + pr_num;
         }
@@ -612,9 +617,10 @@ var annotateFrame = function(jsonData, annotations, sessionId){
 
     var timestamp = new Date().toISOString().replace(/\..+/, '');
 
-    // Create new predicate if selected term is not predicate already
+    // Create new predicate if selected term(s) is not predicate already
     if (!activePredicate) {
-        var aPredicate = createNewPredicateEntry(pr_id, frame, sessionId, reftype, referents, tids, timestamp);
+        var aPredicate = createNewPredicateEntry(pr_id, frame, sessionId, reltype, tids, timestamp);
+
         jsonData['NAF']['srl']['predicate'].push(aPredicate);
         return {'prid': pr_id, 'json': jsonData};
     }
@@ -625,7 +631,7 @@ var annotateFrame = function(jsonData, annotations, sessionId){
             var aPredicate = thePredicates[i];
 
             if (aPredicate['attr']['id']==activePredicate){
-                var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reftype, referents, timestamp);
+                var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, referents, timestamp);
                 return {'prid': activePredicate, 'json': jsonData};
             }
         }
@@ -785,19 +791,23 @@ app.get('/getroles', isAuthenticated, function(req, res){
     }
 });
 
+// Endpoint to store annotations set in request body
 app.post('/storeannotations', isAuthenticated, function(req, res){
     var thisUser = req.user.user;
     var loginTime = req.session.visited;
 
     console.log("Storing request received from " + thisUser);
 
-    if (req.body.incident){
+    // If incident ID provided
+    if (req.body.incident) {
+        // Get annotation data from request body
 	    var annotations = req.body.annotations || {};
         var firstMention = annotations['mentions'][0];
         var docidAndTid = firstMention.split('.');
         var docId = docidAndTid[0].replace(/_/g, " ");
 
-        loadNAFFile(docId, req.user.user, false, function(nafData){
+        // Load NAF file using incident info
+        loadNAFFile(docId, thisUser, false, function(nafData){
             var userAnnotationDir = annotationDir + thisUser + "/";
 
             var langAndTitle = docId.split('/');
@@ -806,25 +816,22 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
 
             var userAnnotationDirLang = userAnnotationDir + lang + '/';
 
+            // Make new directory for user and lang if needed
             mkdirp(userAnnotationDirLang, function (err) {
                 if (err) {
-                    console.error('Error with creating a directory' + err);
-                }
-
-                else {
-                    var userAnnotationFile=userAnnotationDirLang + title + '.naf';
+                    console.error('Error with creating a directory:\n' + err);
+                } else {
+                    var userAnnotationFile = userAnnotationDirLang + title + '.naf';
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
 
                     var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
-                    //console.log(JSON.stringify(newData));
 
-                    var updatedJson=saveSessionInfo(newData['json'], req.sessionID, thisUser, loginTime);
-                    var pr_id=newData['prid'];
+                    var updatedJson = saveSessionInfo(newData['json'], req.sessionID, thisUser, loginTime);
+                    var pr_id = newData['prid'];
 
-                    saveNAFAnnotation(userAnnotationFile, updatedJson, function(error){
-                        // console.log('Error obtained with saving: ' + error);
-
-                        if (error){
+                    saveNAFAnnotation(userAnnotationFile, updatedJson, function(error) {
+                        if (error) {
+                            console.log('Error obtained with saving: ' + error);
                             res.status(400).json({'error': error});
                         } else {
                             console.log('Sending response with predicate ID ' + pr_id);
@@ -835,8 +842,8 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
             });
         });
     } else {
-        console.error("Storing of annotations: incident not specified - user " + thisUser);
-        res.sendStatus(400);//("Not OK: incident id not specified");
+        console.error("Storing of annotations: incident not specified - user: " + thisUser);
+        res.sendStatus(400); //("Not OK: incident id not specified");
     }
 });
 
