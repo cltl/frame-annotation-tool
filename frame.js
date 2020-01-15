@@ -310,74 +310,42 @@ var moreRecent = function(date_a, date_b) {
         return new Date(date_a) <= new Date(date_b);
 }
 
-// Check if a term in a span of a predicate is in the most recent predicate
-var predicateIsMostRecentPredicate = function(srl, pr_id, targets) {
-    if (!Array.isArray(srl)) srl = [srl['predicate']];
+// Deprecate predicates with terms in span overlapping terms in provided span
+// Parameters: object, string, array, callback
+var deprecatePredicateSpanOverlap = function(srl, predicate_id, span, callback) {
+    if (!Array.isArray(srl)) srl = [srl];
+    if (!Array.isArray(span)) span = [span];
 
-    var lastTimepoint = null;
+    // Iterate trough all terms in span
+    for (i = 0; i < span.length; ++i) {
+        var current_term_id = span[i]['attr']['id'];
 
-    console.log("+++++++++++++++++++++++++++++++++++++");
-    console.log("PRID: " + pr_id + "\n");
-
-    // Get most recent pr update
-    for (i = 0; i < srl.length; i++) {
-        if (srl[i]['attr']['id'] == pr_id) {
-            var ext_refs = srl[i]['externalReferences']['externalRef'];
-            if (!Array.isArray(ext_refs)) ext_refs = [ext_refs];
-
-            for (j = 0; j < ext_refs.length; j++) {
-                if (moreRecent(lastTimepoint, ext_refs[j]['attr']['timestamp'])) {
-                    lastTimepoint = ext_refs[j]['attr']['timestamp'];
-                }
-            }
-        }
-    }
-
-    // Loop over all targets in predicate
-    for (i = 0; i < targets.length; i++) {
-        var cur_tid = targets[i]['attr']['id'];
-
-        // Loop over all predicates in SRL layer
+        // Iterate trough all predicates in SRL layer
         for (j = 0; j < srl.length; j++) {
-            var curr_pred = srl[j];
-            var curr_pred_id = curr_pred["attr"]["id"];
-            var curr_pred_refs = curr_pred['externalReferences']['externalRef'];
+            var current_predicate = srl[j];
+            var current_predicate_id = current_predicate['attr']['id'];
+            
+            // Skip predicate itself
+            if (current_predicate_id !== predicate_id) {
+                var current_predicate_span = current_predicate['span']['target'];
 
-            if (!Array.isArray(curr_pred_refs)) curr_pred_refs = [curr_pred_refs];
+                if (!Array.isArray(current_predicate_span)) current_predicate_span = [current_predicate_span];
 
-            // If cur_prid is not pr_id
-            if (curr_pred['attr']['id'] !== pr_id) {
-                var pr_span = curr_pred['span']['target'];
+                // Iterate trough current predicate span
+                for (k = 0; k < current_predicate_span.length; k++) {
+                    var current_term_id_in_predicate = current_predicate_span[k]['attr']['id'];
 
-                // If predicate span contains cur_tid
-                for (k = 0; k < pr_span.length; k++) {
-                    if (pr_span[k]['attr']['id'] == cur_tid) {
-                        // Get most recent cur_pr update
-                        var latest_timestamp = null;
-
-                        // Get latest timestamp of pr_ext_refs
-                        for (l = 0; l < curr_pred_refs.length; l++) {
-                            var curr_timestamp = curr_pred_refs[l]['attr']['timestamp'];
-                            if (moreRecent(latest_timestamp, curr_timestamp)) {
-                                latest_timestamp = curr_timestamp;
-                            }
-                        }
-
-                        console.log("======================================================")
-                        console.log("Checking " + cur_tid + " of " + pr_id + " in " + curr_pred_id);
-                        console.log("Timestamp of " + pr_id + ": " + lastTimepoint);
-                        console.log("Timestamp of " + curr_pred_id + ": " + latest_timestamp);
-                        console.log("Result: " + moreRecent(lastTimepoint, latest_timestamp));
-                        if (moreRecent(lastTimepoint, latest_timestamp)) {
-                            return false;
-                        }
+                    // Overlap found!
+                    if (current_term_id_in_predicate === current_term_id) {
+                        srl[j]['attr']['human_annotation'] = false;
+                        break;
                     }
                 }
             }
         }
     }
-    
-    return true;
+
+    return srl;
 }
 
 var getMostRecentAnnotations = function(extRefs, callback) {
@@ -417,7 +385,7 @@ var getMostRecentAnnotations = function(extRefs, callback) {
                         frefers = referenceRels[lastTimepoint];
                     }
 
-                    callback(ftype, frefers, lastTimepoint);
+                    callback(ftype, frefers);
                 }
             }
         }
@@ -426,43 +394,52 @@ var getMostRecentAnnotations = function(extRefs, callback) {
     }
 }
 
-var prepareAnnotations = function(srl_data, callback){
+// Get a list of annotaions made in a NAF document given its SRL layer
+// Parameters: object, callback
+var prepareAnnotations = function(srl, callback){
     var result = {};
-
-    if (!srl_data || srl_data.length==0) {
-        callback(result);
-    }
-
-    if (!(Array.isArray(srl_data))) srl_data = [srl_data];
-
     var done_i = 0;
-    for (var i = 0; i < srl_data.length; i++) {
-        var pr = srl_data[i];
-        var pr_id = pr['attr']['id'];
-        var targets = pr['span']['target'];
 
-        if (!(Array.isArray(targets))) {
-            targets = [targets];
-        }
+    if (!Array.isArray(srl)) srl = [srl];
+    if (!srl || srl.length == 0) callback(result);
 
-        getMostRecentAnnotations(pr['externalReferences']['externalRef'], function(ftype, frefers, timestamp) {
-            for (var j = 0; j < targets.length; j++) {
-                var tid = targets[j]['attr']['id'];
+    // Iterate trough SRL layer
+    for (var i = 0; i < srl.length; i++) {
+        var cur_pr = srl[i];
+        var cur_pr_id = cur_pr['attr']['id'];
+        var cur_pr_annotation = cur_pr['attr']['human_annotation'];
+        var cur_pr_refs = cur_pr['externalReferences']['externalRef'];
+        var cur_pr_span = cur_pr['span']['target'];
 
-                if (predicateIsMostRecentPredicate(srl_data, pr_id, targets, timestamp)) {
-                    var tidEntry = {'frametype': ftype, 'predicate': pr_id, 'referents': frefers};
-                    result[tid] = tidEntry;
-                }
+        if (!(Array.isArray(cur_pr_span))) cur_pr_span = [cur_pr_span];
 
-                if (j + 1 == targets.length) {
-                    done_i++;
+        if (cur_pr_annotation === "true") {
+            // Get the most recent annotation for current predicate
+            getMostRecentAnnotations(cur_pr_refs, function(type, referents) {
+                for (var j = 0; j < cur_pr_span.length; j++) {
+                    // Add list entry for current term in predicate span
+                    var cur_t_id = cur_pr_span[j]['attr']['id'];
+                    var cur_term = {'frametype': type, 'predicate': cur_pr_id, 'referents': referents};
 
-                    if (done_i == srl_data.length) {
-                        callback(result);
+                    result[cur_t_id] = cur_term;
+
+                    // Return if all annotations are checked.
+                    if (j + 1 === cur_pr_span.length) {
+                        done_i++;
+
+                        if (done_i == srl.length) {
+                            callback(result);
+                        }
                     }
                 }
+            });
+        } else {
+            done_i ++;
+
+            if (done_i == srl.length) {
+                callback(result);
             }
-        });
+        }
     }
 }
 
@@ -649,6 +626,7 @@ var createNewPredicateEntry = function(pr_id, frame, sessionId, reltype, tids, t
     aPredicate['#text'] = '';
     aPredicate['attr'] = {};
     aPredicate['attr']['id'] = pr_id;
+    aPredicate['attr']['human_annotation'] = true;
     aPredicate['externalReferences'] = {'#text': '', 'externalRef': []};
 
     var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, timestamp);
@@ -660,12 +638,12 @@ var createNewPredicateEntry = function(pr_id, frame, sessionId, reltype, tids, t
 }
 
 var createNewRoleEntry=function(rl_id, semRole, sessionId, referents, mentions, timestamp){
-    var aRole={};
-    aRole['#text']='';
-    aRole['attr']={}
-    aRole['attr']['id']=rl_id;
-    aRole['span']=makeSpanLayer(aRole, mentions);
-    aRole['externalReferences']={'#text': '', 'externalRef': []};
+    var aRole = {};
+    aRole['#text'] = '';
+    aRole['attr'] = {}
+    aRole['attr']['id'] = rl_id;
+    aRole['span'] = makeSpanLayer(aRole, mentions);
+    aRole['externalReferences'] = {'#text': '', 'externalRef': []};
     aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
 //    aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
     if (referents && referents.length>0){
@@ -684,38 +662,39 @@ var annotateFrame = function(jsonData, annotations, sessionId){
     var tids = annotations['mentions'];
     var activePredicate = annotations['predicate'];
     var pr_id = "";
+    var srl = [];
 
     // Create SRL layer if not exists
     if (!('srl' in jsonData['NAF'])){
-        jsonData['NAF']['srl'] = {};
-        jsonData['NAF']['srl']['#text'] = '';
-        jsonData['NAF']['srl']['predicate'] = [];
-
+        srl = {}
+        srl['#text'] = '';
+        srl['predicate'] = [];
         pr_id = "pr1";
-    }
-    
-    else {
-        var thePredicates = jsonData['NAF']['srl']['predicate'];
-
-        if (!(Array.isArray(thePredicates))) thePredicates = [thePredicates];
+    } else {
+        srl = jsonData['NAF']['srl']['predicate'];
+        if (!(Array.isArray(srl))) srl = [srl];
 
         // Selected term(s) is not yet a predicate
         if (!activePredicate) {
-            var pr_num = (parseInt(thePredicates[thePredicates.length-1]['attr']['id'].substring(2)) || 0) + 1;
+            var pr_num = (parseInt(srl[srl.length - 1]['attr']['id'].substring(2)) || 0) + 1;
             var pr_id = "pr" + pr_num;
         }
-
-        jsonData['NAF']['srl']['predicate'] = thePredicates
     }
 
     var timestamp = new Date().toISOString().replace(/\..+/, '');
 
     // Create new predicate if selected term(s) is not predicate already
     if (!activePredicate) {
-        var aPredicate = createNewPredicateEntry(pr_id, frame, sessionId, reltype, tids, timestamp);
+        var new_predicate = createNewPredicateEntry(pr_id, frame, sessionId, reltype, tids, timestamp);
+        var new_predicate_span = new_predicate['span']['target'];
 
-        jsonData['NAF']['srl']['predicate'].push(aPredicate);
-        return {'prid': pr_id, 'json': jsonData};
+        // Check for overlap in predicate spans, and deprecate older versions
+        var new_srl = deprecatePredicateSpanOverlap(srl, pr_id, new_predicate_span);
+        
+        new_srl.push(new_predicate);
+        jsonData['NAF']['srl']['predicate'] = new_srl;
+
+        return result = {'prid': pr_id, 'json': jsonData};;
     }
 
     // Update existing predicate
@@ -779,11 +758,11 @@ var annotateRole=function(jsonData, annotations, sessionId){
 }
 
 var addAnnotationsToJson = function(jsonData, annotations, sessionId){
-    if (annotations['anntype']=='idiom'){  
+    if (annotations['anntype'] === 'idiom'){  
         return jsonData;
-    } else if (annotations['anntype']=='fee'){
+    } else if (annotations['anntype'] === 'fee'){
         return annotateFrame(jsonData, annotations, sessionId);
-    } else{ // Role
+    } else {
         return annotateRole(jsonData, annotations, sessionId);
     }
 }
@@ -846,7 +825,7 @@ app.get('/loadincident', isAuthenticated, function(req, res) {
 app.get('/loadframes', isAuthenticated, function(req, res){
     if (!req.query['eventtype']){
         res.sendStatus(400);
-    } else{
+    } else {
         var etype = req.query['eventtype'];
         var likelyFrames = allFrames[etype]["likely"];
         var otherFrames = allFrames[etype]["other"];
@@ -923,6 +902,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
 
                     var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
+                    console.log(JSON.stringify(newData))
 
                     var updatedJson = saveSessionInfo(newData['json'], req.sessionID, thisUser, loginTime);
                     var pr_id = newData['prid'];
