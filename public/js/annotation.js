@@ -71,9 +71,9 @@ $(function(){
                     $('span').removeClass('inactive');
                     selectionModeModify = false;
                 } else {
-                // Make selected word part of selection
-                $(this).toggleClass("inactive")
-                $(this).toggleClass("active");
+                    // Make selected word part of selection
+                    $(this).toggleClass("inactive")
+                    $(this).toggleClass("active");
                 }
             } else {
                 // Reset entire selection
@@ -146,8 +146,8 @@ var arraysMatch = function (arr1, arr2) {
 
 var loadFrames = function() {
     var etype = $("#picktype").val();
-    $.get('/loadframes', {'eventtype': etype}, function(data, status){
-        reloadDropdownWithGroups("#frameChooser", data, "-Pick frame-");
+    $.get('/loadframes', {'eventtype': etype}, function(data, status) {
+        reloadDropdownWithGroups("#frameChooser", data, ['definition', 'framenet'], "-Pick frame-");
     });
 }
 
@@ -245,7 +245,7 @@ var confirmPreannotated=function(){
 
 }
 
-var updateIncidentList=function(){
+var updateIncidentList=function() {
     var pickedType=$('#picktype').val();
     var pickedProj=$('#pickproj').val();
     if (pickedType!='-1' && pickedProj!='-1'){
@@ -260,6 +260,20 @@ var updateIncidentList=function(){
     } else{
         reloadDropdown("#pickfile", [], "-Pick an incident ID-");
     }
+}
+
+var updateChosenFrameInfo = function () {
+    var chosen_frame = $('#frameChooser option:selected').text();
+    var chosen_frame_premon = $('#frameChooser option:selected').val();
+    var chosen_frame_framenet = $('#frameChooser option:selected').attr('data-framenet');
+    var chosen_frame_definition = $('#frameChooser option:selected').attr('data-definition');
+
+    $("#chosenFrameLabel").text(chosen_frame);
+    $("#chosenFrameDef").text(chosen_frame_definition);
+    $("#chosenFramePrem").attr("href", chosen_frame_premon);
+    $("#chosenFramePrem").text("Click here");
+    $("#chosenFrameFM").attr("href", chosen_frame_framenet);
+    $("#chosenFrameFM").text("Click here");
 }
 
 var retrieveSpansWithClass=function(cls){
@@ -584,18 +598,30 @@ var reloadDropdown=function(elementId, sourceList, defaultOption){
     }
 }
 
-var reloadDropdownWithGroups=function(elementId, sourceJson, defaultOption){
-    var $el = $(elementId);
-    $el.empty(); // remove old options
-    $el.append($("<option value='-1' selected>" + defaultOption + "</option>"));
-    $el.append($("<option value='none'>NONE RELEVANT</option>"));
-    for (var group in sourceJson){
-        var groupData = sourceJson[group];
+var reloadDropdownWithGroups = function(element_id, items, data_items, default_option){
+    var $el = $(element_id);
+
+    $el.empty();
+    $el.append($("<option value='-1' selected>" + default_option + "</option>"));
+
+    for (var group in items) {
+        var group_items = items[group];
+
+        // Add group header
         $el.append($('<option></option>').val('-1').html(group).prop('disabled', true));
-        $.each(groupData, function(anIndex) {
-            var unit=groupData[anIndex];
-            $el.append($("<option></option>")
-                .attr("value", unit).text(unit));
+
+        // Add group items
+        $.each(group_items, function(item_index) {
+            var item = group_items[item_index];
+            var cur_option = $("<option></option>").attr("value", item['value']).text(item['label'])
+
+            // Add potential data to each option
+            for (var data_item_index in data_items) {
+                var data_item = data_items[data_item_index];
+                cur_option.attr("data-" + data_item, item[data_item]);
+            }
+
+            $el.append(cur_option);
         });
     }
 }

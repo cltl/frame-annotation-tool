@@ -168,11 +168,11 @@ app.post('/login',
     var userAnnotationDir = annotationDir + req.user.user + "/";
 
     mkdirp(userAnnotationDir, function (err) {
-    if (err) console.error('Error with creating a directory' + err);
-    else {
+        if (err) console.error('Error with creating a directory' + err);
+        else {
             var refFilePath = userAnnotationDir + 'customrefs.json';
-        fs.closeSync(fs.openSync(refFilePath, 'a'));
-    }
+            fs.closeSync(fs.openSync(refFilePath, 'a'));
+        }
     });
 
     res.sendStatus(200);
@@ -207,6 +207,14 @@ function isAuthenticated(req, res, next) {
 // =====================================
 // QUERY UTILS =========================
 // =====================================
+
+var sortObjectsByKey = function(objects, key) {
+    return objects.sort(function(a, b) {
+        var a_key = a[key];
+        var b_key = b[key];
+        return ((a_key < b_key) ? -1 : ((a_key > b_key) ? 1 : 0));
+    });
+}
 
 var getTokenData = function(tokens){
     var tokenData = {};
@@ -372,7 +380,7 @@ var getMostRecentAnnotations = function(ext_refs, callback) {
                         most_recent_stamp = ext_ref_stamp;
                     }
                 }
-
+                
                 // Reference annotation
                 else if (ext_ref_type === 'refer') {
                     // Add reference to array of references
@@ -829,10 +837,24 @@ app.get('/loadframes', isAuthenticated, function(req, res){
     if (!req.query['eventtype']){
         res.sendStatus(400);
     } else {
-        var etype = req.query['eventtype'];
-        var likelyFrames = allFrames[etype]["likely"];
-        var otherFrames = allFrames[etype]["other"];
-        res.send({'likely': likelyFrames, 'other': otherFrames.sort()});
+        var event_type = req.query['eventtype'];
+        var likely_frames = [];
+        var candidate_frames = [];
+        var pos_candidate_frames = [];
+        var other_frames = [];
+
+        Object.keys(allFramesInfo).forEach((cur_frame_premon, index) => {
+            var cur_frame_label = allFramesInfo[cur_frame_premon]['frame_label'];
+            var cur_frame_def = allFramesInfo[cur_frame_premon]['definition'];
+            var cur_frame_framenet = allFramesInfo[cur_frame_premon]['framenet_url'];
+
+            var cur_frame = { 'label': cur_frame_label, 'value': cur_frame_premon, 'definition': cur_frame_def, 'framenet': cur_frame_framenet };
+            other_frames.push(cur_frame);
+        });
+
+        other_frames = sortObjectsByKey(other_frames);
+
+        res.send({'Likely': likely_frames, 'Candidate': candidate_frames, 'Pos candidate': pos_candidate_frames, 'Other': other_frames});
     }
 });
 

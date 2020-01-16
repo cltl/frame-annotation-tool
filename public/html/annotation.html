@@ -61,7 +61,7 @@
                 <div id="frameAnnotation" class="col-sm-7">
                     <div class="col-sm-8">
                         <label>Choose frame:</label><br/>
-                        <select id="frameChooser">
+                        <select id="frameChooser" onchange="updateChosenFrameInfo()">
                             <option value="-1" selected>-Pick frame-</option>
                             <option value="Killing">Killing</option>
                             <option value="Change_of_leadership">Change of leadership</option>
@@ -121,12 +121,19 @@
     <div class="row" id="bigdiv">
         <div id="pnlLeft" class="col-sm-9"></div>
         <div id="pnlRight" class="col-sm-3">
+            <div class="chosenDiv">
+                <h4>Chosen frame</h4>
+                <label>Label: </label> <span id="chosenFrameLabel"></span><br />
+                <label>Definition: </label> <span id="chosenFrameDef"></span><br />
+                <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenFramePrem"></a><br />
+                <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenFrameFM"></a><br />
+            </div>
             <div class="refDiv">
-                <h4>Selected Wikidata referents</h4>
+                <h4>Annotated Wikidata referents</h4>
                 <span id="referents"></span><br/>
             </div>
             <div class="activeDiv">
-                <h4>Active frame </h4>
+                <h4>Active frame</h4>
                 <label>Type:</label> <span id="activeFrame">none</span><br/>
                 <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
                 <label>Referents:</label><div id="frameWdt"></div><br/>

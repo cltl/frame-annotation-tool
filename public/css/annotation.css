@@ -136,6 +136,10 @@ label.inactive {
     background: #EBF5FB;
 }
 
+.chosenDiv {
+    background: #EBFBEC;
+}
+
 select {
     width: 100%;
 }
