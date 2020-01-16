@@ -60,11 +60,21 @@ $(function(){
             $(this).addClass("active");
         } else {
             var modificationBase = $(this).hasClass("modifying");
+            var inactive = $(this).hasClass("inactive");
+            var unclickable = $(this).hasClass("unclickable");
 
             if (!modificationBase) {
+                if (!inactive & unclickable) {
+                    // Reset entire selection
+                    $('span').removeClass('modifying');
+                    $('span').removeClass('active');
+                    $('span').removeClass('inactive');
+                    selectionModeModify = false;
+                } else {
                 // Make selected word part of selection
                 $(this).toggleClass("inactive")
                 $(this).toggleClass("active");
+                }
             } else {
                 // Reset entire selection
                 $('span').removeClass('modifying');
