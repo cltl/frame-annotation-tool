@@ -165,15 +165,16 @@ app.post('/login',
   passport.authenticate('local', { failureRedirect: '/' }),
   function(req, res) {
     req.session.visited = new Date().toISOString().replace(/\..+/, '');
-    var userAnnotationDir=annotationDir + req.user.user + "/";
+    var userAnnotationDir = annotationDir + req.user.user + "/";
 
     mkdirp(userAnnotationDir, function (err) {
     if (err) console.error('Error with creating a directory' + err);
     else {
-        var refFilePath=userAnnotationDir + 'customrefs.json';
+            var refFilePath = userAnnotationDir + 'customrefs.json';
         fs.closeSync(fs.openSync(refFilePath, 'a'));
     }
     });
+
     res.sendStatus(200);
 });
  
@@ -264,7 +265,7 @@ var getRoleData = function(roles, callback){
 
 // Get the roles of an annotated frame
 // Parameters: object, string, callback
-var getAnnotatedRolesForPredicate = function(jsonObj, the_id, callback){
+var getAnnotatedRolesForPredicate = function(jsonObj, the_id, callback) {
     var srl_data = [];
 
     // Get SRL layer
@@ -272,8 +273,7 @@ var getAnnotatedRolesForPredicate = function(jsonObj, the_id, callback){
         srl_data = jsonObj['NAF']['srl']['predicate'];
 
     // Return empty if SRL layer is empty
-    if (!srl_data || srl_data.length == 0){
-        console.log('EMPTY');
+    if (!srl_data || srl_data.length == 0) {
         callback({});
     } else {
         if (!(Array.isArray(srl_data))) srl_data = [srl_data];
@@ -289,10 +289,6 @@ var getAnnotatedRolesForPredicate = function(jsonObj, the_id, callback){
                 if (!roles) {
                     callback({});
                 } else {
-                    console.log(JSON.stringify(pr));
-                    console.log('get role data ' + the_id);
-                    console.log(JSON.stringify(roles));
-
                     getRoleData(roles, function(result){
                         callback(result);
                     });
@@ -312,7 +308,7 @@ var moreRecent = function(date_a, date_b) {
 
 // Deprecate predicates with terms in span overlapping terms in provided span
 // Parameters: object, string, array, callback
-var deprecatePredicateSpanOverlap = function(srl, predicate_id, span, callback) {
+var deprecatePredicateSpanOverlap = function(srl, predicate_id, span) {
     if (!Array.isArray(srl)) srl = [srl];
     if (!Array.isArray(span)) span = [span];
 
@@ -348,49 +344,56 @@ var deprecatePredicateSpanOverlap = function(srl, predicate_id, span, callback) 
     return srl;
 }
 
-var getMostRecentAnnotations = function(extRefs, callback) {
-    var ftype = '';
-    var frefers = [];
+// Get a the type and referents of the most recent annotation of a predicate
+// Parameters: array, callback
+var getMostRecentAnnotations = function(ext_refs, callback) {
+    var type = '';
+    var refers = [];
 
-    if (extRefs) {
-        // If there is a single entry, it has to be type
-        if (!(Array.isArray(extRefs))) {
-            ftype = extRefs['attr']['reference'];
-            callback(ftype, frefers);
+    if (ext_refs) {
+        if (!(Array.isArray(ext_refs))) {
+            type = ext_refs['attr']['reference'];
+            callback(type, refers);
         } else {
-            var lastAnnotation = null;
-            var lastTimepoint = null;
+            var most_recent_stamp = null;
             var referenceRels = {};
 
-            for (var e = 0; e < extRefs.length; e++) {
-                var extRef = extRefs[e];
+            // Check each annotation (external ref)
+            for (var e = 0; e < ext_refs.length; e++) {
+                var ext_ref = ext_refs[e];
+                var ext_ref_type = ext_ref['attr']['reftype'];
+                var ext_ref_stamp = ext_ref['attr']['timestamp'];
+                var ext_ref_referent = ext_ref['attr']['reference'];
 
-                if (extRef['attr']['reftype'] == 'type') {
-                    if (moreRecent(lastTimepoint, extRef['attr']['timestamp'])) {
-                        ftype = extRef['attr']['reference'];
-                        lastTimepoint = extRef['attr']['timestamp'];
+                // Frame annotation
+                if (ext_ref_type === 'type') {
+                    if (moreRecent(most_recent_stamp, ext_ref_stamp)) {
+                        type = ext_ref_type;
+                        most_recent_stamp = ext_ref_stamp;
                     }
-                } else if (extRef['attr']['reftype'] == 'refer'){
-                    var theTime = extRef['attr']['timestamp'];
+                }
 
-                    if (!referenceRels[theTime]) {
-                        referenceRels[theTime] = [extRef['attr']['reference']];
+                // Reference annotation
+                else if (ext_ref_type === 'refer') {
+                    // Add reference to array of references
+                    if (!referenceRels[ext_ref_stamp]) {
+                        referenceRels[ext_ref_stamp] = [ext_ref_referent];
                     } else {
-                        referenceRels[theTime].push(extRef['attr']['reference']);
+                        referenceRels[ext_ref_stamp].push(ext_ref_referent);
                     }
                 }
                 
-                if (e == extRefs.length - 1) {
-                    if (referenceRels[lastTimepoint]) {
-                        frefers = referenceRels[lastTimepoint];
+                if (e === ext_refs.length - 1) {
+                    if (referenceRels[most_recent_stamp]) {
+                        refers = referenceRels[most_recent_stamp];
                     }
 
-                    callback(ftype, frefers);
+                    callback(type, refers);
                 }
             }
         }
     } else {
-        callback(ftype, frefers);
+        callback(type, refers);
     }
 }
 
@@ -434,7 +437,7 @@ var prepareAnnotations = function(srl, callback){
                 }
             });
         } else {
-            done_i ++;
+            done_i++;
 
             if (done_i == srl.length) {
                 callback(result);
@@ -443,7 +446,7 @@ var prepareAnnotations = function(srl, callback){
     }
 }
 
-// Get NAF metadata from JSON object
+// Get NAF info from JSON object
 // Parameters: object, string, callback
 var json2info = function(jsonObj, nafName, callback){
     var tokens = jsonObj['NAF']['text']['wf'];
@@ -463,7 +466,7 @@ var json2info = function(jsonObj, nafName, callback){
 
     var wikiTitle = jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
     
-    // Iterate over term layer
+    // Iterate trough term layer
     for (var i = 0; i < terms.length; i++){
         var term = terms[i];
 
