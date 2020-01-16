@@ -627,16 +627,17 @@ var reloadDropdownWithGroups = function(element_id, items, data_items, default_o
 }
 
 var refreshRoles = function(theFrame){
+    /*
     if (theFrame!='none')
         var relevantRoles = frame2Roles[theFrame];
     else
         var relevantRoles = [];
     reloadDropdown("#roleChooser", relevantRoles, "-Pick frame role-");
+    */
 }
 
 var storeAndReload = function(ann, anntype){
     console.log("Storing annotations");
-    console.log(ann);
 
     $.post("/storeannotations", {'annotations': ann, 'incident': $("#pickfile").val() })
         .done(function(myData) {
@@ -719,6 +720,7 @@ var validateAnnotation = function(anntype){
             return [false, "Please select at least one mention"];
         }
 
+        // Check if span of predicate has changed
         if (selectionModeModify) {
             if (arraysMatch(selected, modifyingSpan)) {
                 activePredicate = ($("#activePredicate").text()).split('@')[1];

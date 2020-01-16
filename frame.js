@@ -317,16 +317,18 @@ var moreRecent = function(date_a, date_b) {
 // Deprecate predicates with terms in span overlapping terms in provided span
 // Parameters: object, string, array, callback
 var deprecatePredicateSpanOverlap = function(srl, predicate_id, span) {
-    if (!Array.isArray(srl)) srl = [srl];
+    if (!Array.isArray(srl['predicate']) || srl['predicate'].length === 0) return srl;
     if (!Array.isArray(span)) span = [span];
+
+    var predicates = srl['predicate']
 
     // Iterate trough all terms in span
     for (i = 0; i < span.length; ++i) {
         var current_term_id = span[i]['attr']['id'];
 
         // Iterate trough all predicates in SRL layer
-        for (j = 0; j < srl.length; j++) {
-            var current_predicate = srl[j];
+        for (j = 0; j < predicates.length; j++) {
+            var current_predicate = predicates[j];
             var current_predicate_id = current_predicate['attr']['id'];
             
             // Skip predicate itself
@@ -341,7 +343,7 @@ var deprecatePredicateSpanOverlap = function(srl, predicate_id, span) {
 
                     // Overlap found!
                     if (current_term_id_in_predicate === current_term_id) {
-                        srl[j]['attr']['human_annotation'] = false;
+                        predicates[j]['attr']['human_annotation'] = false;
                         break;
                     }
                 }
@@ -349,6 +351,7 @@ var deprecatePredicateSpanOverlap = function(srl, predicate_id, span) {
         }
     }
 
+    srl['predicate'] = predicates;
     return srl;
 }
 
@@ -682,12 +685,14 @@ var annotateFrame = function(jsonData, annotations, sessionId){
         srl['predicate'] = [];
         pr_id = "pr1";
     } else {
-        srl = jsonData['NAF']['srl']['predicate'];
-        if (!(Array.isArray(srl))) srl = [srl];
+        srl = jsonData['NAF']['srl'];
+        if (!(Array.isArray(srl['predicate']))) srl['predicate'] = [srl['predicate']];
+
+        var predicates = srl['predicate'];
 
         // Selected term(s) is not yet a predicate
         if (!activePredicate) {
-            var pr_num = (parseInt(srl[srl.length - 1]['attr']['id'].substring(2)) || 0) + 1;
+            var pr_num = (parseInt(predicates[predicates.length - 1]['attr']['id'].substring(2)) || 0) + 1;
             var pr_id = "pr" + pr_num;
         }
     }
@@ -702,19 +707,24 @@ var annotateFrame = function(jsonData, annotations, sessionId){
         // Check for overlap in predicate spans, and deprecate older versions
         var new_srl = deprecatePredicateSpanOverlap(srl, pr_id, new_predicate_span);
         
-        new_srl.push(new_predicate);
-        jsonData['NAF']['srl']['predicate'] = new_srl;
+        new_srl['predicate'].push(new_predicate);
+
+        jsonData['NAF']['srl'] = new_srl;
 
         return result = {'prid': pr_id, 'json': jsonData};;
     }
 
     // Update existing predicate
     else {
-        for (var i = 0; i < thePredicates.length; i++) {
-            var aPredicate = thePredicates[i];
+        for (var i = 0; i < srl['predicate'].length; i++) {
+            var aPredicate = srl['predicate'][i];
 
-            if (aPredicate['attr']['id'] == activePredicate) {
+            if (aPredicate['attr']['id'] === activePredicate) {
                 var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, timestamp);
+
+                srl['predicate'].push(aPredicate);
+                jsonData['srl'] = srl;
+
                 return {'prid': activePredicate, 'json': jsonData};
             }
         }
@@ -927,7 +937,6 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
                     console.log('File ' + docId + ' loaded. Now updating and saving.');
 
                     var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
-                    console.log(JSON.stringify(newData))
 
                     var updatedJson = saveSessionInfo(newData['json'], req.sessionID, thisUser, loginTime);
                     var pr_id = newData['prid'];
