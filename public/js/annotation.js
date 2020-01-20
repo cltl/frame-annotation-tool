@@ -111,11 +111,6 @@ $(function(){
             $('#picktype').append($('<option></option>').val(types[i]).html(typeLabel));
         }
     });
-
-    $.get('/allframeroles', {}, function(data, status){
-        frame2Roles=data;
-    });
-
 }); // This is where the load function ends!
 
 /*
@@ -146,7 +141,7 @@ var arraysMatch = function (arr1, arr2) {
 
 var loadFrames = function() {
     var etype = $("#picktype").val();
-    $.get('/loadframes', {'eventtype': etype}, function(data, status) {
+    $.get('/get_frames', {'eventtype': etype}, function(data, status) {
         reloadDropdownWithGroups("#frameChooser", data, ['definition', 'framenet'], "-Pick frame-");
     });
 }
