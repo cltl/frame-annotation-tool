@@ -843,7 +843,7 @@ app.get('/loadincident', isAuthenticated, function(req, res) {
     }
 });
 
-app.get('/loadframes', isAuthenticated, function(req, res){
+app.get('/get_frames', isAuthenticated, function(req, res){
     if (!req.query['eventtype']){
         res.sendStatus(400);
     } else {
@@ -868,25 +868,42 @@ app.get('/loadframes', isAuthenticated, function(req, res){
     }
 });
 
-app.get('/allframeroles', isAuthenticated, function(req, res){
-    var toReturn={};
-    for (var frameId in allFramesInfo){
-        var frameInfo = allFramesInfo[frameId];
-        var frameLabel=frameInfo['frame_label'];
-        var roles=frameInfo['roles'];
+// Endpoint to get frame elements of a specific frame
+app.get('/get_frame_elements', isAuthenticated, function(req, res){
+    var core_elements = [];
+    var peripheral_elements = [];
+    var extra_thematic_elements = [];
+    var core_unexpressed_elements = [];
 
-        var roleLabels=[];
-        for (var i=0; i<roles.length; i++){
-            var roleInfo = roles[i];
-            var roleLabel=roleInfo['role_label'];
-            roleLabels.push(roleLabel);
+    if (!req.query['frameid']) {
+        res.sendStatus(400);
+    } else {
+        var frame_id = req.query['frameid'];
+        var frame_info = allFramesInfo[frame_id];
+        var frame_framenet = frame_info['framenet_url'];
+        var frame_elements = frame_info['frame_elements'];
+
+        // Get all frame elements
+        for (var frame_element in frame_elements) {
+            var element_label = frame_element['fe_label'];
+            var element_definition = frame_element['definition'];
+            var element_type = frame_element['fe_type'];
+            var element_premon = frame_element['rdf_uri'];
+
+            var element = { 'label': element_label, 'value': element_premon, 'definition': element_definition, 'framenet': frame_framenet };
+
+            // Add current frame element to correct resulting list
+            if (element_type == "Core") core_elements.push(element);
+            else if (element_type == "Peripheral") peripheral_elements.push(element);
+            else if (element_type == "Extra-thematic") extra_thematic_elements.push(element);
+            else if (element_type == "Core-unexpressed") core_unexpressed_elements.push(element);
+            else continue
         }
-        toReturn[frameLabel]=roleLabels;
+
+        res.send({ "Core": core_elements, "Peripheral": peripheral_elements, "Extra-thematic": extra_thematic_elements, "Core-unexpressed": core_unexpressed_elements });
     }
-    res.send(toReturn);
 });
 
-// Endpoint to get roles of a certain frame
 app.get('/getroles', isAuthenticated, function(req, res){
     if (!req.query['docid'] || !req.query['prid']){
         res.sendStatus(400);
