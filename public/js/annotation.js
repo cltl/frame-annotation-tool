@@ -22,25 +22,25 @@ $(function() {
             if (!modifying_predicate_span) {
                 // Make selected markable marked
                 $(this).toggleClass("marked");
-                } else {
+            } else {
                 // Keep selection and make selecte markable marked
                 $(this).toggleClass("marked");
-                }
-            } else {
+            }
+        } else {
             // Currently not modifying a predicate span
             if (!modifying_predicate_span) {
                 modifying_predicate_span = true;
                 clearSelection();
 
                 $(this).addClass("base");
-                    activatePredicateFromText($(this));
+                activatePredicateFromText($(this));
 
                 old_predicate_span = $(".marked").map(function() {
-                return $(this).attr('id');
-            }).get();
-        } else {
+                    return $(this).attr('id');
+                }).get();
+            } else {
                 var marked_predicate_id = $(this).attr("id");
-
+                
                 // Only allow terms in predicate span to be clicked
                 if (old_predicate_span.includes(marked_predicate_id)) {
                     var is_modification_base = $(this).hasClass("base");
@@ -48,12 +48,12 @@ $(function() {
                     // Selected markable is not first selected term in predicate
                     if (!is_modification_base) {
                         $(this).toggleClass("marked");
-                } else {
+                    } else {
                         clearSelection();
                         modifying_predicate_span = false;
+                    }
                 }
             }
-        }
         }
     });
 
@@ -120,8 +120,8 @@ var loadFrames = function() {
 
 var clearSelection = function() {
     $("span").removeClass("marked");
-    $("span").removeClass("annotated-marked");
     $("span").removeClass("base");
+    $("span").removeClass("info-marked");
 }
 
 var activatePredicateRightPanel = function(theId) {
@@ -184,12 +184,12 @@ var activatePredicate = function(document_id, token_id){
     var predicate_id = annotations[document_id][token_id]['predicate'];
     var display_predicate = document_id + '@' + predicate_id;
     var referents = annotations[document_id][token_id]["referents"];
-    
+
     // Set predicate summary
     $("#activeFrame").text(frame);
     $("#activePredicate").text(display_predicate);
     $("#frameWdt").html(referents.join('<br/>'));
-    
+
     var document_annotations = annotations[document_id];
     var display_document_id = document_id.replace(/ /g, "_");
 
@@ -202,10 +202,9 @@ var activatePredicate = function(document_id, token_id){
         if (annotation["predicate"] == predicate_id) {
             var predicate_markable = selectSpanUniqueID(display_document_id, annotation_id);
             predicate_markable.addClass('marked');
-            $("span[id=\"" + display_document_id + "#" + annotation_id + "\"]").addClass("marked");
-            console.log("span[id=\"" + display_document_id + "#" + annotation_id + "\"]");
+            $("span[id=\"" + display_document_id + "#" + annotation_id + "\"]").addClass("info-marked");
         }
-        } 
+    }
 }
 
 var confirmPreannotated=function(){
@@ -429,20 +428,23 @@ var loadTextsFromFile = function(inc, callback){
 
 var showAnnotations = function(){
     $("#trails").html('');
-    var html="";
-    for (var key in annotations){
-        html+="<b>" + key + "</b><br/>";
-        for (var ann in annotations[key]){
-            var docId=key.replace(/ /g, "_");
-            var fullKey=docId + '#' + ann;
+    var html = "";
 
-            var $elem = selectSpanUniqueID(docId, ann); 
-            var aText=$elem.text();
-            //var aText='';
-            var row = aText + "," + ann + "," + (annotations[key][ann]['frametype'] || noFrameType) + "," + annotations[key][ann]['predicate'];
-            html+="<span id=\"" + fullKey + "\" class=\"clickme\" onclick=activatePredicateRightPanel(this.id)>" + row + "</span><br/>";
+    for (var document_id in annotations){
+        html += "<b>" + document_id + "</b><br/>";
+
+        for (var annotation in annotations[document_id]) {
+            var display_document_id = document_id.replace(/ /g, "_");
+            var display_annotation_id = display_document_id + '#' + annotation;
+
+            var $elem = selectSpanUniqueID(display_document_id, annotation); 
+            var aText = $elem.text();
+
+            var row = aText + "," + annotation + "," + (annotations[document_id][annotation]['frametype'] || noFrameType) + "," + annotations[document_id][annotation]['predicate'];
+            html += "<span id=\"" + display_annotation_id + "\" class=\"clickme\" onclick=activatePredicateRightPanel(this.id)>" + row + "</span><br/>";
         }
     }
+
     $("#trails").html(html);
 
 }

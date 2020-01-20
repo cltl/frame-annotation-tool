@@ -60,6 +60,10 @@ span.base {
     color: white;
 }
 
+span.info-marked {
+    background: #BB8FCE;
+}
+
 label.active {
     background: #0f0;
 }
