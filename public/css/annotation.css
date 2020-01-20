@@ -44,24 +44,19 @@ div.disqualified * {
     background: #dfe;
 }
 
-
 .table-condensed{
   font-size: 1rem;
 }
 
-span.active {
+span.marked {
     background: #0f0;
 }
 
-span.inactive {
+span.annotated.marked {
     background: #BB8FCE;
 }
 
-span.inactive-role {
-    background: #BB8FCE;
-}
-
-span.modifying {
+span.base {
     color: white;
 }
 
@@ -112,7 +107,8 @@ label.inactive {
 .bad_info {
     color: #f00;
 }
-.mwu {
+
+.annotated {
     font-weight: bold;
 }
 
