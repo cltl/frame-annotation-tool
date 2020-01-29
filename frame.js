@@ -23,6 +23,7 @@ app.use( bodyParser.json() );       // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
   extended: true
 })); 
+
 // set up our express application
 app.use(morgan('dev')); // log every request to the console
 app.use(cookieParser()); // read cookies (needed for auth)
@@ -40,6 +41,8 @@ app.use('/css', express.static('public/css'));
 app.use('/pdf', express.static('public/assets/pdf'));
 app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
+
+list_of_colors = ['#731d1d', '#ff8080', '#a6877c', '#f2853d', '#402310', '#7f4400', '#e5b073', '#8c7000', '#ffd940', '#eeff00', '#64664d', '#2a4000', '#86b32d', '#d6f2b6', '#20f200', '#00660e', '#7ca692', '#00cc88', '#00e2f2', '#00474d', '#36a3d9', '#397ee6', '#26364d', '#acc3e6', '#2d3eb3', '#1f00e6', '#311659', '#b836d9', '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
 
 // Settings
 GUIDELINESVERSION='v1'
@@ -229,89 +232,156 @@ var getTokenData = function(tokens){
     return tokenData;
 }
 
-var getRoleData = function(roles, callback){
-    var result = {};
-    
-    if (!(Array.isArray(roles))) roles = [roles];
-    if (!roles || roles.length == 0) callback(result);
-
-    else{
-        for (var role_i = 0; role_i < roles.length; role_i++) {
-            console.log(role_i);
-            var role=roles[role_i];
-            console.log(JSON.stringify(role));
-            var roleId=role["attr"]["id"]; 
-            var targets=role['span']['target'];
-            if (!(Array.isArray(targets))) targets=[targets];
-            console.log(JSON.stringify(targets));
-            for (var j=0; j<targets.length; j++){
-                var tid=targets[j]['attr']['id'];
-                console.log(tid);
-                result[tid]=roleId;
-                console.log('result' + JSON.stringify(result));
-                if (j==targets.length-1 && role_i==roles.length-1){
-                    callback(result);
-                }
-            }
-
-            /*getMostRecentAnnotations(role['externalReferences']['externalRef'], function(rawRoleType, roleRefer){
-                var roleType=rawRoleType.split('@')[1];
-                var targets=role['span']['target'];
-                if (!(Array.isArray(targets))) targets=[targets];
-                console.log(JSON.stringify(targets));
-                for (var j=0; j<targets.length; j++){
-                    var tid=targets[j]['attr']['id'];
-                    result[tid]=roleId;
-                    if (j==targets.length-1 && role_i==roles.length-1){
-                        callback(result);
-                    }
-                }
-            }); */
-        }
-    }
-}
-
-// Get the roles of an annotated frame
-// Parameters: object, string, callback
-var getAnnotatedRolesForPredicate = function(jsonObj, the_id, callback) {
-    var srl_data = [];
-
-    // Get SRL layer
-    if (jsonObj['NAF']['srl'])
-        srl_data = jsonObj['NAF']['srl']['predicate'];
-
-    // Return empty if SRL layer is empty
-    if (!srl_data || srl_data.length == 0) {
-        callback({});
-    } else {
-        if (!(Array.isArray(srl_data))) srl_data = [srl_data];
-
-        // Find predicate in SRL where pr_id == the_id
-        for (var i = 0; i < srl_data.length; i++){
-            var pr = srl_data[i];
-            var pr_id = pr['attr']['id'];
-
-            if (pr_id == the_id){
-                var roles = pr['role'];
-                
-                if (!roles) {
-                    callback({});
-                } else {
-                    getRoleData(roles, function(result){
-                        callback(result);
-                    });
-                }
-            } 
-        }    
-    }
-}
-
 // Check if date b is more recent than date a
 var moreRecent = function(date_a, date_b) {
     if (!date_a)
         return true;
     else
         return new Date(date_a) <= new Date(date_b);
+}
+
+var getActiveRoleAnnotation = function(annotation_refs, annotation_span, callback) {
+    getMostRecentAnnotations(annotation_refs, function(element_id, referents) {
+        callback(element_id, annotation_span);
+    });
+}
+
+// Get the frame element information for a predicate
+// Parameters: object, string, callback
+var getRolesForPredicate = function(jsonObj, pr_id, callback) {
+    var srl_data = [];
+
+    // Get SRL layer
+    if (jsonObj['NAF']['srl']) srl_data = jsonObj['NAF']['srl']['predicate'];
+
+    // Return empty if SRL layer is empty
+    if (!srl_data || srl_data.length == 0) {
+        callback();
+    } else {
+        if (!(Array.isArray(srl_data))) srl_data = [srl_data];
+
+        // Find predicate in SRL where pr_id == the_id
+        for (var i = 0; i < srl_data.length; i++){
+            var cur_pr = srl_data[i];
+            var cur_pr_id = cur_pr['attr']['id'];
+
+            if (cur_pr_id == pr_id) {
+                getMostRecentAnnotations(cur_pr["externalReferences"]["externalRef"], function(frame_id, referents) {
+                    var pr_elements = cur_pr['role'];
+
+                    // Get frame elements frame frame_id
+                    getFrameElements(frame_id, function(frame_elements) {
+                        var core_elements = frame_elements["Core"];
+                        var other_elements = [].concat(frame_elements["Peripheral"], frame_elements["Extra-thematic"], frame_elements["Core-unexpressed"]);
+                        
+                        // Loop core frame elements
+                        if (!pr_elements) {
+                            var result = {};
+                            for (var j = 0; j < core_elements.length; j++) {
+                                var frame_element = core_elements[j];
+                                result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Core", "target_ids": [], "color": list_of_colors[i], "annotated": false, "expressed": false };
+                            }
+
+                            callback(result)
+                        } else {
+                            if (!Array.isArray(pr_elements)) pr_elements = [pr_elements];
+
+                            var result = {};
+
+                            var annotations = {};
+                            for (var j = 0; j < pr_elements.length; j++) {
+                                var annotation_refs = pr_elements[j]["externalReferences"]["externalRef"];
+                                var annotation_span = pr_elements[j]["span"]["target"];
+                                
+                                if (pr_elements[j]["span"] != "") {
+                                    if (!Array.isArray(annotation_span)) annotation_span = [annotation_span];
+
+                                    for (var l = 0; l < annotation_span.length; l++) {
+                                        annotation_span[l] = annotation_span[l]["attr"]["id"];
+                                    }
+                                } else {
+                                    annotation_span = [];
+                                }
+
+                                getActiveRoleAnnotation(annotation_refs, annotation_span, function(key, value) {
+                                    annotations[key] = value;
+
+                                    if (Object.keys(annotations).length == pr_elements.length) {
+                                        var color_index = 0;
+
+                                        // Loop over core elements
+                                        for (var k = 0; k < core_elements.length; k++) {
+                                            var frame_element = core_elements[k];
+
+                                            var expressed = false;
+                                            var annotated = false;
+                                            var targets = [];
+
+                                            if (Object.keys(annotations).includes(frame_element["value"])) {
+                                                expressed = annotations[frame_element["value"]].length > 0;
+                                                targets = annotations[frame_element["value"]];
+                                                annotated = true;
+                                            }
+
+                                            result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Core", "target_ids": targets, "color": list_of_colors[color_index], "annotated": annotated, "expressed": expressed };
+                                            color_index++;
+                                        }
+
+                                        for (var k = 0; k < other_elements.length; k++) {
+                                            var frame_element = other_elements[k];
+
+                                            if (Object.keys(annotations).includes(frame_element["value"])) {
+                                                var expressed = annotations[frame_element["value"]].length > 0;
+                                                var targets = annotations[frame_element["value"]];
+
+                                                result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Other", "target_ids": targets, "color": list_of_colors[color_index], "annotated": true, "expressed": expressed };
+                                                color_index++;
+                                            }
+                                        }
+
+                                        callback(result);
+                                    }
+                                });
+                            }
+                        }
+                    });
+                });
+            }
+        }    
+    }
+}
+
+// Get the frame elements for a specific frame type
+// Parameters: string, callback
+var getFrameElements = function(frame_id, callback) {
+    var core_elements = [];
+    var peripheral_elements = [];
+    var extra_thematic_elements = [];
+    var core_unexpressed_elements = [];
+
+    var frame_info = allFramesInfo[frame_id];
+    var frame_framenet = frame_info['framenet_url'];
+    var frame_elements = frame_info['frame_elements'];
+
+    // Get all frame elements
+    for (var i = 0; i < frame_elements.length; i++) {
+        var frame_element = frame_elements[i];
+        var element_label = frame_element['fe_label'];
+        var element_definition = frame_element['definition'];
+        var element_type = frame_element['fe_type'];
+        var element_premon = frame_element['rdf_uri'];
+
+        var element = { 'label': element_label, 'value': element_premon, 'definition': element_definition, 'framenet': frame_framenet };
+
+        // Add current frame element to correct resulting list
+        if (element_type == "Core") core_elements.push(element);
+        else if (element_type == "Peripheral") peripheral_elements.push(element);
+        else if (element_type == "Extra-thematic") extra_thematic_elements.push(element);
+        else if (element_type == "Core-unexpressed") core_unexpressed_elements.push(element);
+        else continue
+    }
+
+    callback({ "Core": core_elements, "Peripheral": peripheral_elements, "Extra-thematic": extra_thematic_elements, "Core-unexpressed": core_unexpressed_elements });
 }
 
 // Deprecate predicates with terms in span overlapping terms in provided span
@@ -343,7 +413,7 @@ var deprecatePredicateSpanOverlap = function(srl, predicate_id, span) {
 
                     // Overlap found!
                     if (current_term_id_in_predicate === current_term_id) {
-                        predicates[j]['attr']['human_annotation'] = false;
+                        predicates[j]['attr']['status'] = "deprecate";
                         break;
                     }
                 }
@@ -408,11 +478,75 @@ var getMostRecentAnnotations = function(ext_refs, callback) {
     }
 }
 
+// Get role annotation information for a specific predicate
+// Parameters: string, list, callback
+var getPredicateRoleAnnotations = function(pr_id, roles, callback) {
+    var result = { "unexpressed": [] };
+    var roles_done = 0;
+
+    if (!(Array.isArray(roles))) roles = [roles];
+    if (roles.length < 1) callback(result);
+
+    // Get annotations for all roles of current predicate
+    for(var i = 0; i < roles.length; i++) {
+        var role = roles[i];
+        var role_span = role['span']['target'];
+        var role_refs = role['externalReferences']['externalRef'];
+
+        if (!(Array.isArray(role_span))) role_span = [role_span];
+
+        // Get most recent annotation for current role
+        getMostRecentAnnotations(role_refs, function(type, referents) {
+            if (role["span"] === "") {
+                result["unexpressed"].push({ "premon": type, "predicate": pr_id });
+                roles_done++;
+
+                if (roles_done >= roles.length) {
+                    callback(result);
+                }
+            } else {    
+                for (var j = 0; j < role_span.length; j++) {
+                    var cur_t_id = role_span[j]["attr"]["id"];
+                    var cur_term = { "premon": type, "predicate": pr_id };
+
+                    if (!(Array.isArray(result[cur_t_id]))) result[cur_t_id] = [];
+                    result[cur_t_id].push(cur_term);
+                }
+
+                roles_done++;
+
+                if (roles_done >= roles.length) {
+                    callback(result);
+                }
+            }
+        });
+    }
+}
+
+// Get the frame annotations for a specific predicate
+// Parameters: string, list, list, callback
+var getPredicateAnnotations = function(pr_id, span, external_references, callback) {
+    var result = {};
+
+    // Get the most recent annotation for predicate
+    getMostRecentAnnotations(external_references, function(type, referents) {
+        for (var i = 0; i < span.length; i++) {
+            // Add list entry for current term in predicate span
+            var cur_t_id = span[i]['attr']['id'];
+            var cur_term = { "premon": type, "predicate": pr_id };
+
+            result[cur_t_id] = cur_term;
+        }
+
+        callback(result);
+    });
+}
+
 // Get a list of annotaions made in a NAF document given its SRL layer
 // Parameters: object, callback
-var prepareAnnotations = function(srl, callback){
-    var result = {};
-    var done_i = 0;
+var prepareAnnotations = function(srl, callback) {
+    var result = {"frames": {}, "roles": {}};
+    var predicates_done = 0;
 
     if (!Array.isArray(srl)) srl = [srl];
     if (!srl || srl.length == 0) callback(result);
@@ -421,38 +555,56 @@ var prepareAnnotations = function(srl, callback){
     for (var i = 0; i < srl.length; i++) {
         var cur_pr = srl[i];
         var cur_pr_id = cur_pr['attr']['id'];
-        var cur_pr_annotation = cur_pr['attr']['human_annotation'];
+        var cur_pr_annotation = cur_pr['attr']['status'];
         var cur_pr_refs = cur_pr['externalReferences']['externalRef'];
         var cur_pr_span = cur_pr['span']['target'];
 
         if (!(Array.isArray(cur_pr_span))) cur_pr_span = [cur_pr_span];
 
-        if (cur_pr_annotation === "true") {
-            // Get the most recent annotation for current predicate
-            getMostRecentAnnotations(cur_pr_refs, function(type, referents) {
-                for (var j = 0; j < cur_pr_span.length; j++) {
-                    // Add list entry for current term in predicate span
-                    var cur_t_id = cur_pr_span[j]['attr']['id'];
-                    var cur_term = {'frametype': type, 'predicate': cur_pr_id, 'referents': referents};
+        var span_done = false;
+        var roles_done = false;
 
-                    result[cur_t_id] = cur_term;
+        // If current predicate is annotated
+        if (cur_pr_annotation !== "deprecate") {
+            getPredicateAnnotations(cur_pr_id, cur_pr_span, cur_pr_refs, function(annotations) {
+                Object.keys(annotations).forEach((key, index) => {
+                    result["frames"][key] = annotations[key];
+                });
 
-                    // Return if all annotations are checked.
-                    if (j + 1 === cur_pr_span.length) {
-                        done_i++;
-
-                        if (done_i == srl.length) {
-                            callback(result);
-                        }
-                    }
+                span_done = true;
+                if (span_done && roles_done) {
+                    predicates_done++;
+                    if (predicates_done >= srl.length) callback(result);
                 }
             });
-        } else {
-            done_i++;
 
-            if (done_i == srl.length) {
-                callback(result);
+            // Get role annotations for current predicate
+            if ("role" in cur_pr) {
+                getPredicateRoleAnnotations(cur_pr_id, cur_pr["role"], function(annotations) {
+                    Object.keys(annotations).forEach((key, index) => {
+                        if (!(Array.isArray(result["roles"][key]))) result["roles"][key] = [];
+                        
+                        for (var j = 0; j < annotations[key].length; j++) {
+                            result["roles"][key].push(annotations[key][j]);
+                        }
+                    });
+                    
+                    roles_done = true;
+                    if (span_done && roles_done) {
+                        predicates_done++;
+                        if (predicates_done >= srl.length) callback(result);
+                    }
+                });
+            } else {
+                roles_done = true;
+                if (span_done && roles_done) {
+                    predicates_done++;
+                    if (predicates_done >= srl.length) callback(result);
+                }
             }
+        } else {
+            predicates_done++;
+            if (predicates_done >= srl.length) callback(result);
         }
     }
 }
@@ -576,11 +728,15 @@ var loadMultipleNafs = function(nafs, theUser, callback){
 }
 
 var makeSpanLayer = function(anObj, tids){
-    anObj['span']={'#text': '', 'target': []};
-    for (var i=0; i<tids.length; i++){
-        var tid=tids[i].split('.')[2];
-        anObj['span']['target'].push({'#text': '', 'attr':{'id': tid}});
+    anObj['span'] = {'#text': '', 'target': []};
+
+    for (var i = 0; i < tids.length; i++) {
+        if (tids[i] != "unexpressed") {
+            var tid = tids[i].split('.')[2];
+            anObj['span']['target'].push({'#text': '', 'attr':{'id': tid}});
+        }
     }
+
     return anObj['span'];
 }
 
@@ -640,7 +796,7 @@ var createNewPredicateEntry = function(pr_id, frame, sessionId, reltype, tids, t
     aPredicate['#text'] = '';
     aPredicate['attr'] = {};
     aPredicate['attr']['id'] = pr_id;
-    aPredicate['attr']['human_annotation'] = true;
+    aPredicate['attr']['status'] = "manual";
     aPredicate['externalReferences'] = {'#text': '', 'externalRef': []};
 
     var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, timestamp);
@@ -651,8 +807,9 @@ var createNewPredicateEntry = function(pr_id, frame, sessionId, reltype, tids, t
     return aPredicate;
 }
 
-var createNewRoleEntry=function(rl_id, semRole, sessionId, referents, mentions, timestamp){
+var createNewRoleEntry = function(rl_id, semRole, sessionId, referents, mentions, timestamp){
     var aRole = {};
+
     aRole['#text'] = '';
     aRole['attr'] = {}
     aRole['attr']['id'] = rl_id;
@@ -743,23 +900,28 @@ var addExternalRefsRole=function(aRole, semRole, sessionId, referents, timestamp
     return aRole;
 }
 
-var annotateRole=function(jsonData, annotations, sessionId){
+var annotateRole = function(jsonData, annotations, sessionId) {
     var roleData = annotations;
-    var timestamp=new Date().toISOString().replace(/\..+/, '');
+    var timestamp = new Date().toISOString().replace(/\..+/, '');
+
     if ('srl' in jsonData['NAF']){
-        var predicates=jsonData['NAF']['srl']['predicate'];
-        if (!Array.isArray(predicates))
-            predicates=[predicates];
-        for (var i=0; i<predicates.length; i++){
-            if (predicates[i]['attr']['id']==roleData['prid']){
+        var predicates = jsonData['NAF']['srl']['predicate'];
+
+        if (!Array.isArray(predicates)) predicates=[predicates];
+
+        for (var i = 0; i < predicates.length; i++){
+            if (predicates[i]['attr']['id'] == roleData['prid']){
                 if (!('role' in predicates[i]))
-                    predicates[i]['role']=[];
+                    predicates[i]['role'] = [];
                 else if (!(Array.isArray(predicates[i]['role'])))
-                    predicates[i]['role']=[predicates[i]['role']];
-                var existingRoles=predicates[i]['role'];
-                if (!roleData['rlid']){ // create a new role entry
-                    var rl_id='rl' + (existingRoles.length + 1).toString();
-                    var aRole=createNewRoleEntry(rl_id, roleData['semRole'], sessionId, roleData['referents'], roleData['mentions'], timestamp);
+                    predicates[i]['role'] = [predicates[i]['role']];
+
+                var existingRoles = predicates[i]['role'];
+
+                if (!roleData['rlid']) { // create a new role entry
+                    var rl_id = 'rl' + (existingRoles.length + 1).toString();
+                    var aRole = createNewRoleEntry(rl_id, roleData['semRole'], sessionId, roleData['referents'], roleData['mentions'], timestamp);
+
                     predicates[i]['role'].push(aRole);
                     return {'prid': roleData['prid'], 'json': jsonData};
                 } else{ //update existing role entry
@@ -779,9 +941,9 @@ var annotateRole=function(jsonData, annotations, sessionId){
 }
 
 var addAnnotationsToJson = function(jsonData, annotations, sessionId){
-    if (annotations['anntype'] === 'idiom'){  
+    if (annotations['anntype'] == 'taskIdiom') {  
         return jsonData;
-    } else if (annotations['anntype'] === 'fee'){
+    } else if (annotations['anntype'] == 'taskFrame') {
         return annotateFrame(jsonData, annotations, sessionId);
     } else {
         return annotateRole(jsonData, annotations, sessionId);
@@ -870,41 +1032,16 @@ app.get('/get_frames', isAuthenticated, function(req, res){
 
 // Endpoint to get frame elements of a specific frame
 app.get('/get_frame_elements', isAuthenticated, function(req, res){
-    var core_elements = [];
-    var peripheral_elements = [];
-    var extra_thematic_elements = [];
-    var core_unexpressed_elements = [];
-
     if (!req.query['frameid']) {
         res.sendStatus(400);
     } else {
-        var frame_id = req.query['frameid'];
-        var frame_info = allFramesInfo[frame_id];
-        var frame_framenet = frame_info['framenet_url'];
-        var frame_elements = frame_info['frame_elements'];
-
-        // Get all frame elements
-        for (var frame_element in frame_elements) {
-            var element_label = frame_element['fe_label'];
-            var element_definition = frame_element['definition'];
-            var element_type = frame_element['fe_type'];
-            var element_premon = frame_element['rdf_uri'];
-
-            var element = { 'label': element_label, 'value': element_premon, 'definition': element_definition, 'framenet': frame_framenet };
-
-            // Add current frame element to correct resulting list
-            if (element_type == "Core") core_elements.push(element);
-            else if (element_type == "Peripheral") peripheral_elements.push(element);
-            else if (element_type == "Extra-thematic") extra_thematic_elements.push(element);
-            else if (element_type == "Core-unexpressed") core_unexpressed_elements.push(element);
-            else continue
-        }
-
-        res.send({ "Core": core_elements, "Peripheral": peripheral_elements, "Extra-thematic": extra_thematic_elements, "Core-unexpressed": core_unexpressed_elements });
+        getFrameElements(req.query["frameid"], function(result) {
+            res.send(result);
+        });
     }
 });
 
-app.get('/getroles', isAuthenticated, function(req, res){
+app.get('/get_roles', isAuthenticated, function(req, res){
     if (!req.query['docid'] || !req.query['prid']){
         res.sendStatus(400);
     } else {
@@ -913,8 +1050,8 @@ app.get('/getroles', isAuthenticated, function(req, res){
         loadNAFFile(docid, req.user.user, false, function(rawData){
             var the_id = req.query['prid'];
 
-            getAnnotatedRolesForPredicate(rawData, the_id, function(roleData) {
-                res.send({"roles": roleData});
+            getRolesForPredicate(rawData, the_id, function(roleData) {
+                res.send(roleData);
             });
         });
     }
@@ -931,9 +1068,7 @@ app.post('/storeannotations', isAuthenticated, function(req, res){
     if (req.body.incident) {
         // Get annotation data from request body
 	    var annotations = req.body.annotations || {};
-        var firstMention = annotations['mentions'][0];
-        var docidAndTid = firstMention.split('.');
-        var docId = docidAndTid[0].replace(/_/g, " ");
+        var docId = annotations["doc_id"];
 
         // Load NAF file using incident info
         loadNAFFile(docId, thisUser, false, function(nafData){

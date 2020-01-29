@@ -49,11 +49,11 @@ div.disqualified * {
 }
 
 span.marked {
-    background: #0f0;
+    background: #0f0 !important;
 }
 
 span.annotated.marked {
-    background: #BB8FCE;
+    background: #BB8FCE !important;
 }
 
 span.base {
@@ -82,10 +82,6 @@ label.inactive {
 
 .event_Offenses {
     background: #77f;
-}
-
-.role {
-    background: #f0f;
 }
 
 .event_ {
@@ -128,16 +124,25 @@ label.inactive {
     background: #EAECEE;    
 }
 
-.activeDiv {
+.selectedPredicateInfo {
     background: #F4ECF7;
 }
 
-.refDiv {
+.referentsInfo {
     background: #EBF5FB;
 }
 
-.chosenDiv {
+.chosenFrameInfo {
     background: #EBFBEC;
+}
+
+.chosenRoleInfo {
+    background: #fbf7eb;
+}
+
+.predicateRoleInfo {
+    width: 100%;
+    font-size: 1rem;
 }
 
 select {

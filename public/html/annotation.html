@@ -50,12 +50,12 @@
                 <div class="col-sm-5">
                     <label>Annotation type: </label>
                     <br/>
-                    <select id="anntype">
+                    <select id="anntype" onchange="updateTask()">
                         <option value="-1" selected>-Pick annotation type-</option>
-                        <option value="fee">Frame</option>
-                        <option value="role">Role</option>
-                        <option value="role">Reference</option>
-                        <option value="idiom">Idiom</option>
+                        <option value="taskFrame">Frame</option>
+                        <option value="taskRole">Role</option>
+                        <option value="taskRef">Reference</option>
+                        <option value="taskIdiom">Idiom</option>
                     </select>
                 </div>
                 <div id="frameAnnotation" class="col-sm-7">
@@ -63,8 +63,6 @@
                         <label>Choose frame:</label><br/>
                         <select id="frameChooser" onchange="updateChosenFrameInfo()">
                             <option value="-1" selected>-Pick frame-</option>
-                            <option value="Killing">Killing</option>
-                            <option value="Change_of_leadership">Change of leadership</option>
                         </select>
                     </div>
                     <div class="col-sm-4">
@@ -80,7 +78,7 @@
                 <div id="feAnnotation" class="col-sm-7">
                     <div class="col-sm-12">
                         <label>Choose role:</label><br/>
-                        <select id="roleChooser">
+                        <select id="roleChooser" onchange="updateChosenRoleInfo()">
                             <option value="-1" selected>-Pick frame role-</option>
                         </select>
                     </div>
@@ -121,23 +119,37 @@
     <div class="row" id="bigdiv">
         <div id="pnlLeft" class="col-sm-9"></div>
         <div id="pnlRight" class="col-sm-3">
-            <div class="chosenDiv">
+            <div class="chosenFrameInfo">
                 <h4>Chosen frame</h4>
                 <label>Label: </label> <span id="chosenFrameLabel"></span><br />
                 <label>Definition: </label> <span id="chosenFrameDef"></span><br />
                 <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenFramePrem"></a><br />
                 <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenFrameFM"></a><br />
             </div>
-            <div class="refDiv">
+            <div class="chosenRoleInfo">
+                <h4>Chosen role</h4>
+                <label>Label: </label> <span id="chosenRoleLabel"></span><br />
+                <label>Definition: </label> <span id="chosenRoleDef"></span><br />
+                <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenRolePrem"></a><br />
+                <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenRoleFM"></a><br />
+            </div>
+            <div class="referentsInfo">
                 <h4>Annotated Wikidata referents</h4>
                 <span id="referents"></span><br/>
             </div>
-            <div class="activeDiv">
-                <h4>Active frame</h4>
-                <label>Type:</label> <span id="activeFrame">none</span><br/>
+            <div class="selectedPredicateInfo">
+                <h4>Selected predicate</h4>
+                <label>Frame type:</label> <span id="activeFrame"></span><br/>
                 <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
                 <label>Referents:</label><div id="frameWdt"></div><br/>
-                <label>Active role:</label> <span id="activeRole"></span><br/>
+                <table id="selectedPredicateRoleInfo" class="predicateRoleInfo">
+                    <tr>
+                        <th>Frame element</th>
+                        <th>Role type</th>
+                        <th>Annotated</th>
+                        <th>Expressed</th>
+                    </tr>
+                </table>
             </div>
             <div class="statusDiv">
                 <h4>SRL annotations</h4>
