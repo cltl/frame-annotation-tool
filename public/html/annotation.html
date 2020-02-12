@@ -1,168 +1,207 @@
 <html>
-<head>
-<title>Frame Annotation</title>
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css">
-<link rel="stylesheet" href="/css/annotation.css" type="text/css">
-</head>
-<body>
-<div class="container">
-    <div class="row" id="titlerow">
-        <div class="col-sm-8">
-            <h2>Frame Annotation</h2>
-        </div>
-        <div class="col-sm-2">
-            <span>Logged user: <label><%= username %> </label></span><br/>
-            <a href="/dash">Back to dashboard</a>
-        </div>
-        <div class="col-sm-2">
-            <button class="btn btn-primary btn-ann" onclick="location.href='/logout'">Logout</button>
-        </div>
-    </div>
-    <br/>
-    <div class="row" id="pickrow">
-        <div class="col-sm-8">
-            <div class="col-sm-2">
-                <select id="pickproj" onchange="updateIncidentList()">
-                    <option value="-1">-Pick a project-</option>
-                </select>
-            </div>
-            <div class="col-sm-3">
-                <select id="picktype" onchange="updateIncidentList()">
-                    <option value="-1">-Pick a type-</option>
-                </select>
-            </div>
-            <div class="col-sm-4">
-                <select id="pickfile">
-                    <option value="-1">-Pick an incident ID-</option>
-                </select>
-            </div>
-            <div class="col-sm-3">
-                <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
-            </div>
-        </div>
-        <div class="col-sm-4"><label id="infoMessage"></label></div>
-    </div>
-    <div class="row justify-content-center" id="annrow">
-        <div class="ann-input col-sm-8">
-            <div id="annotation">
-                <div class="col-sm-5">
-                    <label>Annotation type: </label>
-                    <br/>
-                    <select id="anntype" onchange="updateTask()">
-                        <option value="-1" selected>-Pick annotation type-</option>
-                        <option value="taskFrame">Frame</option>
-                        <option value="taskRole">Role</option>
-                        <option value="taskRef">Reference</option>
-                        <option value="taskIdiom">Idiom</option>
-                    </select>
-                </div>
-                <div id="frameAnnotation" class="col-sm-7">
-                    <div class="col-sm-8">
-                        <label>Choose frame:</label><br/>
-                        <select id="frameChooser" onchange="updateChosenFrameInfo()">
-                            <option value="-1" selected>-Pick frame-</option>
-                        </select>
-                    </div>
-                    <div class="col-sm-4">
-                        <label>Relation type:</label><br/>
-                        <select id="relChooser">
-                            <option value="-1" selected>-Pick relation-</option>
-                            <option value="evoke">evokes</option>
-                            <option value="type">isOfType</option>
-                        </select>
-                    </div>
-                    <br/>
-                </div>
-                <div id="feAnnotation" class="col-sm-7">
-                    <div class="col-sm-12">
-                        <label>Choose role:</label><br/>
-                        <select id="roleChooser" onchange="updateChosenRoleInfo()">
-                            <option value="-1" selected>-Pick frame role-</option>
-                        </select>
-                    </div>
-                    <br/>
-                </div>
-            </div>
-            <div class="row col-sm-12 plcHolder">X</div>
-            <div id="buttons">
-                <div class="col-sm-2">
-                    <input type="checkbox" name="chkMultiword" value="mwuAnnotation" checked><label>Multi-word unit</label>
-                </div>
-                <div class="col-sm-3">
-                    <button class="btn btn-success btn-ann" onclick="saveFrameAnnotation()">Save annotation</button>
-                </div>
-                <div class="col-sm-4">
-                    <button class="btn btn-primary btn-pre" onclick="confirmPreannotated()">Confirm pre-annotation</button>
-                </div>
-                <div class="col-sm-3">
-                    <button class="btn btn-info btn-aux" onclick="clearSelection()">Clear selection</button>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-4">
-            <div id="strinfo"></div>
-        </div>
-        <div class="col-sm-8">
-            <input type="checkbox" name="chkPreann" value="showPreann" checked><label>Show pre-annotations</label>&nbsp;&nbsp;
-            <input type="checkbox" name="chkUserAnn" value="showUserAnn" checked><label>Show your annotations</label>&nbsp;&nbsp;
-        </div>
-        <div class="col-sm-2">
-            <input type="text" id="newReferent" placeholder="e.g., John Doe"/>
-        </div>
-        <div class="col-sm-2">
-            <button class="btn btn-primary" onclick="addReferent()">Add referent</button>
-        </div>
-    </div>
-    <br/>
-    <div class="row" id="bigdiv">
-        <div id="pnlLeft" class="col-sm-9"></div>
-        <div id="pnlRight" class="col-sm-3">
-            <div class="chosenFrameInfo">
-                <h4>Chosen frame</h4>
-                <label>Label: </label> <span id="chosenFrameLabel"></span><br />
-                <label>Definition: </label> <span id="chosenFrameDef"></span><br />
-                <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenFramePrem"></a><br />
-                <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenFrameFM"></a><br />
-            </div>
-            <div class="chosenRoleInfo">
-                <h4>Chosen role</h4>
-                <label>Label: </label> <span id="chosenRoleLabel"></span><br />
-                <label>Definition: </label> <span id="chosenRoleDef"></span><br />
-                <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenRolePrem"></a><br />
-                <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenRoleFM"></a><br />
-            </div>
-            <div class="referentsInfo">
-                <h4>Annotated Wikidata referents</h4>
-                <span id="referents"></span><br/>
-            </div>
-            <div class="selectedPredicateInfo">
-                <h4>Selected predicate</h4>
-                <label>Frame type:</label> <span id="activeFrame"></span><br/>
-                <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
-                <label>Referents:</label><div id="frameWdt"></div><br/>
-                <table id="selectedPredicateRoleInfo" class="predicateRoleInfo">
-                    <tr>
-                        <th>Frame element</th>
-                        <th>Role type</th>
-                        <th>Annotated</th>
-                        <th>Expressed</th>
-                    </tr>
-                </table>
-            </div>
-            <div class="statusDiv">
-                <h4>SRL annotations</h4>
-                <div id="trails"></div>
-            </div>
-        </div>
-    </div>
-</div>
+    <head>
+        <title>Frame Annotation Tool</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/css/annotation.css" type="text/css">
+    </head>
+    <body>
+        <!-- Body container -->
+        <div class="container">
 
-<script type="text/javascript" src="//code.jquery.com/jquery-1.11.2.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
-<script type="text/javascript" src="/js/annotation.js"></script>
-</body>
+            <!-- Title Row -->
+            <div class="row mt-4" id="titlerow">
+                <div class="col-sm-8">
+                    <h2>Frame Annotation Tool</h2>
+                </div>
+                <div class="col-sm-2">
+                    <span>Logged user: <label><%= username %> </label></span><br/>
+                    <a href="/dash">Back to dashboard</a>
+                </div>
+                <div class="col-sm-2">
+                    <button class="btn btn-primary btn-ann" onclick="location.href='/logout'">Logout</button>
+                </div>
+            </div>
+            <br/>
+
+            <!-- Incidident Pick row -->
+            <div class="row mt-4" id="pickrow">
+                <div class="col-sm-8">
+                    <select class="w-25 mr-4" id="pickproj" onchange="updateIncidentList()">
+                        <option value="-1">-Pick a project-</option>
+                    </select>
+                    <select class="w-25 mr-4" id="picktype" onchange="updateIncidentList()">
+                        <option value="-1">-Pick a type-</option>
+                    </select>
+                    <select class="w-25 mr-4" id="pickfile">
+                        <option value="-1">-Pick an incident ID-</option>
+                    </select>
+                    <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
+                </div>
+                <div class="col-sm-4"><label id="infoMessage"></label></div>
+            </div>
+
+            <!-- Task, Task Details and Structured Data row -->
+            <div class="row mt-4 justify-content-center" id="annrow">
+                <div class="row w-100">
+                    <div class="col-sm-8">
+
+                        <!-- Task and Task Details Selectors -->
+                        <div class="row">
+                            <!-- Task Selector-->
+                            <div class="taskSelectors col-sm-4">
+                                <label>Annotation type: </label>
+                                <br/>
+                                <select id="taskSelector" onchange="updateTask()">
+                                    <option value="-1" selected>-Pick annotation type-</option>
+                                    <option value="taskCorrect">Markable Correction</option>
+                                    <option value="taskFrame">Frame</option>
+                                    <option value="taskRole">Role</option>
+                                    <option value="taskRef">Reference</option>
+                                    <option value="taskIdiom">Idiom</option>
+                                </select>
+                            </div>
+
+                            <!-- Markable Correction Selector -->
+                            <!-- Correction Type -->
+                            <div class="correctionSelectors col-sm-4">
+                                <label>Choose Correction Type:</label><br/>
+                                <select id="correctionChooser">
+                                    <option value="-1" selected>-Pick correction type-</option>
+                                    <option value="1">Create phrasal verb</option>
+                                    <option value="2">Remove phrasal verb</option>
+                                    <option value="3">Create idiom</option>
+                                    <option value="4">Remove idiom</option>
+                                    <option value="5">Create compound</option>
+                                    <option value="6">Remove compound</option>
+                                </select>
+                            </div>
+                            <!-- Lemma -->
+                            <div class="correctionSelectors col-sm-4">
+                                <label>Lemma:</label><br/>
+                                <input id="correctionLemma" type="text" class="w-100">
+                            </div>
+
+                            <!-- Frame Selectors -->
+                            <!-- Frame Type -->
+                            <div class="frameSelectors col-sm-4">
+                                <label>Frame Type</label><br/>
+                                <select id="frameChooser" onchange="updateChosenFrameInfo()">
+                                    <option value="-1" selected>-Pick frame-</option>
+                                </select>
+                            </div>
+                            <!-- Relation Type -->
+                            <div class="frameSelectors col-sm-4">
+                                <label>Relation type:</label><br/>
+                                <select id="relChooser">
+                                    <option value="-1" selected>-Pick relation-</option>
+                                    <option value="evoke">evokes</option>
+                                    <option value="type">isOfType</option>
+                                </select>
+                            </div>
+
+                            <!-- Frame Element Selectors-->
+                            <!-- Frame Element -->
+                            <div class="elementSelectors col-sm-4">
+                                <label>Choose role:</label><br/>
+                                <select id="roleChooser" onchange="updateChosenRoleInfo()">
+                                    <option value="-1" selected>-Pick frame role-</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Structured Data -->
+                    <div class="col-sm-4">
+                        <div id="strinfo"></div>
+                    </div>
+                </div>
+
+                <!-- Control Row -->
+                <div class="row w-100">
+                    <!-- Control Buttons and Boxes -->
+                    <div class="col-sm-8">
+                        <button class="btn btn-success btn-ann" onclick="save()">Save</button>
+                        <button class="btn btn-info btn-aux" onclick="clearSelection()">Clear selection</button>
+
+                        <!--
+                        <input type="checkbox" name="chkPreann" value="showPreann" checked><label>Show pre-annotations</label>&nbsp;&nbsp;
+                        <input type="checkbox" name="chkUserAnn" value="showUserAnn" checked><label>Show your annotations</label>&nbsp;&nbsp;
+                        -->
+                    </div>
+                    <div class="col-sm-2">
+                        <input type="text" id="newReferent" placeholder="e.g., John Doe"/>
+                    </div>
+                    <div class="col-sm-2">
+                        <button class="btn btn-primary" onclick="addReferent()">Add referent</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Content -->
+            <div class="row mt-4" id="bigdiv">
+
+                <!-- Text Panel -->
+                <div id="pnlLeft" class="col-sm-9"></div>
+
+                <!-- Information Panel -->
+                <div id="pnlRight" class="col-sm-3">
+
+                    <!-- Chosen Frame Information -->
+                    <div class="info-panel-1">
+                        <h4>Chosen Frame Element</h4>
+                        <label>Label: </label> <span id="chosenFrameLabel"></span><br />
+                        <label>Definition: </label> <span id="chosenFrameDef"></span><br />
+                        <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenFramePrem"></a><br />
+                        <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenFrameFM"></a><br />
+                    </div>
+
+                    <!-- Chooen Frame Element Information -->
+                    <div class="info-panel-2">
+                        <h4>Chosen Frame Element</h4>
+                        <label>Label: </label> <span id="chosenRoleLabel"></span><br />
+                        <label>Definition: </label> <span id="chosenRoleDef"></span><br />
+                        <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenRolePrem"></a><br />
+                        <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenRoleFM"></a><br />
+                    </div>
+
+                    <!-- Documents Referents Information -->
+                    <div class="info-panel-3">
+                        <h4>Annotated Wikidata referents</h4>
+                        <span id="referents"></span><br/>
+                    </div>
+
+                    <!-- Selected Predicates Information -->
+                    <div class="info-panel-4">
+                        <h4>Selected predicate</h4>
+                        <label>Frame type:</label> <span id="activeFrame"></span><br/>
+                        <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
+                        <label>Referents:</label><div id="frameWdt"></div><br/>
+
+                        <table id="selectedPredicateRoleInfo" class="table-condensed">
+                            <tr>
+                                <th>Frame element</th>
+                                <th>Role type</th>
+                                <th>Annotated</th>
+                                <th>Expressed</th>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Annotations Information -->
+                    <div class="info-panel-5">
+                        <h4>SRL annotations</h4>
+                        <div id="trails"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="text/javascript" src="//code.jquery.com/jquery-1.11.2.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
+        <script type="text/javascript" src="/js/annotation.js"></script>
+    </body>
 </html>
 

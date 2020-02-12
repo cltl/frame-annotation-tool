@@ -7,10 +7,6 @@ html,body{
     font-weight: bold;
 }
 
-.plcHolder{
-    color: transparent;
-}
-
 #addedTxts{
     background: #fffff0;
     font-weight: bold;
@@ -42,10 +38,12 @@ div.disqualified * {
 
 #annrow{
     background: #dfe;
+    padding: 1rem 0;
 }
 
 .table-condensed{
-  font-size: 1rem;
+    font-size: 1rem;
+    width: 100%;
 }
 
 span.marked {
@@ -62,6 +60,10 @@ span.base {
 
 span.info-marked {
     background: #BB8FCE;
+}
+
+span.role {
+    mix-blend-mode: multiply;
 }
 
 label.active {
@@ -120,29 +122,25 @@ label.inactive {
     border-style: groove;
 }
 
-.statusDiv {
-    background: #EAECEE;    
-}
-
-.selectedPredicateInfo {
-    background: #F4ECF7;
-}
-
-.referentsInfo {
-    background: #EBF5FB;
-}
-
-.chosenFrameInfo {
+.info-panel-1 {
     background: #EBFBEC;
 }
 
-.chosenRoleInfo {
+.info-panel-2 {
     background: #fbf7eb;
 }
 
-.predicateRoleInfo {
-    width: 100%;
-    font-size: 1rem;
+.info-panel-3 {
+    background: #EBF5FB;
+}
+
+
+.info-panel-4 {
+    background: #F4ECF7;
+}
+
+.info-panel-5 {
+    background: #EAECEE;    
 }
 
 select {

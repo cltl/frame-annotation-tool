@@ -23,8 +23,13 @@ $(function() {
     $(document).on("click", "span.markable", function() {
         var is_annotated = $(this).hasClass("annotated");
         
+        // Currently markable correction
+        if (current_task == "taskCorrect") {
+            $(this).toggleClass("marked");
+        }
+
         // Currently annotating frames
-        if (current_task == "taskFrame") {
+        else if (current_task == "taskFrame") {
             if (!is_annotated) {
                 // Currently not modifying a predicate span
                 if (!modifying_predicate_span) {
@@ -103,19 +108,50 @@ $(function() {
         }
     });
     
-    $.get('/listprojectsandtypes', {}, function(data, status) { 
-        var projects=data['proj'];
-        var types=data['types'];
+    $.get('/projects', {}, function(data, status) { 
+        var projects = data['projects'];
+        var types = data['types'];
+
         for(var i = 0; i < projects.length; i++) {
             $('#pickproj').append($('<option></option>').val(projects[i]).html(projects[i]));
         }
 
         for(var i = 0; i < types.length; i++) {
-            var typeLabel=type2Label[types[i]];
+            var typeLabel = type2Label[types[i]];
             $('#picktype').append($('<option></option>').val(types[i]).html(typeLabel));
         }
     });
 });
+
+// =====================================
+// HELPERS =============================
+// =====================================
+
+function luminanace(color) {
+    color = color.map(function(v) {
+        v /= 255;
+        
+        return v <= 0.03928 ? v / 12.92 : Math.pow( (v + 0.055) / 1.055, 2.4 );
+    });
+
+    return 0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2];
+}
+
+function contrastRatio(color1, color2) {
+    return (luminanace(color1) + 0.05) / (luminanace(color2) + 0.05);
+}
+
+function hexToRGB(color) {
+    color = color.replace("#", "");
+    var hex = parseInt(color, 16);
+
+    // Bitshift and mask to get r, g, b values
+    var r = (hex >> 16) & 255;
+    var g = (hex >> 8) & 255;
+    var b = hex & 255;
+
+    return [r, g, b];
+}
 
 var arraysMatch = function (arr1, arr2) {
     if (arr1.length != arr2.length)
@@ -128,20 +164,24 @@ var arraysMatch = function (arr1, arr2) {
 	return true;
 };
 
+// =====================================
+// UTILS ===============================
+// =====================================
+
 var updateTask = function() {
-    current_task = $("#anntype").val();
+    current_task = $("#taskSelector").val();
 
-    if (current_task == 'taskFrame'){
-        $("#feAnnotation").hide();
+    $(".correctionSelectors").hide();
+    $(".frameSelectors").hide();
+    $(".elementSelectors").hide();
 
+    if (current_task == "taskCorrect") {
+        $(".correctionSelectors").show();
+    } else if (current_task == "taskFrame") {
         loadFrames();
-        $("#frameAnnotation").show();
+        $(".frameSelectors").show();
     } else if (current_task == "taskRole"){ 
-        $("#frameAnnotation").hide();
-        $("#feAnnotation").show();        
-    } else {
-        $("#feAnnotation").hide();
-        $("#frameAnnotation").hide();
+        $(".elementSelectors").show();        
     }
 
     clearSelection();
@@ -151,8 +191,7 @@ var updateTask = function() {
 }
 
 var loadFrames = function() {
-    var etype = $("#picktype").val();
-    $.get('/get_frames', {'eventtype': etype}, function(data, status) {
+    $.get('/get_frames', function(data, status) {
         reloadDropdownWithGroups("#frameChooser", data, ['definition', 'framenet'], "-Pick frame-");
     });
 }
@@ -191,25 +230,6 @@ var activatePredicateFromText = function(elem) {
     activatePredicate(document_id, token_id);
 }
 
-/*
-var activateRoleFromText = function(elem) {
-    var aMention=elem.attr('id');
-    var docIdUnderscore=aMention.split('.')[0];
-    var tid=aMention.split('.')[2];
-    var roleId=currentPredRoles[tid];
-    //$('#activeRole').text(roleId);
-//    elem.addClass('inactive');
-    jQuery.each(currentPredRoles, function(t, rlid) {
-        if (rlid==roleId){
-            var $roleMention=selectSpanUniqueID(docIdUnderscore, t);
-            $roleMention.addClass('inactive');
-            $("span[id='" + docIdUnderscore + "#" + t + "']").addClass('inactive');
-        }
-    });
-
-}
-*/
-
 var selectSpanUniqueID = function(docId, tid){
     return $("#pnlLeft span[id='" + unique2tool[docId + '#' + tid] + "']");
 }
@@ -223,7 +243,7 @@ var activatePredicateById = function(document_id, predicate_id) {
     }
 }
 
-var activatePredicate = function(document_id, token_id){
+var activatePredicate = function(document_id, token_id) {
     // Get information from annotation
     var frame = annotations[document_id]["frames"][token_id]["premon"] || noFrameType;
     var predicate_id = annotations[document_id]["frames"][token_id]["predicate"];
@@ -253,15 +273,21 @@ var activatePredicate = function(document_id, token_id){
 
     $.get("/get_roles", { "docid": document_id, "prid": predicate_id }, function(data, status) {
         for (var element in data) {
-            var color = data[element]["color"];
-            var new_row = $("<tr style=\"background: " + color + "\"></tr>");
+            var bg_color = data[element]["color"];
+            var fg_color = "#000000";
+
+            if (contrastRatio(hexToRGB(fg_color), hexToRGB(bg_color)) < 4.5) {
+                fg_color = "#FFFFFF";
+            }
+
+            var new_row = $("<tr style=\"color: " + fg_color + "; background: " + bg_color + "\"></tr>");
 
             if (data[element]["annotated"]) {
                 for (var index in data[element]["target_ids"]) {
                     var token = data[element]["target_ids"][index];
                     var token_span = selectSpanUniqueID(display_document_id, token);
 
-                    token_span.attr("style", "background: " + color);
+                    token_span.attr("style", "color: " + fg_color + "; background: " + bg_color);
                 }
             }
 
@@ -276,10 +302,11 @@ var activatePredicate = function(document_id, token_id){
 }
 
 var updateIncidentList=function() {
-    var pickedType=$('#picktype').val();
-    var pickedProj=$('#pickproj').val();
-    if (pickedType!='-1' && pickedProj!='-1'){
-        $.get('/listincidents', {'myproj': pickedProj, 'mytype': pickedType}, function(unsorted, status) {
+    var selected_project = $('#pickproj').val();
+    var selected_type = $('#picktype').val();
+
+    if (selected_project != '-1' && selected_type != '-1'){
+        $.get('/get_project_incidents', { "project": selected_project, "type": selected_type }, function(unsorted, status) {
             var old_inc = unsorted['old'];
             var new_inc = unsorted['new'];
             var old_sorted = old_inc.sort();
@@ -355,22 +382,6 @@ var printInfo = function(msg){
     $("#infoMessage").addClass("bad_info");
 }
 
-/*
-var addReferent = function(){
-    var newRef=$("#newReferent").val();
-    var inc=$("#pickfile").val();
-    $.post('/addreferent', {'newref': newRef, 'inc': inc}) 
-    .done(function(data) {
-        alert( "New referent saved." );
-        $("#newReferent").val('');
-        renderStructuredData(inc, data);
-    })
-    .fail(function(err) {
-        alert( "Error! Referent not saved.");
-    });
-}
-*/
-
 var renderStructuredData = function(inc, data){
     var str_html='';
     var allValues = new Set();
@@ -432,7 +443,7 @@ var renderStructuredData = function(inc, data){
 }
 
 var getStructuredData = function(inc){
-    $.get('/getstrdata', {'inc': inc}, function(data, status) {
+    $.get('/get_structured_data', { "incident": inc }, function(data, status) {
         //var data=JSON.parse(data);
         renderStructuredData(inc, data);
     });
@@ -484,10 +495,10 @@ var addTokens = function(tokens, docId, anns, lus){
     return text;
 }
 
-var loadTextsFromFile = function(inc, callback){
+var loadTextsFromFile = function(incident_id, callback){
     $("#pnlLeft").html("");
 
-    $.get("/loadincident", {'inc': inc, 'etype': $("#picktype").val()}, function(res, status) {
+    $.get("/load_incident", { "incident": incident_id }, function(res, status) {
         unique2tool = {};
         var all_html = ""; 
         var c = 0;
@@ -571,11 +582,11 @@ var loadIncident = function(){
             getStructuredData(inc);
             $("#annrow").show();
             $("#bigdiv").show();
-            $("#frameAnnotation").hide();
-            $("#feAnnotation").hide();
+            $(".frameSelectors").hide();
+            $(".elementSelectors").hide();
             $("#activeFrame").text("none");
             $("#activePredicate").text("");
-            $("#anntype").val('-1');
+            $("#taskSelector").val('-1');
             showAnnotations();
         });
     } else{
@@ -585,11 +596,13 @@ var loadIncident = function(){
 
 // SAVE ANNOTATION
 var defaultValues = function(){
-    $("#anntype").val('-1');
+    $("#taskSelector").val('-1');
     $("#frameChooser").val('-1');
     $('#relChooser').val('-1');
-    $("#frameAnnotation").hide();
-    $("#feAnnotation").hide();
+    $('#correctionChooser').val('-1');
+    $(".correctionSelectors").hide();
+    $(".frameSelectorss").hide();
+    $(".elementSelectors").hide();
     $("#referents").html("");
     $(".referent").removeClass("referent");
     $("#activeRole").text('');
@@ -690,7 +703,7 @@ var reloadDropdownWithGroups = function(element_id, items, data_items, default_o
 }
 
 var updateRoleDropdown = function(frame) {
-    $.get("/get_frame_elements", { "frameid": frame }, function(data, status) {
+    $.get("/get_frame_elements", { "frame": frame }, function(data, status) {
         reloadDropdownWithGroups("#roleChooser", data, ["definition", "framenet"], "-Pick a frame role-");
     });
 }
@@ -701,18 +714,22 @@ var clearRoleDropdown = function() {
 
 var checkCoreRolesAnnotation = function(document_id, predicate_id, callback) {
     $.get("/get_roles", { "docid": document_id, "prid": predicate_id }, function(data, status) {
+        console.log(data);
+
         for (var premon in data) {
             if (data[premon]["fe_type"] == "Core" && !data[premon]["annotated"]) {
                 callback(false);
+                return;
             }
         }
 
         callback(true);
+        return;
     });
 }
 
 var storeAndReload = function(ann) {
-    $.post("/storeannotations", {'annotations': ann, 'incident': $("#pickfile").val() }).done(function(myData) {
+    $.post("/store_annotations", {'annotations': ann, 'incident': $("#pickfile").val() }).done(function(myData) {
         alert( "Annotation saved. Now re-loading." );
 
         var task = current_task;
@@ -723,18 +740,19 @@ var storeAndReload = function(ann) {
 
         if (task == "taskRole") {
             checkCoreRolesAnnotation(myData["docid"], myData["prid"], function(core_annotated) {
+                console.log(core_annotated);
                 if (!core_annotated) {
                     enforced_role_annotation = true;
                     modifying_predicate_roles = true;
 
-                    $("#anntype").val("taskRole");
+                    $("#taskSelector").val("taskRole");
                     updateTask();
 
-                    $("#anntype").prop("disabled", true);
+                    $("#taskSelector").prop("disabled", true);
                     activatePredicateById(myData["docid"], myData["prid"]);
                 } else {
                     enforced_role_annotation = false;
-                    $("#anntype").prop("disabled", false);
+                    $("#taskSelector").prop("disabled", false);
                 }
             });
         }
@@ -847,13 +865,37 @@ var validateAnnotation = function(anntype){
     }
 }
 
-var saveFrameAnnotation = function() {
-    var validation = validateAnnotation(current_task);
-    var isValid = validation[0];
+var storeCorrectinons = function() {
+    var task = $("#correctionChooser").val();
+    var incident = $("#pickfile").val();
 
-    if (isValid) {
-        storeAndReload(validation[1]);
+    // Get all selected markables
+    var selected = $(".marked").map(function() {
+        return $(this).attr('id');
+    }).get();
+
+    var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
+    var task_data = {
+        "lemma": $("#correctionLemma").val(),
+        "tokens": selected
+    };
+
+    $.post("/store_markable_correction", {"doc_id": doc_id, 'task': task, "taskdata": task_data, 'incident': incident }, function() {
+        
+    });
+}
+
+var save = function() {
+    if (current_task == "taskCorrect") {
+        
     } else {
-        printInfo(validation[1]);
+        var validation = validateAnnotation(current_task);
+        var isValid = validation[0];
+
+        if (isValid) {
+            storeAndReload(validation[1]);
+        } else {
+            printInfo(validation[1]);
+        }
     }
 }

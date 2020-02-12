@@ -1,18 +1,20 @@
 var express = require('express');
-var app = express();
 var request = require('request');
+var passport = require('passport');
+var LocalStrategy = require('passport-local').Strategy
+var cookieParser = require('cookie-parser');
+var bodyParser = require('body-parser');
+var expressSession = require('express-session');
+
 var fs = require('fs');
 var xmlParser = require('fast-xml-parser');
 var jsonParser = require("fast-xml-parser").j2xParser;
-var LocalStrategy = require('passport-local').Strategy
 var morgan       = require('morgan');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
 var glob = require('glob');
-var passport = require('passport');
-var expressSession = require('express-session');
 var mkdirp = require('mkdirp');
 var _ = require('underscore');
+
+var app = express();
 
 app.use(express.static(__dirname + '/public/html'));
 app.set('views', __dirname + '/public/html');
@@ -42,22 +44,23 @@ app.use('/pdf', express.static('public/assets/pdf'));
 app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
 
-list_of_colors = ['#731d1d', '#ff8080', '#a6877c', '#f2853d', '#402310', '#7f4400', '#e5b073', '#8c7000', '#ffd940', '#eeff00', '#64664d', '#2a4000', '#86b32d', '#d6f2b6', '#20f200', '#00660e', '#7ca692', '#00cc88', '#00e2f2', '#00474d', '#36a3d9', '#397ee6', '#26364d', '#acc3e6', '#2d3eb3', '#1f00e6', '#311659', '#b836d9', '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
+const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d', '#402310', '#7f4400', '#e5b073', '#8c7000', '#ffd940', '#eeff00', '#64664d', '#2a4000', '#86b32d', '#d6f2b6', '#20f200', '#00660e', '#7ca692', '#00cc88', '#00e2f2', '#00474d', '#36a3d9', '#397ee6', '#26364d', '#acc3e6', '#2d3eb3', '#1f00e6', '#311659', '#b836d9', '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
 
 // Settings
-GUIDELINESVERSION='v1'
-PORT=8787
-inc2doc_file='data/json/inc2doc_index.json';
-inc2str_file='data/json/inc2str_index.json';
-type2inc_file='data/json/type2inc_index.json';
-proj2inc_file='data/json/proj2inc_index.json';
+const GUIDELINESVERSION = 'v1'
+const PORT = 8787
 
-likely_frames_file='data/frames/dominant_frame_info.json';
-frame_info_file='data/frames/frame_to_info.json';
+const inc2doc_file = 'data/json/inc2doc_index.json';
+const inc2str_file = 'data/json/inc2str_index.json';
+const type2inc_file = 'data/json/type2inc_index.json';
+const proj2inc_file = 'data/json/proj2inc_index.json';
 
-dataDir='data/naf/';
+const likely_frames_file = 'data/frames/dominant_frame_info.json';
+const frame_info_file = 'data/frames/frame_to_info.json';
 
-annotationDir='annotation/'
+const dataDir = 'data/naf/';
+
+const ANNOTATION_DIR = 'annotation/'
 
 customRefs={};
 
@@ -126,7 +129,7 @@ fs.readFile(frame_info_file, 'utf8', function (err, data){
 
 app.get('/', function(req, res){
     res.sendFile('index.html', {root:'./public/html'});
-    });
+});
 
 app.get('/dash', isAuthenticated, function(req, res){
     res.render('dash.html', { username: req.user.user });
@@ -140,41 +143,36 @@ app.get('/annotation', isAuthenticated, function(req, res){
 // PASSPORT FUNCTIONS ==================
 // =====================================
 
-passport.use(new LocalStrategy(
-  function(username, password, done) {
+passport.use(new LocalStrategy(function(username, password, done) {
     fs.readFile('allowed.json', 'utf8', function (err, data) {
         if (err) throw err; // we'll not consider error handling for now
+
         var allowed = JSON.parse(data);
-        if (allowed[username] && allowed[username]==password){
+        if (allowed[username] && allowed[username] == password) {
             done(null, { user: username });
-        }
-        else
-        {
+        } else {
             done(null, false);
         }
-   });
+    });
 }));
 
 passport.serializeUser(function(user, done) {
-  done(null, user);
+    done(null, user);
 });
 
 passport.deserializeUser(function(user, done) {
-  done(null, user);
+    done(null, user);
 });
 
-/* Handle Login POST */
-app.post('/login', 
-  passport.authenticate('local', { failureRedirect: '/' }),
-  function(req, res) {
+app.post('/login', passport.authenticate('local', { failureRedirect: '/' }), function(req, res) {
     req.session.visited = new Date().toISOString().replace(/\..+/, '');
-    var userAnnotationDir = annotationDir + req.user.user + "/";
+    var user_annotation_dir = ANNOTATION_DIR + req.user.user + "/";
 
-    mkdirp(userAnnotationDir, function (err) {
-        if (err) console.error('Error with creating a directory' + err);
+    mkdirp(user_annotation_dir, function (error) {
+        if (error) console.error(error);
         else {
-            var refFilePath = userAnnotationDir + 'customrefs.json';
-            fs.closeSync(fs.openSync(refFilePath, 'a'));
+            var customrefs_path = user_annotation_dir + 'customrefs.json';
+            fs.closeSync(fs.openSync(customrefs_path, 'a'));
         }
     });
 
@@ -183,8 +181,8 @@ app.post('/login',
  
 app.get('/logout', function(req, res) {
     req.session.destroy();
-
     req.logout();
+
     res.redirect('/');
 });
 
@@ -208,9 +206,14 @@ function isAuthenticated(req, res, next) {
 }
 
 // =====================================
-// QUERY UTILS =========================
+// HELPER UTILS ========================
 // =====================================
 
+/**
+ * Returns a sorted array of objects based on the sorting key
+ * @param {array}       objects     Array of objects to be sorted
+ * @param {string}      key         Key of objects to sort on
+ */
 var sortObjectsByKey = function(objects, key) {
     return objects.sort(function(a, b) {
         var a_key = a[key];
@@ -218,6 +221,22 @@ var sortObjectsByKey = function(objects, key) {
         return ((a_key < b_key) ? -1 : ((a_key > b_key) ? 1 : 0));
     });
 }
+
+/**
+ * Returns true if date_b is more recent than date_a
+ * @param {string}      date_a      First date to check
+ * @param {string}      date_b      Second date to check
+ */
+var moreRecent = function(date_a, date_b) {
+    if (!date_a)
+        return true;
+    else
+        return new Date(date_a) <= new Date(date_b);
+}
+
+// =====================================
+// QUERY UTILS =========================
+// =====================================
 
 var getTokenData = function(tokens){
     var tokenData = {};
@@ -232,16 +251,8 @@ var getTokenData = function(tokens){
     return tokenData;
 }
 
-// Check if date b is more recent than date a
-var moreRecent = function(date_a, date_b) {
-    if (!date_a)
-        return true;
-    else
-        return new Date(date_a) <= new Date(date_b);
-}
-
 var getActiveRoleAnnotation = function(annotation_refs, annotation_span, callback) {
-    getMostRecentAnnotations(annotation_refs, function(element_id, referents) {
+    getMostRecentExternalReference(annotation_refs, function(element_id, referents) {
         callback(element_id, annotation_span);
     });
 }
@@ -266,7 +277,7 @@ var getRolesForPredicate = function(jsonObj, pr_id, callback) {
             var cur_pr_id = cur_pr['attr']['id'];
 
             if (cur_pr_id == pr_id) {
-                getMostRecentAnnotations(cur_pr["externalReferences"]["externalRef"], function(frame_id, referents) {
+                getMostRecentExternalReference(cur_pr["externalReferences"]["externalRef"], function(frame_id, referents) {
                     var pr_elements = cur_pr['role'];
 
                     // Get frame elements frame frame_id
@@ -279,7 +290,7 @@ var getRolesForPredicate = function(jsonObj, pr_id, callback) {
                             var result = {};
                             for (var j = 0; j < core_elements.length; j++) {
                                 var frame_element = core_elements[j];
-                                result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Core", "target_ids": [], "color": list_of_colors[i], "annotated": false, "expressed": false };
+                                result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Core", "target_ids": [], "color": CONTRASTING_COLORS[i], "annotated": false, "expressed": false };
                             }
 
                             callback(result)
@@ -323,7 +334,7 @@ var getRolesForPredicate = function(jsonObj, pr_id, callback) {
                                                 annotated = true;
                                             }
 
-                                            result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Core", "target_ids": targets, "color": list_of_colors[color_index], "annotated": annotated, "expressed": expressed };
+                                            result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Core", "target_ids": targets, "color": CONTRASTING_COLORS[color_index], "annotated": annotated, "expressed": expressed };
                                             color_index++;
                                         }
 
@@ -334,7 +345,7 @@ var getRolesForPredicate = function(jsonObj, pr_id, callback) {
                                                 var expressed = annotations[frame_element["value"]].length > 0;
                                                 var targets = annotations[frame_element["value"]];
 
-                                                result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Other", "target_ids": targets, "color": list_of_colors[color_index], "annotated": true, "expressed": expressed };
+                                                result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Other", "target_ids": targets, "color": CONTRASTING_COLORS[color_index], "annotated": true, "expressed": expressed };
                                                 color_index++;
                                             }
                                         }
@@ -427,7 +438,7 @@ var deprecatePredicateSpanOverlap = function(srl, predicate_id, span) {
 
 // Get a the type and referents of the most recent annotation of a predicate
 // Parameters: array, callback
-var getMostRecentAnnotations = function(ext_refs, callback) {
+var getMostRecentExternalReference = function(ext_refs, callback) {
     var type = '';
     var refers = [];
 
@@ -480,7 +491,7 @@ var getMostRecentAnnotations = function(ext_refs, callback) {
 
 // Get role annotation information for a specific predicate
 // Parameters: string, list, callback
-var getPredicateRoleAnnotations = function(pr_id, roles, callback) {
+var getPredicateRoles = function(pr_id, roles, callback) {
     var result = { "unexpressed": [] };
     var roles_done = 0;
 
@@ -496,7 +507,7 @@ var getPredicateRoleAnnotations = function(pr_id, roles, callback) {
         if (!(Array.isArray(role_span))) role_span = [role_span];
 
         // Get most recent annotation for current role
-        getMostRecentAnnotations(role_refs, function(type, referents) {
+        getMostRecentExternalReference(role_refs, function(type, referents) {
             if (role["span"] === "") {
                 result["unexpressed"].push({ "premon": type, "predicate": pr_id });
                 roles_done++;
@@ -529,7 +540,7 @@ var getPredicateAnnotations = function(pr_id, span, external_references, callbac
     var result = {};
 
     // Get the most recent annotation for predicate
-    getMostRecentAnnotations(external_references, function(type, referents) {
+    getMostRecentExternalReference(external_references, function(type, referents) {
         for (var i = 0; i < span.length; i++) {
             // Add list entry for current term in predicate span
             var cur_t_id = span[i]['attr']['id'];
@@ -542,10 +553,14 @@ var getPredicateAnnotations = function(pr_id, span, external_references, callbac
     });
 }
 
-// Get a list of annotaions made in a NAF document given its SRL layer
-// Parameters: object, callback
+/**
+ * Get a list of annotations made in the SRL layer of a NAF document
+ * @param {object}      srl         Object containing SRL layer of NAF
+ * @param {function}    callback    Success callback
+ */
 var prepareAnnotations = function(srl, callback) {
-    var result = {"frames": {}, "roles": {}};
+    // 
+    var result = { "frames": {}, "roles": {} };
     var predicates_done = 0;
 
     if (!Array.isArray(srl)) srl = [srl];
@@ -580,7 +595,7 @@ var prepareAnnotations = function(srl, callback) {
 
             // Get role annotations for current predicate
             if ("role" in cur_pr) {
-                getPredicateRoleAnnotations(cur_pr_id, cur_pr["role"], function(annotations) {
+                getPredicateRoles(cur_pr_id, cur_pr["role"], function(annotations) {
                     Object.keys(annotations).forEach((key, index) => {
                         if (!(Array.isArray(result["roles"][key]))) result["roles"][key] = [];
                         
@@ -687,7 +702,7 @@ var json2info = function(jsonObj, nafName, callback){
 // Load a NAF file and return JSON
 // Parameters: string, string, bool, callback
 function loadNAFFile(nafName, theUser, adaptJson, callback){
-    var filename = annotationDir + theUser + '/' + nafName + '.naf';
+    var filename = ANNOTATION_DIR + theUser + '/' + nafName + '.naf';
 
     if (!(fs.existsSync(filename))){
         var filename = dataDir + nafName + '.naf';
@@ -712,7 +727,7 @@ function loadNAFFile(nafName, theUser, adaptJson, callback){
 }
 
 // Load multiple NAFs
-var loadMultipleNafs = function(nafs, theUser, callback){
+var loadMultipleNAFs = function(nafs, theUser, callback){
     var data = [];
 
     // Load each NAF file and return if all files are loaded
@@ -924,7 +939,7 @@ var annotateRole = function(jsonData, annotations, sessionId) {
 
                     predicates[i]['role'].push(aRole);
                     return {'prid': roleData['prid'], 'json': jsonData};
-                } else{ //update existing role entry
+                } else { //update existing role entry
                     for (var i=0; i<existingRoles.length; i++){
                         var aRole=existingRoles[i];
                         if (aRole['attr']['id']==roleData['rlid']){
@@ -941,19 +956,78 @@ var annotateRole = function(jsonData, annotations, sessionId) {
 }
 
 var addAnnotationsToJson = function(jsonData, annotations, sessionId){
-    if (annotations['anntype'] == 'taskIdiom') {  
-        return jsonData;
-    } else if (annotations['anntype'] == 'taskFrame') {
+    if (annotations['anntype'] == 'taskFrame') {
         return annotateFrame(jsonData, annotations, sessionId);
     } else {
         return annotateRole(jsonData, annotations, sessionId);
     }
 }
 
-var saveNAFAnnotation = function(userAnnotationFile, updatedJson, callback){
+var createTermEntry = function(term_id, lemma, pos, type, word_span, components) {
+    console.log(term_id, components, word_span);
+}
+
+var addTerm = function(json_data, task, correction, session_id) {
+    var term_layer = json_data["terms"]["term"];
+
+    if (!Array.isArray(term_layer)) term_layer = [];
+
+    var pos = "";
+    var type = "";
+
+    // Set POS and phrase type given task
+    if (task == 1) {
+        pos = "V";
+        type = "multi_word";
+    } else if (task == 3) {
+        pos = "idio";
+        type = "idiom";
+    }
+
+    var word_span = [];
+    var components = correction["tokens"];
+    var term_num = 0;
+
+    // Iterate trough terms in term layer
+    for (var i = 0; i < term_layer.length; i++) {
+        var cur_term_id = term_layer[i]["attr"]["id"];
+        var cur_term_id_num = parseInt(cur_term_id);
+
+        // Find biggest term id
+        if (cur_term_id_num > term_num) {
+            term_num = cur_term_id_num;
+        }
+
+        // Current term in correction tokens
+        if (components.indexOf(cur_term_id) >= 0) {
+            var cur_term_wspan = term_layer[i]["span"]["target"];
+
+            if (!Array.isArray(cur_term_wspan)) cur_term_wspan = [cur_term_wspan];
+
+            word_span =word_span.concat(cur_term_wspan);
+        }
+    }
+
+    var term_id = "t" + term_num;
+
+    createTermEntry(term_id, correction["lemma"], pos, type, word_span, components);
+}
+
+var addMarkableCorrectionToJson = function(json_data, task, correction, session_id) {
+    var term_ids = correction["tokens"];
+
+    // Create phrasal verb or idiom
+    if (task == 1 || task == 3) {
+
+        return addTerm(json_data, task, correction, session_id)
+    }
+}
+
+var saveNAF = function(file_name, json_data, callback){
     var parser = new jsonParser(jsonOptions);
-    var xml = parser.parse(updatedJson);
-    fs.writeFile(userAnnotationFile, xml, function(err, data) {
+    var xml = parser.parse(json_data);
+
+    fs.writeFile(file_name, xml, function(err, data) {
         if (err) {
             console.log(err);
             callback(err);
@@ -969,78 +1043,93 @@ var saveNAFAnnotation = function(userAnnotationFile, updatedJson, callback){
 // QUERY ENDPOINTS =====================
 // =====================================
 
-// Endpoint to get all projects and its types
-app.get('/listprojectsandtypes', isAuthenticated, function(req, res) {
+// Endpoint to get all projects and incident types
+app.get("/projects", isAuthenticated, function(req, res) {
+    // Get projects and types
     var projects = Object.keys(proj2inc);
     var types = Object.keys(type2inc);
-    res.send({'proj': Array.from(projects), 'types': Array.from(types)});
+
+    // Return projects and types
+    res.send({ "projects": Array.from(projects), "types": Array.from(types) });
 });
 
 // Endpoint to get all incidents of a certain type in a project
-app.get('/listincidents', isAuthenticated, function(req, res) {
-    var aType = req.query['mytype'];
-    var aProj = req.query['myproj'];
-    var incWithDocs = Object.keys(inc2doc);
-    var incOfType = Array.from(type2inc[aType]);
-    var incOfProj = Array.from(proj2inc[aProj]);
-    var selected = _.intersection(incWithDocs, incOfType, incOfProj);
-    res.send({'new': Array.from(selected), 'old': []});
+app.get("/get_project_incidents", isAuthenticated, function(req, res) {
+    // Get parameters
+    var type = req.query["type"];
+    var project = req.query["project"];
+
+    // Get all incidents
+    var incident_documents = Object.keys(inc2doc);
+    var incidents_of_type = Array.from(type2inc[type]);
+    var incidents_of_project = Array.from(proj2inc[project]);
+
+    // Find incidents in project and of type
+    var result = _.intersection(incident_documents, incidents_of_type, incidents_of_project);
+
+    // Return result
+    res.send({ "new": Array.from(result), "old": [] });
 });
 
 // Endpoint to load an incident
-app.get('/loadincident', isAuthenticated, function(req, res) {
-    // Incident ID not provided
-    if (!req.query['inc'] || !req.query['etype']){
+app.get('/load_incident', isAuthenticated, function(req, res) {
+    // Check if incident is provided
+    if (!req.query['incident']) {
         res.sendStatus(400); //("Not OK: incident id not specified");
-    }
-    
-    else {
-        var incidentId = req.query['inc'];
-        var nafs = inc2doc[incidentId];
+    } else {
+        // Get naf files using parameters
+        var incident_id = req.query['incident'];
+        var naf_files = inc2doc[incident_id];
 
-        loadMultipleNafs(nafs, req.user.user, function(data){
+        // Load NAF files and return
+        loadMultipleNAFs(naf_files, req.user.user, function(data) {
             console.log("All nafs loaded. returning the result now");
-            res.send({'nafs': data});
+            res.send({ "nafs": data });
         });
     }
 });
 
-app.get('/get_frames', isAuthenticated, function(req, res){
-    if (!req.query['eventtype']){
-        res.sendStatus(400);
-    } else {
-        var event_type = req.query['eventtype'];
-        var likely_frames = [];
-        var candidate_frames = [];
-        var pos_candidate_frames = [];
-        var other_frames = [];
+// Endpoint to get all frames
+app.get('/get_frames', isAuthenticated, function(req, res) {
+    // Resulting lists
+    var likely_frames = [];
+    var candidate_frames = [];
+    var pos_candidate_frames = [];
+    var other_frames = [];
 
-        Object.keys(allFramesInfo).forEach((cur_frame_premon, index) => {
-            var cur_frame_label = allFramesInfo[cur_frame_premon]['frame_label'];
-            var cur_frame_def = allFramesInfo[cur_frame_premon]['definition'];
-            var cur_frame_framenet = allFramesInfo[cur_frame_premon]['framenet_url'];
+    // Iterate of allFramesInfo
+    Object.keys(allFramesInfo).forEach((cur_frame_premon, index) => {
+        // Extract frame information
+        var cur_frame_label = allFramesInfo[cur_frame_premon]['frame_label'];
+        var cur_frame_def = allFramesInfo[cur_frame_premon]['definition'];
+        var cur_frame_framenet = allFramesInfo[cur_frame_premon]['framenet_url'];
 
-            var cur_frame = { 'label': cur_frame_label, 'value': cur_frame_premon, 'definition': cur_frame_def, 'framenet': cur_frame_framenet };
-            other_frames.push(cur_frame);
-        });
+        // Push frame information to frame list
+        var cur_frame = { "label": cur_frame_label, 'value': cur_frame_premon, 'definition': cur_frame_def, 'framenet': cur_frame_framenet };
+        other_frames.push(cur_frame);
+    });
 
-        other_frames = sortObjectsByKey(other_frames);
+    // Sort other frames by their label
+    other_frames = sortObjectsByKey(other_frames, "label");
 
-        res.send({'Likely': likely_frames, 'Candidate': candidate_frames, 'Pos candidate': pos_candidate_frames, 'Other': other_frames});
-    }
+    res.send({'Likely': likely_frames, 'Candidate': candidate_frames, 'Pos candidate': pos_candidate_frames, 'Other': other_frames});
 });
 
 // Endpoint to get frame elements of a specific frame
-app.get('/get_frame_elements', isAuthenticated, function(req, res){
-    if (!req.query['frameid']) {
+app.get('/get_frame_elements', isAuthenticated, function(req, res) {
+    // Check if frame is provided
+    if (!req.query["frame"]) {
         res.sendStatus(400);
     } else {
-        getFrameElements(req.query["frameid"], function(result) {
+        // Get Frame elements and return results
+        getFrameElements(req.query["frame"], function(result) {
             res.send(result);
         });
     }
 });
 
+// TODO: move to prepare annotations
+// Endpoint to get annotated frame elements
 app.get('/get_roles', isAuthenticated, function(req, res){
     if (!req.query['docid'] || !req.query['prid']){
         res.sendStatus(400);
@@ -1057,81 +1146,173 @@ app.get('/get_roles', isAuthenticated, function(req, res){
     }
 });
 
-// Endpoint to store annotations set in request body
-app.post('/storeannotations', isAuthenticated, function(req, res){
-    var thisUser = req.user.user;
-    var loginTime = req.session.visited;
+// Endpoint to store markable corrections set in request body
+app.post("/store_markable_correction", isAuthenticated, function(res, req) {
+    // Get user information
+    var user = req.user.user;
+    var login_time = req.session.visited;
 
-    console.log("Storing request received from " + thisUser);
+    console.log("Storing markable correction received from " + user);
 
-    // If incident ID provided
-    if (req.body.incident) {
+    // Check if incident id is provided
+    if (!req.body.incident) {
+        console.error("Storing of markable correction: incident not specified - user: " + user);
+        res.sendStatus(400);
+    } else {
         // Get annotation data from request body
-	    var annotations = req.body.annotations || {};
-        var docId = annotations["doc_id"];
+        var task = req.body["task"];
+        var correction_data = req.body["taskdata"] || {};
+        var document_id = req.body["doc_id"];
 
         // Load NAF file using incident info
-        loadNAFFile(docId, thisUser, false, function(nafData){
-            var userAnnotationDir = annotationDir + thisUser + "/";
+        loadNAFFile(document_id, user, false, function(naf_data) {
+            var language = document_id.split('/')[0];
+            var title = document_id.split('/')[1];
+            var user_annotation_dir = ANNOTATION_DIR + user + '/' + language + '/';
 
-            var langAndTitle = docId.split('/');
-            var lang = langAndTitle[0];
-            var title = langAndTitle[1];
-
-            var userAnnotationDirLang = userAnnotationDir + lang + '/';
-
-            // Make new directory for user and lang if needed
-            mkdirp(userAnnotationDirLang, function (err) {
-                if (err) {
-                    console.error('Error with creating a directory:\n' + err);
+            // Make new directory for user and language if needed
+            mkdirp(user_annotation_dir, function (error) {
+                if (error) {
+                    console.error("Error with creating a directory:\n" + error);
                 } else {
-                    var userAnnotationFile = userAnnotationDirLang + title + '.naf';
-                    console.log('File ' + docId + ' loaded. Now updating and saving.');
+                    // Update JSON with new annotations
+                    var naf_file = user_annotation_dir + title + ".naf";
+                    
+                    // Add markables to JSON data
+                    var new_json = addMarkableCorrectionToJson(naf_data, task, correction_data, req.sessionID);
 
-                    var newData = addAnnotationsToJson(nafData, annotations, req.sessionID);
+                    /* MARKABLE DATA FORMAT:
+                        TASKS:
+                            1 = create phrasal verb
+                            2 = remove phrasal verb
+                            3 = create idiom
+                            4 = remove idiom
+                            5 = create compound
+                            6 = remove compund
 
-                    var updatedJson = saveSessionInfo(newData['json'], req.sessionID, thisUser, loginTime);
-                    var pr_id = newData['prid'];
+                        EXAMPLES:
+                            1. {
+                                "task": 1
+                                "taskdata": {
+                                    "lemma": "blah"
+                                    "tokens": ["t1", "t2"]
+                                }
+                            }
 
-                    saveNAFAnnotation(userAnnotationFile, updatedJson, function(error) {
+                            2. {
+                                "task": 3
+                                "taskdata": {
+                                    "lemma": "blah"
+                                    "tokens": ["t1", "t2"]
+                                }
+                            }
+                    */
+
+                    // Save session info (?)
+
+                    console.log("File " + document_id + " loaded. Now updating and saving.");
+
+                    // Save JSON in NAF
+                    saveNAF(naf_file, new_json, function(error) {
                         if (error) {
                             console.log('Error obtained with saving: ' + error);
-                            res.status(400).json({'error': error});
+                            res.status(400).json({ "error": error });
                         } else {
-                            console.log('Sending response with predicate ID ' + pr_id);
-                            res.send({'prid': pr_id, 'docid': docId});
+                            console.log("Sending response with predicate ID " + pr_id);
+                            res.send(200);
                         }
                     });
                 }
             });
         });
-    } else {
-        console.error("Storing of annotations: incident not specified - user: " + thisUser);
-        res.sendStatus(400); //("Not OK: incident id not specified");
     }
 });
 
-var getStructuredData = function(u, inc, callback){
-    var jsonResult=inc2str[inc];
-    var refFilePath=annotationDir + u + '/customrefs.json';
-    fs.readFile(refFilePath, 'utf-8', function(err, data){
-        data=data.trim();
-        if (data && data!=''){
-            console.log('string ' + data);
-            customRefs=JSON.parse(data);
-            if (customRefs[inc])
-                jsonResult['user:custom']=customRefs[inc];
-        }
-        callback(jsonResult);
-    });
-}
+// Endpoint to store annotations set in request body
+app.post('/store_annotations', isAuthenticated, function(req, res) {
+    // Get user information
+    var user = req.user.user;
+    var login_time = req.session.visited;
 
-app.get('/getstrdata', isAuthenticated, function(req, res){
-    getStructuredData(req.user.user, req.query['inc'], function(data){
-        res.send(data);
-    });
+    console.log("Storing request received from " + user);
+
+    // Check if incident id is provided
+    if (!req.body.incident) {
+        console.error("Storing of annotations: incident not specified - user: " + user);
+        res.sendStatus(400);
+    } else {
+        // Get annotation data from request body
+	    var annotations = req.body.annotations || {};
+        var document_id = annotations["doc_id"];
+
+        // Load NAF file using incident info
+        loadNAFFile(document_id, user, false, function(naf_data) {
+            var language = document_id.split('/')[0];
+            var title = document_id.split('/')[1];
+            var user_annotation_dir = ANNOTATION_DIR + user + '/' + language + '/';
+
+            // Make new directory for user and language if needed
+            mkdirp(user_annotation_dir, function (error) {
+                if (error) {
+                    console.error("Error with creating a directory:\n" + error);
+                } else {
+                    // Update JSON with new annotations
+                    var naf_file = user_annotation_dir + title + ".naf";
+                    var new_naf_data = addAnnotationsToJson(naf_data, annotations, req.sessionID);
+
+                    var updatedJson = saveSessionInfo(new_naf_data["json"], req.sessionID, user, login_time);
+                    var pr_id = new_naf_data["prid"];
+
+                    console.log("File " + document_id + " loaded. Now updating and saving.");
+
+                    saveNAF(naf_file, updatedJson, function(error) {
+                        if (error) {
+                            console.log('Error obtained with saving: ' + error);
+                            res.status(400).json({ "error": error });
+                        } else {
+                            console.log("Sending response with predicate ID " + pr_id);
+                            res.send({ "prid": pr_id, "docid": document_id });
+                        }
+                    });
+                }
+            });
+        });
+    }
 });
 
+// Endpoint to get structured data for an incident (with user annotations)
+app.get("/get_structured_data", isAuthenticated, function(req, res) {
+    if (!req.query["incident"]) {
+        res.sendStatus(400);
+    } else {
+        // Get query parameters
+        var incident_id = req.query["incident"];
+        var user = req.user.user
+
+        var json_data = inc2str[incident_id];
+        var file_path = ANNOTATION_DIR + user + "/customrefs.json";
+
+        // Load custom referents data
+        fs.readFile(file_path, "utf-8", function(error, data) {
+            if (error) {
+                console.log(error);
+                res.sendStatus(500);
+            } else {
+                data = data.trim();
+
+                // Check if data in file
+                if (data && data != "") {
+                    customRefs = JSON.parse(data);
+                    if (customRefs[incident_id]) json_data['user:custom'] = customRefs[incident_id];
+                }
+
+                res.send(json_data);
+            }
+        });
+    }
+});
+
+// TODO: refactor
 app.post('/addreferent', isAuthenticated, function(req, res){
     var newRef=req.body.newref;
     var inc=req.body.inc;
@@ -1140,7 +1321,7 @@ app.post('/addreferent', isAuthenticated, function(req, res){
     var newRefLink = inc + '#' + req.sessionID + '#' + newRef;
     var aReferent=newRefLink + '|' + newRef;
 
-    var refFilePath=annotationDir + u + '/customrefs.json';
+    var refFilePath=ANNOTATION_DIR + u + '/customrefs.json';
     fs.readFile(refFilePath, 'utf-8', function(err, data){
         if (err) throw err; // we'll not consider error handling for now
         var customRefs={};
@@ -1166,7 +1347,7 @@ app.post('/addreferent', isAuthenticated, function(req, res){
 // =====================================
 // START THE SERVER! ===================
 // =====================================
-    //
+
 app.listen(PORT, function() {
 	console.log('started annotation tool nodejs backend on port ' + PORT);
 });
