@@ -239,16 +239,35 @@ var moreRecent = function(date_a, date_b) {
 // =====================================
 
 var getTokenData = function(tokens){
-    var tokenData = {};
+    var result = {};
 
     for (var i = 0; i < tokens.length; i++){
         var token = tokens[i];
         var tid = token['attr']['id'];
         var sent = token['attr']['sent'];
-        tokenData[tid] = {'sent': sent, 'text': token['__cdata']};
+        result[tid] = {'sent': sent, 'text': token['__cdata']};
     }
 
-    return tokenData;
+    return result;
+}
+
+var getMultiWordData = function(terms) {
+    var result = {};
+
+    for (var i = 0; i < terms.length; i++){
+        var term = terms[i];
+        var term_id = term["attr"]["id"];
+        var term_type = term["attr"]["phrase_type"]
+        var term_components = term["component"];
+
+        if (term_type == "idiom" || term_type == "multi_word") {
+            for (var j = 0; j < term_components.length; j++) {
+                result[term_components[j]["attr"]["id"]] = term_id;
+            }
+        }
+    }
+
+    return result;
 }
 
 var getActiveRoleAnnotation = function(annotation_refs, annotation_span, callback) {
@@ -627,10 +646,14 @@ var prepareAnnotations = function(srl, callback) {
 // Get NAF info from JSON object
 // Parameters: object, string, callback
 var json2info = function(jsonObj, nafName, callback){
+    // Get all tokens
     var tokens = jsonObj['NAF']['text']['wf'];
-    var tokenData = getTokenData(tokens);
+    var token_data = getTokenData(tokens);
 
+    // Get all terms
     var terms = jsonObj['NAF']['terms']['term'];
+    var multi_word_data = getMultiWordData(terms);
+
     var srl = [];
 
     if (jsonObj['NAF']['srl']) {
@@ -639,6 +662,7 @@ var json2info = function(jsonObj, nafName, callback){
 
     var termData = {};
 
+    // Resulting lists
     var ready_title_terms = [];
     var ready_body_terms = [];
 
@@ -648,17 +672,21 @@ var json2info = function(jsonObj, nafName, callback){
     for (var i = 0; i < terms.length; i++){
         var term = terms[i];
 
-        var termId = term['attr']['id'];
-        var targets = [term['span']['target']];
-        var components = term['component'];
+        var term_id = term['attr']['id'];
+        var term_type = term["attr"]["phrase_type"];
+        var term_targets = [term['span']['target']];
+        var term_components = term['component'];
 
-        if (components) {
-            for (var c = 0; c < components.length; c++){
-                var comp = components[c];
+        // Term is multi word compound
+        if (term_type == "idiom" || term_type == "multi_word") {
+            /*
+            for (var c = 0; c < term_components.length; c++){
+                var comp = term_components[c];
                 var compId = comp['attr']['id'];
                 var lemma = comp['attr']['lemma'];
-                var tokenId = targets[0]['attr']['id'];
-                var sent = tokenData[tokenId]['sent'];
+                
+                var tokenId = term_targets[0]['attr']['id'];
+                var sent = token_data[tokenId]['sent'];
                 var termData = {'text': lemma, 'tid': compId, 'sent': sent};
 
                 if (sent == '1') {
@@ -667,19 +695,43 @@ var json2info = function(jsonObj, nafName, callback){
 
                 else ready_body_terms.push(termData);
             }
+            */
         }
-        
-        else {
+        // Term is component
+        else if (term_type == "component") {
             var termTokens = [];
-            for (var t = 0; t < targets.length; t++){
-                var target = targets[t];
+            var parent_term = multi_word_data[term_id]
+
+            for (var t = 0; t < term_targets.length; t++){
+                var target = term_targets[t];
                 var targetId = target['attr']['id'];
-                var targetInfo = tokenData[targetId];
+                var targetInfo = token_data[targetId];
                 var sent = targetInfo['sent'];
+
                 termTokens.push(targetInfo['text']);
             }
 
-            var termData = {'text': termTokens.join(' '), 'tid': termId, 'sent': sent};
+            var termData = { "text": termTokens.join(' '), "tid": term_id, "parent_term": parent_term, "sent": sent };
+            
+            if (sent == '1') {
+                ready_title_terms.push(termData);
+            } else {
+                ready_body_terms.push(termData);
+            }
+        }
+        // Term is singleton
+        else {
+            var termTokens = [];
+            for (var t = 0; t < term_targets.length; t++){
+                var target = term_targets[t];
+                var targetId = target['attr']['id'];
+                var targetInfo = token_data[targetId];
+                var sent = targetInfo['sent'];
+
+                termTokens.push(targetInfo['text']);
+            }
+
+            var termData = { "text": termTokens.join(' '), "tid": term_id, "parent_term": "none", "sent": sent };
             
             if (sent == '1') {
                 ready_title_terms.push(termData);
@@ -689,7 +741,7 @@ var json2info = function(jsonObj, nafName, callback){
         }
 
         if (i == terms.length - 1){
-            console.log(i + ' is at the end. Prepare annotations for ' + nafName + '. Srl:');
+            console.log("Prepare annotations for " + nafName + ". Srl:");
 
             prepareAnnotations(srl, function(ready_srl) {
                 console.log('All annotations ready');
@@ -733,7 +785,6 @@ var loadMultipleNAFs = function(nafs, theUser, callback){
     // Load each NAF file and return if all files are loaded
     for (var i = 0; i < nafs.length; i++) {
         loadNAFFile(nafs[i], theUser, true, function(nafData) {
-
             data.push(nafData);
             if (data.length == nafs.length) {
                 callback(data);
@@ -747,8 +798,13 @@ var makeSpanLayer = function(anObj, tids){
 
     for (var i = 0; i < tids.length; i++) {
         if (tids[i] != "unexpressed") {
-            var tid = tids[i].split('.')[2];
-            anObj['span']['target'].push({'#text': '', 'attr':{'id': tid}});
+            var tid = tids[i].split('.');
+
+            if (tid.length > 1) {
+                anObj['span']['target'].push({'#text': '', 'attr':{'id': tid[2]}});
+            } else {
+                anObj['span']['target'].push({'#text': '', 'attr':{'id': tid}});
+            }
         }
     }
 
@@ -963,19 +1019,31 @@ var addAnnotationsToJson = function(jsonData, annotations, sessionId){
     }
 }
 
-var createTermEntry = function(term_id, lemma, pos, type, word_span, components) {
-    console.log(term_id, components, word_span);
+var createTermEntry = function(term_id, term_data) {
+    var term_entry = {};
+
+    term_entry['#text'] = '';
+    term_entry['attr'] = { "id": term_id, "lemma": term_data["lemma"], "pos": term_data["pos"], "phrase_type": term_data["type"] }
+    term_entry['attr']['id'] = term_id;
+    term_entry['span'] = makeSpanLayer(term_entry, term_data["word_span"]);
+    term_entry["component"] = [];
+
+    for (var i = 0; i < term_data["components"].length; i++) {
+        term_entry["component"][i] = { "attr": { "id":  term_data["components"][i] }};
+    }
+
+    return term_entry;
 }
 
-var addTerm = function(json_data, task, correction, session_id) {
-    var term_layer = json_data["terms"]["term"];
+var createCompoundTerm = function(json_data, task, correction, session_id) {
+    var term_layer = json_data["NAF"]["terms"]["term"];
 
-    if (!Array.isArray(term_layer)) term_layer = [];
+    if (!Array.isArray(term_layer)) term_layer = [term_layer];
 
     var pos = "";
     var type = "";
 
-    // Set POS and phrase type given task
+    // Set POS and phrase type given the task
     if (task == 1) {
         pos = "V";
         type = "multi_word";
@@ -986,40 +1054,50 @@ var addTerm = function(json_data, task, correction, session_id) {
 
     var word_span = [];
     var components = correction["tokens"];
-    var term_num = 0;
+    var term_num = term_layer.length + 1;
+
+    for (var i = 0; i < components.length; i++) {
+        components[i] = components[i].split(".")[2];
+    }
 
     // Iterate trough terms in term layer
     for (var i = 0; i < term_layer.length; i++) {
         var cur_term_id = term_layer[i]["attr"]["id"];
-        var cur_term_id_num = parseInt(cur_term_id);
-
-        // Find biggest term id
-        if (cur_term_id_num > term_num) {
-            term_num = cur_term_id_num;
-        }
 
         // Current term in correction tokens
         if (components.indexOf(cur_term_id) >= 0) {
+            term_layer[i]["attr"]["phrase_type"] = "component";
             var cur_term_wspan = term_layer[i]["span"]["target"];
 
             if (!Array.isArray(cur_term_wspan)) cur_term_wspan = [cur_term_wspan];
 
-            word_span =word_span.concat(cur_term_wspan);
+            for (var j = 0; j < cur_term_wspan.length; j++) {
+                word_span.push(cur_term_wspan[j]["attr"]["id"]);
+            }
         }
     }
 
     var term_id = "t" + term_num;
+    var term_data = {
+        "lemma": correction["lemma"],
+        "pos": pos,
+        "type": type,
+        "word_span": word_span,
+        "components": components
+    }
 
-    createTermEntry(term_id, correction["lemma"], pos, type, word_span, components);
+    var new_term = createTermEntry(term_id, term_data);
+
+    term_layer.push(new_term);
+    json_data["NAF"]["terms"]["term"] = term_layer;
+
+    return json_data;
 }
 
 var addMarkableCorrectionToJson = function(json_data, task, correction, session_id) {
-    var term_ids = correction["tokens"];
-
     // Create phrasal verb or idiom
     if (task == 1 || task == 3) {
-
-        return addTerm(json_data, task, correction, session_id)
+        return createCompoundTerm(json_data, task, correction, session_id)
     }
 }
 
@@ -1130,7 +1208,7 @@ app.get('/get_frame_elements', isAuthenticated, function(req, res) {
 
 // TODO: move to prepare annotations
 // Endpoint to get annotated frame elements
-app.get('/get_roles', isAuthenticated, function(req, res){
+app.get('/get_roles', isAuthenticated, function(req, res) {
     if (!req.query['docid'] || !req.query['prid']){
         res.sendStatus(400);
     } else {
@@ -1147,9 +1225,9 @@ app.get('/get_roles', isAuthenticated, function(req, res){
 });
 
 // Endpoint to store markable corrections set in request body
-app.post("/store_markable_correction", isAuthenticated, function(res, req) {
+app.post('/store_markable_correction', isAuthenticated, function(req, res) {
     // Get user information
-    var user = req.user.user;
+    var user = "sam";//req.user.user;
     var login_time = req.session.visited;
 
     console.log("Storing markable correction received from " + user);
@@ -1161,7 +1239,7 @@ app.post("/store_markable_correction", isAuthenticated, function(res, req) {
     } else {
         // Get annotation data from request body
         var task = req.body["task"];
-        var correction_data = req.body["taskdata"] || {};
+        var correction_data = req.body["task_data"] || {};
         var document_id = req.body["doc_id"];
 
         // Load NAF file using incident info
@@ -1216,10 +1294,10 @@ app.post("/store_markable_correction", isAuthenticated, function(res, req) {
                     saveNAF(naf_file, new_json, function(error) {
                         if (error) {
                             console.log('Error obtained with saving: ' + error);
-                            res.status(400).json({ "error": error });
+                            res.sendStatus(400).json({ "error": error });
                         } else {
-                            console.log("Sending response with predicate ID " + pr_id);
-                            res.send(200);
+                            console.log("Sending response");
+                            res.sendStatus(200);
                         }
                     });
                 }

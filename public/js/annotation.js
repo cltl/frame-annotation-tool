@@ -4,7 +4,7 @@ type2Label = {'Q132821': 'murder', 'Q168983': 'conflagration'};
 annotations = {};
 referents = [];
 
-current_task = "none"
+current_task = "-1";
 
 enforced_role_annotation = false;
 
@@ -21,11 +21,19 @@ $(function() {
 
     // On click markable
     $(document).on("click", "span.markable", function() {
-        var is_annotated = $(this).hasClass("annotated");
+        var parent_term = $(this).data("parent-term");
+        var selector = this;
+
+        if (parent_term != undefined) {
+            var parent_term_components = $("[data-parent-term=\"" + parent_term + "\"]");
+            selector = parent_term_components;
+        }
+
+        var is_annotated = $(selector).hasClass("annotated");
         
         // Currently markable correction
         if (current_task == "taskCorrect") {
-            $(this).toggleClass("marked");
+            $(selector).toggleClass("marked");
         }
 
         // Currently annotating frames
@@ -34,10 +42,10 @@ $(function() {
                 // Currently not modifying a predicate span
                 if (!modifying_predicate_span) {
                     // Make selected markable marked
-                    $(this).toggleClass("marked");
+                    $(selector).toggleClass("marked");
                 } else {
                     // Keep selection and make selecte markable marked
-                    $(this).toggleClass("marked");
+                    $(selector).toggleClass("marked");
                 }
             } else {
                 // Currently not modifying a predicate span
@@ -45,7 +53,7 @@ $(function() {
                     modifying_predicate_span = true;
                     clearSelection();
 
-                    $(this).addClass("base");
+                    $(selector).addClass("base");
                     activatePredicateFromText($(this));
 
                     selected_predicate_span = $(".marked").map(function() {
@@ -56,11 +64,11 @@ $(function() {
                     
                     // Only allow terms in predicate span to be clicked
                     if (selected_predicate_span.includes(marked_predicate_id)) {
-                        var is_modification_base = $(this).hasClass("base");
+                        var is_modification_base = $(selector).hasClass("base");
 
                         // Selected markable is not first selected term in predicate
                         if (!is_modification_base) {
-                            $(this).toggleClass("marked");
+                            $(selector).toggleClass("marked");
                         } else {
                             clearSelection();
                             modifying_predicate_span = false;
@@ -72,16 +80,16 @@ $(function() {
         
         // Currently annotating roles
         else if (current_task == "taskRole") {
-            var has_role = $(this).hasClass("role");
+            var has_role = $(selector).hasClass("role");
 
             // Mark items not in the predicate span as roles
             if (!is_annotated && !has_role) {
                 if (modifying_predicate_roles) {
-                    $(this).toggleClass("marked");
+                    $(selector).toggleClass("marked");
                 }
             } else if(!is_annotated && has_role) {
                 if (modifying_predicate_roles) {
-                    $(this).toggleClass("marked");
+                    $(selector).toggleClass("marked");
                 }
             } else {
                 if (!enforced_role_annotation) {
@@ -461,20 +469,23 @@ var makeHtml = function(ref){
 }
 
 // Add token to a string of spans
-var addToken = function(token_id, token, annotated, lus) {
+var addToken = function(token_id, token, annotated, lus, parent_term) {
     if (token == '\n') return '<br/>';
 
     else {
         var short_token_id = token_id.split('.')[2];
+        var data_parent_term = "";
 
-        if (!annotated["frames"][short_token_id] && !annotated["roles"][short_token_id]) {
-            return "<span id=" + token_id + " class=\"markable\">" + token + "</span> ";
-        } else if (annotated["frames"][short_token_id]) {
-            var premon = annotated["frames"][short_token_id]["premon"];
-            return "<span id=" + token_id + " data-event=\"" + premon + "\" class=\"markable annotated\">" + token + "</span> ";
-        } else if (annotated["roles"][short_token_id]) {
-            return "<span id=" + token_id + " class=\"markable role\">" + token + "</span> ";
+        if (parent_term != "none") {
+            data_parent_term = "data-parent-term=\"" + parent_term + "\""; 
         }
+        
+        // Frame annotation for current token
+        if (annotated["frames"][short_token_id]) {
+            return "<span id=" + token_id + " class=\"markable annotated\" " + data_parent_term + ">" + token + "</span> ";
+        }
+
+        return "<span id=" + token_id + " class=\"markable\" " + data_parent_term + ">" + token + "</span> ";
     }
 }
 
@@ -484,8 +495,9 @@ var addTokens = function(tokens, docId, anns, lus){
 
     for (var token_num in tokens) {
         var token_info = tokens[token_num];
+        var parent_term = token_info.parent_term;
         var tokenId = docId.replace(/ /g, "_") + '.' + token_info.sent + '.' + token_info.tid;
-        var newToken = addToken(tokenId, token_info.text, anns, lus);
+        var newToken = addToken(tokenId, token_info.text, anns, lus, parent_term);
         var uniqueId = docId.replace(/ /g, "_") + '#' + token_info.tid;
 
         unique2tool[uniqueId] = tokenId;
@@ -728,7 +740,7 @@ var checkCoreRolesAnnotation = function(document_id, predicate_id, callback) {
     });
 }
 
-var storeAndReload = function(ann) {
+var storeAnnotationsAndReload = function(ann) {
     $.post("/store_annotations", {'annotations': ann, 'incident': $("#pickfile").val() }).done(function(myData) {
         alert( "Annotation saved. Now re-loading." );
 
@@ -777,97 +789,67 @@ var sameSentence = function(allMentions){
     return allValuesSame(sents);
 }
 
-var validateAnnotation = function(anntype){
-     if (anntype == '-1'){
-         return [false, "Please pick an annotation type"];
-    } else {
-        // Frame annotation
-        if (anntype == 'taskFrame') {
-            // Frame not chosen
-            if ($("#frameChooser").val() == '-1') {
-                return [false, "Please pick a frame"];
-            }
-            
-            // Relation not chosen
-            else if ($("#relChooser").val() == '-1') {
-                return [false, "Please pick a frame relation type"];
-            }
-        }
-        
-        // Role annotation
-        else if (anntype == "taskRole") {
-            if ($("#roleChooser").val() == '-1') {
-                return [false, "Please pick a role"];
-            }
-        }
+var validateCorrection = function() {
+    var correction_task = $("#correctionChooser").val();
+    var correction_lemma = $("#correctionLemma").val();
 
-        // Get all selected markables
-        var selected = $(".marked").map(function() {
-            return $(this).attr('id');
-        }).get();
+    if (correction_task == "-1") {
+        return [false, "Please pick a correction type"];
+    } else if (!correction_lemma) {
+        return [false, "Please set lemma for markable correction"];
+    }
 
-        var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
-        var activePredicate = '';
+    // Get all selected markables
+    var selected = $(".marked").map(function() {
+        return $(this).attr('id');
+    }).get();
 
-        if (anntype == "taskFrame" && !(selected.length > 0)) {
-            return [false, "Please select at least one mention"];
-        } else if (anntype == "taskRole" ) {
-            // Remove items from selected that are in the predicate span 
-            selected = selected.filter(function(item) {
-                return selected_predicate_span.indexOf(item) < 0;
-            });
-            
-            // Confirm unexpressed frame element intention
-            if (!(selected.length > 0)) {
-                if (!confirm("Are you sure you want to annotate Frame Element as unexpressed?")) {
-                    return [false, "Annotation interrupted"];
-                }
-            }
-        }
-
-        // Check if span of predicate has changed
-        if (anntype == "taskFrame" && modifying_predicate_span) {
-            if (arraysMatch(selected, selected_predicate_span)) {
-                activePredicate = ($("#activePredicate").text()).split('@')[1];
-            }
-        }
-
-        if (!sameSentence(selected)) {
-            return [false, "All terms of a frame must be in the same sentence"];
-        } else {
-            var wdtLinks = referents.map(x => x.split('|')[0]);
-            var annotationData = {};
-
-            if (anntype == 'taskFrame') {
-                var frame = $("#frameChooser").val();
-                var reltype = $("#relChooser").val();
-
-                annotationData = {'anntype': anntype, "doc_id": doc_id, 'frame': frame, 'reltype': reltype, 'mentions': selected, 'referents': wdtLinks, 'predicate': activePredicate};
-            } else if (anntype == "taskRole") {
-                var role = $('#roleChooser').val();
-
-                // No marked roles 
-                if (!(selected.length > 0)) {
-                    annotationData = {'anntype': anntype, "doc_id": doc_id, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': ["unexpressed"], 'semRole': role, 'referents': wdtLinks};
-                } else {
-                    annotationData = {'anntype': anntype, "doc_id": doc_id, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': selected, 'semRole': role, 'referents': wdtLinks};
-                }
-                /*
-                if ($("#activeRole").text())
-                    annotationData['rlid'] = $("#activeRole").text();
-                */
-            } else {
-                annotationData = {'anntype': anntype, 'mentions': selected};
-            }
-
-            return [true, annotationData];
+    // Create
+    if (correction_task == "1" || correction_task == "3") {
+        // Make sure at least two markables are selected
+        if (!(selected.length > 1)) {
+            return [false, "Please select at least two markables"];
         }
     }
+    // Remove
+    else if (correction_task == "2" || correction_task == "4") {
+        // Make sure at least one markable is selected
+        if (!(selected.length > 1)) {
+            return [false, "Please select at least one markable"];
+        }
+    }
+
+    if (!sameSentence(selected)) {
+        return [false, "All terms must be in the same sentence"];
+    }
+
+    var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
+    var incident = $("#pickfile").val();
+    var task_data = { "lemma": correction_lemma, "tokens": selected };
+
+    return[true, { "incident": incident, "doc_id": doc_id, "task": correction_task, "task_data": task_data }];
 }
 
-var storeCorrectinons = function() {
-    var task = $("#correctionChooser").val();
-    var incident = $("#pickfile").val();
+var validateAnnotation = function() {
+    // Frame annotation
+    if (current_task == 'taskFrame') {
+        // Frame not chosen
+        if ($("#frameChooser").val() == '-1') {
+            return [false, "Please pick a frame"];
+        }
+        
+        // Relation not chosen
+        else if ($("#relChooser").val() == '-1') {
+            return [false, "Please pick a frame relation type"];
+        }
+    }
+    
+    // Role annotation
+    else if (current_task == "taskRole") {
+        if ($("#roleChooser").val() == '-1') {
+            return [false, "Please pick a role"];
+        }
+    }
 
     // Get all selected markables
     var selected = $(".marked").map(function() {
@@ -875,25 +857,91 @@ var storeCorrectinons = function() {
     }).get();
 
     var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
-    var task_data = {
-        "lemma": $("#correctionLemma").val(),
-        "tokens": selected
-    };
+    var activePredicate = '';
 
-    $.post("/store_markable_correction", {"doc_id": doc_id, 'task': task, "taskdata": task_data, 'incident': incident }, function() {
+    if (current_task == "taskFrame" && !(selected.length > 0)) {
+        return [false, "Please select at least one mention"];
+    } else if (current_task == "taskRole" ) {
+        // Remove items from selected that are in the predicate span 
+        selected = selected.filter(function(item) {
+            return selected_predicate_span.indexOf(item) < 0;
+        });
         
+        // Confirm unexpressed frame element intention
+        if (!(selected.length > 0)) {
+            if (!confirm("Are you sure you want to annotate Frame Element as unexpressed?")) {
+                return [false, "Annotation interrupted"];
+            }
+        }
+    }
+
+    // Check if span of predicate has changed
+    if (current_task == "taskFrame" && modifying_predicate_span) {
+        if (arraysMatch(selected, selected_predicate_span)) {
+            activePredicate = ($("#activePredicate").text()).split('@')[1];
+        }
+    }
+
+    if (!sameSentence(selected)) {
+        return [false, "All terms of a frame must be in the same sentence"];
+    }
+
+    var wdtLinks = referents.map(x => x.split('|')[0]);
+    var annotationData = {};
+
+    if (current_task == 'taskFrame') {
+        var frame = $("#frameChooser").val();
+        var reltype = $("#relChooser").val();
+
+        annotationData = {'anntype': current_task, "doc_id": doc_id, 'frame': frame, 'reltype': reltype, 'mentions': selected, 'referents': wdtLinks, 'predicate': activePredicate};
+    } else if (current_task == "taskRole") {
+        var role = $('#roleChooser').val();
+
+        // No marked roles 
+        if (!(selected.length > 0)) {
+            annotationData = {'anntype': current_task, "doc_id": doc_id, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': ["unexpressed"], 'semRole': role, 'referents': wdtLinks};
+        } else {
+            annotationData = {'anntype': current_task, "doc_id": doc_id, 'prid': $("#activePredicate").text().split('@')[1], 'mentions': selected, 'semRole': role, 'referents': wdtLinks};
+        }
+        /*
+        if ($("#activeRole").text())
+            annotationData['rlid'] = $("#activeRole").text();
+        */
+    } else {
+        annotationData = {'anntype': current_task, 'mentions': selected};
+    }
+
+    return [true, annotationData];
+}
+
+var storeCorrectionsAndReload = function(correction_data) {
+    $.post("/store_markable_correction", correction_data).done(function(result) {
     });
 }
 
-var save = function() {
-    if (current_task == "taskCorrect") {
-        
-    } else {
-        var validation = validateAnnotation(current_task);
-        var isValid = validation[0];
+var validateAndSave = function() {
+    console.log(current_task);
+    
+    // No task selected
+    if (current_task == '-1'){
+        return printInfo("Please pick an annotation type");
+    }
+    // Markable correction selected
+    else if (current_task == "taskCorrect") {
+        var validation = validateCorrection();
 
-        if (isValid) {
-            storeAndReload(validation[1]);
+        if (validation[0]) {
+            storeCorrectionsAndReload(validation[1]);
+        } else {
+            printInfo(validation[1])
+        }
+    }
+    // Annotation selected
+    else {
+        var validation = validateAnnotation();
+
+        if (validation[0]) {
+            storeAnnotationsAndReload(validation[1]);
         } else {
             printInfo(validation[1]);
         }
