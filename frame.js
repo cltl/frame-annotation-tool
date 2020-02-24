@@ -1035,7 +1035,7 @@ var createTermEntry = function(term_id, term_data) {
     return term_entry;
 }
 
-var createCompoundTerm = function(json_data, task, correction, session_id) {
+var createMultiWordTerm = function(json_data, task, correction, session_id) {
     var term_layer = json_data["NAF"]["terms"]["term"];
 
     if (!Array.isArray(term_layer)) term_layer = [term_layer];
@@ -1094,10 +1094,43 @@ var createCompoundTerm = function(json_data, task, correction, session_id) {
     return json_data;
 }
 
+var removeMultiWordTerm = function(json_data, correction, session_id) {
+    var term_layer = json_data["NAF"]["terms"]["term"];
+
+    if (!Array.isArray(term_layer)) term_layer = [term_layer];
+
+    var correction_term_id = correction["term_id"];
+    var correction_components = correction["components"];
+
+    for (var i = 0; i < correction_components.length; i++) {
+        correction_components[i] = correction_components[i].split(".")[2];
+    }
+
+    // Iterate trough terms in term layer
+    for (var i = 0; i < term_layer.length; i++) {
+        var cur_term_id = term_layer[i]["attr"]["id"];
+
+        // Remove multi word term
+        if (cur_term_id == correction_term_id) {
+            term_layer.splice(i, 1);
+        }
+        // Update multi word components
+        else if (correction_components.indexOf(cur_term_id) >= 0) {
+            term_layer[i]["attr"]["phrase_type"] = "singleton";
+        } 
+    }
+
+    json_data["NAF"]["terms"]["term"] = term_layer;
+
+    return json_data;
+}
+
 var addMarkableCorrectionToJson = function(json_data, task, correction, session_id) {
     // Create phrasal verb or idiom
     if (task == 1 || task == 3) {
-        return createCompoundTerm(json_data, task, correction, session_id)
+        return createMultiWordTerm(json_data, task, correction, session_id)
+    } else if (task == 2 || task == 4) {
+        return removeMultiWordTerm(json_data, correction, session_id)
     }
 }
 

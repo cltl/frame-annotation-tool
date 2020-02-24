@@ -21,13 +21,9 @@ $(function() {
 
     // On click markable
     $(document).on("click", "span.markable", function() {
-        var parent_term = $(this).data("parent-term");
-        var selector = this;
-
-        if (parent_term != undefined) {
-            var parent_term_components = $("[data-parent-term=\"" + parent_term + "\"]");
-            selector = parent_term_components;
-        }
+        // Get all tokens with same term id
+        var term_selector = $(this).attr("term-selector");
+        var selector = "[term-selector=\"" + term_selector + "\"]";
 
         var is_annotated = $(selector).hasClass("annotated");
         
@@ -473,19 +469,21 @@ var addToken = function(token_id, token, annotated, lus, parent_term) {
     if (token == '\n') return '<br/>';
 
     else {
-        var short_token_id = token_id.split('.')[2];
-        var data_parent_term = "";
+        var short_token_id = token_id.split(".")[2];
+        var doc_and_sent = token_id.split(".").slice(0, 2);
+        var term_selector = token_id;
 
-        if (parent_term != "none") {
-            data_parent_term = "data-parent-term=\"" + parent_term + "\""; 
+        if (parent_term != "none" && parent_term != "undefined") {
+            term_selector = doc_and_sent + "." + parent_term;
+            term_selector = term_selector.replace(',', '.');
         }
         
         // Frame annotation for current token
-        if (annotated["frames"][short_token_id]) {
-            return "<span id=" + token_id + " class=\"markable annotated\" " + data_parent_term + ">" + token + "</span> ";
+        if (annotated["frames"][short_token_id] || annotated["frames"][parent_term]) {
+            return "<span id=" + token_id + " class=\"markable annotated\" term-selector=\"" + term_selector + "\">" + token + "</span> ";
         }
 
-        return "<span id=" + token_id + " class=\"markable\" " + data_parent_term + ">" + token + "</span> ";
+        return "<span id=" + token_id + " class=\"markable\" term-selector=\"" + term_selector + "\">" + token + "</span> ";
     }
 }
 
@@ -795,17 +793,19 @@ var validateCorrection = function() {
 
     if (correction_task == "-1") {
         return [false, "Please pick a correction type"];
-    } else if (!correction_lemma) {
-        return [false, "Please set lemma for markable correction"];
     }
 
     // Get all selected markables
     var selected = $(".marked").map(function() {
-        return $(this).attr('id');
+        return $(this).attr('term-selector');
     }).get();
 
     // Create
     if (correction_task == "1" || correction_task == "3") {
+        if (!correction_lemma) {
+            return [false, "Please set lemma for markable correction"];
+        }
+
         // Make sure at least two markables are selected
         if (!(selected.length > 1)) {
             return [false, "Please select at least two markables"];
@@ -814,8 +814,8 @@ var validateCorrection = function() {
     // Remove
     else if (correction_task == "2" || correction_task == "4") {
         // Make sure at least one markable is selected
-        if (!(selected.length > 1)) {
-            return [false, "Please select at least one markable"];
+        if (parent_term == undefined) {
+            return [false, "Please select a multi word markable"];
         }
     }
 
@@ -823,11 +823,22 @@ var validateCorrection = function() {
         return [false, "All terms must be in the same sentence"];
     }
 
-    var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
-    var incident = $("#pickfile").val();
-    var task_data = { "lemma": correction_lemma, "tokens": selected };
+    // Create
+    if (correction_task == "1" || correction_task == "3") {
+        var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
+        var incident = $("#pickfile").val();
+        var task_data = { "lemma": correction_lemma, "tokens": selected };
 
-    return[true, { "incident": incident, "doc_id": doc_id, "task": correction_task, "task_data": task_data }];
+        return[true, { "incident": incident, "doc_id": doc_id, "task": correction_task, "task_data": task_data }];
+    }
+    // Remove
+    else if (correction_task == "2" || correction_task == "4") {
+        var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
+        var incident = $("#pickfile").val();
+        var task_data = { "term_id": parent_term, "components": selected };
+
+        return[true, { "incident": incident, "doc_id": doc_id, "task": correction_task, "task_data": task_data }];
+    }
 }
 
 var validateAnnotation = function() {
@@ -853,7 +864,7 @@ var validateAnnotation = function() {
 
     // Get all selected markables
     var selected = $(".marked").map(function() {
-        return $(this).attr('id');
+        return $(this).attr('term-selector');
     }).get();
 
     var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
@@ -893,7 +904,7 @@ var validateAnnotation = function() {
         var frame = $("#frameChooser").val();
         var reltype = $("#relChooser").val();
 
-        annotationData = {'anntype': current_task, "doc_id": doc_id, 'frame': frame, 'reltype': reltype, 'mentions': selected, 'referents': wdtLinks, 'predicate': activePredicate};
+        annotationData = { 'anntype': current_task, "doc_id": doc_id, 'frame': frame, 'reltype': reltype, 'mentions': selected, 'referents': wdtLinks, 'predicate': activePredicate};
     } else if (current_task == "taskRole") {
         var role = $('#roleChooser').val();
 
@@ -916,12 +927,11 @@ var validateAnnotation = function() {
 
 var storeCorrectionsAndReload = function(correction_data) {
     $.post("/store_markable_correction", correction_data).done(function(result) {
+        loadIncident();
     });
 }
 
 var validateAndSave = function() {
-    console.log(current_task);
-    
     // No task selected
     if (current_task == '-1'){
         return printInfo("Please pick an annotation type");
