@@ -66,6 +66,10 @@ span.role {
     mix-blend-mode: multiply;
 }
 
+a.referent {
+    background: #BB8FCE;
+}
+
 label.active {
     background: #0f0;
 }
