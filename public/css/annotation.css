@@ -126,6 +126,11 @@ label.inactive {
     border-style: groove;
 }
 
+.info-panel-0 {
+    margin-bottom: 10px;
+    background: #EBF5FB;
+}
+
 .info-panel-1 {
     background: #EBFBEC;
 }
@@ -137,7 +142,6 @@ label.inactive {
 .info-panel-3 {
     background: #EBF5FB;
 }
-
 
 .info-panel-4 {
     background: #F4ECF7;

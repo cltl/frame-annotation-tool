@@ -324,7 +324,7 @@ var activatePredicate = function(document_id, token_id) {
     });
 }
 
-var updateIncidentList=function() {
+var updateIncidentList = function() {
     var selected_project = $('#pickproj').val();
     var selected_type = $('#picktype').val();
 
@@ -392,7 +392,7 @@ var clearActiveRoleTable = function() {
     $('#selectedPredicateRoleInfo').find('tr:gt(0)').remove();
 }
 
-var retrieveSpansWithClass=function(cls){
+var retrieveSpansWithClass = function(cls){
     var allMentions = $(cls).map(function() {
         return $(this).attr('id');
     }).get();
@@ -435,6 +435,7 @@ var renderStructuredData = function(incident_uri, data){
 
         for (var i = 0; i < vals.length; i++) {
             var splitted = vals[i].split('|');
+
             if (i > 0)
                 str_html += ', ';
 
@@ -444,7 +445,7 @@ var renderStructuredData = function(incident_uri, data){
             if ($.trim(valText) == '')
                 str_html += valLink;
             else
-                str_html += '<a href="' + valLink + '" class="structured-data" target="_blank">' + valText + '</a>';
+                str_html += '<a href="' + valLink + '" data-uri="' + valLink.split('/').slice(-1)[0]  + '" class="structured-data" target="_blank">' + valText + '</a>';
 
             allValues.add(vals[i]);
         }
@@ -473,7 +474,6 @@ var makeHtml = function(ref){
     return myHtml;
 }
 
-// Add token to a string of spans
 var addToken = function(token_id, token, annotated, lus, parent_term) {
     if (token == '\n') return '<br/>';
 
@@ -496,7 +496,6 @@ var addToken = function(token_id, token, annotated, lus, parent_term) {
     }
 }
 
-// Add a list of tokens to a string of spans
 var addTokens = function(tokens, docId, anns, lus){
     var text = '';
 
@@ -585,7 +584,6 @@ var showAnnotations = function(){
 
 }
 
-// Load incident - both for mention and structured annotation
 var loadIncident = function(){
     var inc = $('#pickfile').val();
 
@@ -613,7 +611,6 @@ var loadIncident = function(){
     }
 }
 
-// SAVE ANNOTATION
 var defaultValues = function(){
     $('#taskSelector').val('-1');
     $('#frameChooser').val('-1');
@@ -635,7 +632,7 @@ var defaultValues = function(){
     referents = [];
 }
 
-var getMaxPredicateID=function(docAnnotations){
+var getMaxPredicateID = function(docAnnotations){
     maxId=0;
     console.log(docAnnotations);
     for (var key in docAnnotations){
@@ -680,7 +677,7 @@ var reloadInside = function() {
     }
 }
 
-var reloadDropdown=function(elementId, sourceList, defaultOption){
+var reloadDropdown = function(elementId, sourceList, defaultOption){
     var $el = $(elementId);
     $el.empty(); // remove old options
     $el.append($('<option value="-1" selected>' + defaultOption + '</option>'));
@@ -747,41 +744,6 @@ var checkCoreRolesAnnotation = function(document_id, predicate_id, callback) {
     });
 }
 
-var storeAnnotationsAndReload = function(ann) {
-    $.post('/store_annotations', {'annotations': ann, 'incident': $('#pickfile').val() }).done(function(myData) {
-        alert( 'Annotation saved. Now re-loading.' );
-
-        var task = current_task;
-        
-        reloadInside();
-        defaultValues();
-        clearSelection();
-
-        if (task == '3') {
-            checkCoreRolesAnnotation(myData['docid'], myData['prid'], function(core_annotated) {
-                console.log(core_annotated);
-                if (!core_annotated) {
-                    enforced_role_annotation = true;
-                    modifying_predicate_roles = true;
-
-                    $('#taskSelector').val('3');
-                    updateTask();
-
-                    $('#taskSelector').prop('disabled', true);
-                    activatePredicateById(myData['docid'], myData['prid']);
-                } else {
-                    enforced_role_annotation = false;
-                    $('#taskSelector').prop('disabled', false);
-                }
-            });
-        }
-    }).fail(function(err) {
-        alert('There was an error while storing your annotations');
-    });
-
-    $('#infoMessage').html('');
-}
-
 var allValuesSame = function(sent) {
     for(var i = 1; i < sent.length; i++)
     {
@@ -820,6 +782,7 @@ var validateCorrection = function() {
             return [false, 'Please select at least two markables'];
         }
     }
+
     // Remove
     else if (correction_task == '2' || correction_task == '4') {
         // Make sure at least one markable is selected
@@ -840,6 +803,7 @@ var validateCorrection = function() {
 
         return[true, { 'incident': incident, 'doc_id': doc_id, 'task': correction_task, 'task_data': task_data }];
     }
+
     // Remove
     else if (correction_task == '2' || correction_task == '4') {
         var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
@@ -934,8 +898,73 @@ var validateAnnotation = function() {
     return [true, annotationData];
 }
 
+var validateReference = function() {
+    // Get all selected markables
+    var selected = $('.marked').map(function() {
+        return $(this).attr('term-selector');
+    }).get();
+
+    if (!(selected.length > 0)) {
+        return [false, 'Select at least one markable']
+    }
+
+    // Get all selected referents
+    var referent = $('.referent').data('uri');
+
+    if (referent == undefined) {
+        return [false, 'Select a referent'];
+    }
+
+    var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
+    var incident = $('#pickfile').val();
+    var task_data = { 'terms': selected, 'referent': referent };
+
+    return[true, { 'incident': incident, 'doc_id': doc_id, 'task': 1, 'task_data': task_data }];
+}
+
 var storeCorrectionsAndReload = function(correction_data) {
     $.post('/store_markable_correction', correction_data).done(function(result) {
+        loadIncident();
+    });
+}
+
+var storeAnnotationsAndReload = function(ann) {
+    $.post('/store_annotations', {'annotations': ann, 'incident': $('#pickfile').val() }).done(function(myData) {
+        alert( 'Annotation saved. Now re-loading.' );
+
+        var task = current_task;
+        
+        reloadInside();
+        defaultValues();
+        clearSelection();
+
+        if (task == '3') {
+            checkCoreRolesAnnotation(myData['docid'], myData['prid'], function(core_annotated) {
+                console.log(core_annotated);
+                if (!core_annotated) {
+                    enforced_role_annotation = true;
+                    modifying_predicate_roles = true;
+
+                    $('#taskSelector').val('3');
+                    updateTask();
+
+                    $('#taskSelector').prop('disabled', true);
+                    activatePredicateById(myData['docid'], myData['prid']);
+                } else {
+                    enforced_role_annotation = false;
+                    $('#taskSelector').prop('disabled', false);
+                }
+            });
+        }
+    }).fail(function(err) {
+        alert('There was an error while storing your annotations');
+    });
+
+    $('#infoMessage').html('');
+}
+
+var storeReferenceAndReload = function(reference_data) {
+    $.post('/store_reference', reference_data).done(function(result) {
         loadIncident();
     });
 }
@@ -945,6 +974,7 @@ var validateAndSave = function() {
     if (current_task == '-1'){
         return printInfo('Please pick an annotation type');
     }
+
     // Markable correction selected
     else if (current_task == '1') {
         var validation = validateCorrection();
@@ -955,14 +985,27 @@ var validateAndSave = function() {
             printInfo(validation[1])
         }
     }
-    // Annotation selected
-    else {
+
+    // Frame annotation or frame element annotation selected
+    else if (current_task == '2' || current_task == '3') {
         var validation = validateAnnotation();
 
         if (validation[0]) {
             storeAnnotationsAndReload(validation[1]);
         } else {
             printInfo(validation[1]);
+        }
+    }
+
+    // Reference annotation selected
+    else {
+        var validation = validateReference();
+
+        if (validation[0]) {
+            console.log(validation[1])
+            // storeReferenceAndReload(validation[1]);
+        } else {
+            printInfo(validation[1])
         }
     }
 }

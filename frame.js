@@ -44,7 +44,14 @@ app.use('/pdf', express.static('public/assets/pdf'));
 app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
 
-const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d', '#402310', '#7f4400', '#e5b073', '#8c7000', '#ffd940', '#eeff00', '#64664d', '#2a4000', '#86b32d', '#d6f2b6', '#20f200', '#00660e', '#7ca692', '#00cc88', '#00e2f2', '#00474d', '#36a3d9', '#397ee6', '#26364d', '#acc3e6', '#2d3eb3', '#1f00e6', '#311659', '#b836d9', '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
+const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
+                            '#402310', '#7f4400', '#e5b073', '#8c7000',
+                            '#ffd940', '#eeff00', '#64664d', '#2a4000',
+                            '#86b32d', '#d6f2b6', '#20f200', '#00660e',
+                            '#7ca692', '#00cc88', '#00e2f2', '#00474d',
+                            '#36a3d9', '#397ee6', '#26364d', '#acc3e6',
+                            '#2d3eb3', '#1f00e6', '#311659', '#b836d9',
+                            '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
 
 // Settings
 const GUIDELINESVERSION = 'v1'
@@ -878,7 +885,7 @@ var createNewPredicateEntry = function(pr_id, frame, sessionId, reltype, tids, t
     return aPredicate;
 }
 
-var createNewRoleEntry = function(rl_id, semRole, sessionId, referents, mentions, timestamp){
+var createNewRoleEntry = function(rl_id, semRole, sessionId, referents, mentions, timestamp) {
     var aRole = {};
 
     aRole['#text'] = '';
@@ -894,6 +901,10 @@ var createNewRoleEntry = function(rl_id, semRole, sessionId, referents, mentions
         });
     }
     return aRole;
+}
+
+var createNewCoRefEntry = function() {
+    
 }
 
 // Annotate selected terms with a frame in JSON object
@@ -1134,6 +1145,10 @@ var addMarkableCorrectionToJson = function(json_data, task, correction, session_
     }
 }
 
+var addCoReferenceToJson = function(json_data, task, task_data, session_id) {
+    
+}
+
 var saveNAF = function(file_name, json_data, callback){
     var parser = new jsonParser(jsonOptions);
     var xml = parser.parse(json_data);
@@ -1260,9 +1275,7 @@ app.get('/get_roles', isAuthenticated, function(req, res) {
 // Endpoint to store markable corrections set in request body
 app.post('/store_markable_correction', isAuthenticated, function(req, res) {
     // Get user information
-    var user = "sam";//req.user.user;
-    var login_time = req.session.visited;
-
+    var user = req.user.user;
     console.log("Storing markable correction received from " + user);
 
     // Check if incident id is provided
@@ -1291,35 +1304,6 @@ app.post('/store_markable_correction', isAuthenticated, function(req, res) {
                     
                     // Add markables to JSON data
                     var new_json = addMarkableCorrectionToJson(naf_data, task, correction_data, req.sessionID);
-
-                    /* MARKABLE DATA FORMAT:
-                        TASKS:
-                            1 = create phrasal verb
-                            2 = remove phrasal verb
-                            3 = create idiom
-                            4 = remove idiom
-                            5 = create compound
-                            6 = remove compund
-
-                        EXAMPLES:
-                            1. {
-                                "task": 1
-                                "taskdata": {
-                                    "lemma": "blah"
-                                    "tokens": ["t1", "t2"]
-                                }
-                            }
-
-                            2. {
-                                "task": 3
-                                "taskdata": {
-                                    "lemma": "blah"
-                                    "tokens": ["t1", "t2"]
-                                }
-                            }
-                    */
-
-                    // Save session info (?)
 
                     console.log("File " + document_id + " loaded. Now updating and saving.");
 
@@ -1424,35 +1408,53 @@ app.get("/get_structured_data", isAuthenticated, function(req, res) {
 });
 
 // TODO: refactor
-app.post('/addreferent', isAuthenticated, function(req, res){
-    var newRef=req.body.newref;
-    var inc=req.body.inc;
-    var u = req.user.user;
+app.post('/store_reference', isAuthenticated, function(req, res){
+    var user = req.user.user;
+    var login_time = req.session.visited;
 
-    var newRefLink = inc + '#' + req.sessionID + '#' + newRef;
-    var aReferent=newRefLink + '|' + newRef;
+    console.log("Storing markable correction received from " + user);
 
-    var refFilePath=ANNOTATION_DIR + u + '/customrefs.json';
-    fs.readFile(refFilePath, 'utf-8', function(err, data){
-        if (err) throw err; // we'll not consider error handling for now
-        var customRefs={};
-        if (data && data!='')
-            customRefs=JSON.parse(data);
-        if (customRefs[inc]){
-            customRefs[inc].push(aReferent);
-            console.log('incident updated', customRefs[inc]);
-        } else{
-            customRefs[inc]=[aReferent];
-            console.log('new incident info added', customRefs[inc]);
-        }
-        fs.writeFile(refFilePath, JSON.stringify(customRefs), function(err){
-            if (err) console.log(err);
-            getStructuredData(u, inc, function(newData){
-                console.log(newData);
-                res.send(newData);
+    if (!req.body.incident) {
+        console.error("Storing of markable correction: incident not specified - user: " + user);
+        res.sendStatus(400);
+    } else {
+        // Get task data from request body
+        var task_data = req.body["task_data"] || {};
+        var document_id = req.body["doc_id"];
+
+        // Load NAF file using incident info
+        loadNAFFile(document_id, user, false, function(naf_data) {
+            var language = document_id.split('/')[0];
+            var title = document_id.split('/')[1];
+            var user_annotation_dir = ANNOTATION_DIR + user + '/' + language + '/';
+
+            // Make new directory for user and language if needed
+            mkdirp(user_annotation_dir, function (error) {
+                if (error) {
+                    console.error("Error with creating a directory:\n" + error);
+                } else {
+                    var naf_file = user_annotation_dir + title + ".naf";
+                    
+                    // Add coreferences to JSON data
+                    var new_json = addCoReferenceToJson(naf_data, task_data, req.sessionID);
+                    new_json = saveSessionInfo(new_json['json'], req.sessionID, user, login_time);
+
+                    console.log("File " + document_id + " loaded. Now updating and saving.");
+
+                    // Save JSON in NAF
+                    saveNAF(naf_file, new_json, function(error) {
+                        if (error) {
+                            console.log('Error obtained with saving: ' + error);
+                            res.sendStatus(400).json({ "error": error });
+                        } else {
+                            console.log("Sending response");
+                            res.sendStatus(200);
+                        }
+                    });
+                }
             });
         });
-    });
+    }
 });
 
 // =====================================
