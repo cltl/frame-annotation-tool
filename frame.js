@@ -1146,7 +1146,7 @@ var addMarkableCorrectionToJson = function(json_data, task, correction, session_
 }
 
 var addCoReferenceToJson = function(json_data, task, task_data, session_id) {
-    
+    console.log(task_data)
 }
 
 var saveNAF = function(file_name, json_data, callback){
@@ -1164,6 +1164,8 @@ var saveNAF = function(file_name, json_data, callback){
         }
   });
 }
+
+// TEST
 
 // =====================================
 // QUERY ENDPOINTS =====================
