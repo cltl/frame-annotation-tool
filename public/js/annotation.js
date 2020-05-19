@@ -517,6 +517,7 @@ var loadTextsFromFile = function(incident_id, callback){
     $('#pnlLeft').html('');
 
     $.get('/load_incident', { 'incident': incident_id }, function(res, status) {
+        console.log(status);
         unique2tool = {};
         var all_html = ''; 
         var c = 0;
@@ -556,6 +557,13 @@ var loadTextsFromFile = function(incident_id, callback){
         }
 
         $('#bigdiv').height($(window).height()-($('#pickrow').height() + $('#titlerow').height()+$('#annrow').height())-20);
+    }).fail(function(e) {
+        console.log(e.status)
+        // Incident locked
+        if (e.status == 423) {
+            alert('The incident you tried to load is locked by another user.');
+            return;
+        }
     });
 }
 
