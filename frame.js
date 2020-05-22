@@ -9,7 +9,7 @@ var expressSession = require('express-session');
 var fs = require('fs');
 var xmlParser = require('fast-xml-parser');
 var jsonParser = require("fast-xml-parser").j2xParser;
-var morgan       = require('morgan');
+var morgan = require('morgan');
 var glob = require('glob');
 var mkdirp = require('mkdirp');
 var _ = require('underscore');
@@ -44,6 +44,7 @@ app.use('/pdf', express.static('public/assets/pdf'));
 app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
 
+const LOCK_TIME = 20 // Time in minutes
 const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
                             '#402310', '#7f4400', '#e5b073', '#8c7000',
                             '#ffd940', '#eeff00', '#64664d', '#2a4000',
@@ -68,6 +69,8 @@ const frame_info_file = 'data/frames/frame_to_info.json';
 const dataDir = 'data/naf/';
 
 const ANNOTATION_DIR = 'annotation/'
+
+LockedIncidents = {}
 
 customRefs={};
 
@@ -1204,16 +1207,45 @@ app.get('/load_incident', isAuthenticated, function(req, res) {
     // Check if incident is provided
     if (!req.query['incident']) {
         res.sendStatus(400); //("Not OK: incident id not specified");
-    } else {
+    } else {        
         // Get naf files using parameters
         var incident_id = req.query['incident'];
-        var naf_files = inc2doc[incident_id];
+        var locked = false;
 
-        // Load NAF files and return
-        loadMultipleNAFs(naf_files, req.user.user, function(data) {
-            console.log("All nafs loaded. returning the result now");
-            res.send({ "nafs": data });
-        });
+        var date = new Date();
+        var now = date.getTime();
+
+        // Check if incident user tries to load is locked
+        if (incident_id in LockedIncidents) {
+            // Not locked for user
+            if (LockedIncidents[incident_id].user != req.user.user) {
+                var lock_time = parseInt(LockedIncidents[incident_id].time);
+                if (now - lock_time < LOCK_TIME * 60000) {
+                    locked = true;
+                }
+            }
+        }
+
+        if (!locked) {
+            // Unclock previously locked incident
+            Object.keys(LockedIncidents).some(function(k) {
+                if (LockedIncidents[k].user === req.user.user) {
+                    delete LockedIncidents[k];
+                }
+            });
+
+            // Lock new incident
+            LockedIncidents[incident_id] = { 'user': req.user.user, 'time': now }
+            var naf_files = inc2doc[incident_id];
+
+            // Load NAF files and return
+            loadMultipleNAFs(naf_files, req.user.user, function(data) {
+                console.log("All nafs loaded. returning the result now");
+                res.send({ "nafs": data });
+            });
+        } else {
+            res.sendStatus(423);
+        }
     }
 });
 
