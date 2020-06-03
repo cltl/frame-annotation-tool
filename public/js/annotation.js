@@ -416,11 +416,11 @@ var renderStructuredData = function(incident_uri, data){
     var incident_url = wdt_prefix + incident_uri;
 
     str_html += '<label id="incType">incident type:</label> ';
-    str_html += '<a href="' + incident_type_url + '" data-uri="' + incident_type_uri + '" class="structured-data">' + incident_type_label + '</a>';
+    str_html += '<a href="' + incident_type_url + '" data-uri="' + incident_type_uri + '" data-type="event" class="structured-data">' + incident_type_label + '</a>';
     str_html += '<br/>';
 
     str_html += '<label id="incId">incident ID:</label> ';
-    str_html += '<a href="' + incident_url + '" data-uri="' + incident_uri + '" class="structured-data">' + incident_uri + '</a>';
+    str_html += '<a href="' + incident_url + '" data-uri="' + incident_uri + '" data-type="event" class="structured-data">' + incident_uri + '</a>';
     str_html += '<br/>';
 
     for (var property in data) {
@@ -445,7 +445,7 @@ var renderStructuredData = function(incident_uri, data){
             if ($.trim(valText) == '')
                 str_html += valLink;
             else
-                str_html += '<a href="' + valLink + '" data-uri="' + valLink.split('/').slice(-1)[0]  + '" class="structured-data" target="_blank">' + valText + '</a>';
+                str_html += '<a href="' + valLink + '" data-uri="' + valLink.split('/').slice(-1)[0]  + '" data-type="' + clean_property + '" class="structured-data" target="_blank">' + valText + '</a>';
 
             allValues.add(vals[i]);
         }
@@ -918,6 +918,7 @@ var validateReference = function() {
 
     // Get all selected referents
     var referent = $('.referent').data('uri');
+    var type = $('.referent').data('type');
 
     if (referent == undefined) {
         return [false, 'Select a referent'];
@@ -925,7 +926,7 @@ var validateReference = function() {
 
     var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
     var incident = $('#pickfile').val();
-    var task_data = { 'terms': selected, 'referent': referent };
+    var task_data = { 'terms': selected, 'referent': referent, 'type': type };
 
     return[true, { 'incident': incident, 'doc_id': doc_id, 'task': 1, 'task_data': task_data }];
 }
@@ -1011,7 +1012,7 @@ var validateAndSave = function() {
 
         if (validation[0]) {
             console.log(validation[1])
-            // storeReferenceAndReload(validation[1]);
+            storeReferenceAndReload(validation[1]);
         } else {
             printInfo(validation[1])
         }

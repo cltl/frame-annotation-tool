@@ -66,7 +66,7 @@ const proj2inc_file = 'data/json/proj2inc_index.json';
 const likely_frames_file = 'data/frames/dominant_frame_info.json';
 const frame_info_file = 'data/frames/frame_to_info.json';
 
-const dataDir = 'data/naf/';
+const DATA_DIR = 'data/naf/';
 
 const ANNOTATION_DIR = 'annotation/'
 
@@ -176,16 +176,6 @@ passport.deserializeUser(function(user, done) {
 
 app.post('/login', passport.authenticate('local', { failureRedirect: '/' }), function(req, res) {
     req.session.visited = new Date().toISOString().replace(/\..+/, '');
-    var user_annotation_dir = ANNOTATION_DIR + req.user.user + "/";
-
-    mkdirp(user_annotation_dir, function (error) {
-        if (error) console.error(error);
-        else {
-            var customrefs_path = user_annotation_dir + 'customrefs.json';
-            fs.closeSync(fs.openSync(customrefs_path, 'a'));
-        }
-    });
-
     res.sendStatus(200);
 });
  
@@ -763,27 +753,20 @@ var json2info = function(jsonObj, nafName, callback){
 
 // Load a NAF file and return JSON
 // Parameters: string, string, bool, callback
-function loadNAFFile(nafName, theUser, adaptJson, callback){
-    var filename = ANNOTATION_DIR + theUser + '/' + nafName + '.naf';
+function loadNAFFile(filename, adapt, callback) {
+    var file_path = ANNOTATION_DIR + filename + '.naf';
 
-    if (!(fs.existsSync(filename))){
-        var filename = dataDir + nafName + '.naf';
+    if (!(fs.existsSync(file_path))) {
+        file_path = DATA_DIR + filename + '.naf';
     }
 
-    fs.readFile(filename, 'utf-8', function(err, xmlData) {
-        if (err) {
-            console.error(err);
-        }
-        
-        // Parse xml to JSON
-        var jsonObj = xmlParser.parse(xmlData, xmlOptions);
+    fs.readFile(file_path, 'utf-8', function(error, data) {
+        var json = xmlParser.parse(data, xmlOptions);
 
-        if (adaptJson) {
-            json2info(jsonObj, nafName, function(info){
-                callback(info);
-            });
+        if (adapt) {
+            json2info(json, filename, callback);
         } else {
-            callback(jsonObj);
+            callback(json);
         }
     });
 }
@@ -794,7 +777,7 @@ var loadMultipleNAFs = function(nafs, theUser, callback){
 
     // Load each NAF file and return if all files are loaded
     for (var i = 0; i < nafs.length; i++) {
-        loadNAFFile(nafs[i], theUser, true, function(nafData) {
+        loadNAFFile(nafs[i], true, function(nafData) {
             data.push(nafData);
             if (data.length == nafs.length) {
                 callback(data);
@@ -803,22 +786,22 @@ var loadMultipleNAFs = function(nafs, theUser, callback){
     }
 }
 
-var makeSpanLayer = function(anObj, tids){
-    anObj['span'] = {'#text': '', 'target': []};
+var makeSpanLayer = function(tids) {
+    var result = {'#text': '', 'target': []};
 
     for (var i = 0; i < tids.length; i++) {
         if (tids[i] != "unexpressed") {
             var tid = tids[i].split('.');
 
             if (tid.length > 1) {
-                anObj['span']['target'].push({'#text': '', 'attr':{'id': tid[2]}});
+                result['target'].push({'#text': '', 'attr':{'id': tid[2]}});
             } else {
-                anObj['span']['target'].push({'#text': '', 'attr':{'id': tid}});
+                result['target'].push({'#text': '', 'attr':{'id': tid}});
             }
         }
     }
 
-    return anObj['span'];
+    return result;
 }
 
 var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
@@ -882,7 +865,7 @@ var createNewPredicateEntry = function(pr_id, frame, sessionId, reltype, tids, t
 
     var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, timestamp);
 
-    aPredicate['span'] = makeSpanLayer(aPredicate, tids);
+    aPredicate['span'] = makeSpanLayer(tids);
     aPredicate['role'] = [];
 
     return aPredicate;
@@ -894,25 +877,47 @@ var createNewRoleEntry = function(rl_id, semRole, sessionId, referents, mentions
     aRole['#text'] = '';
     aRole['attr'] = {}
     aRole['attr']['id'] = rl_id;
-    aRole['span'] = makeSpanLayer(aRole, mentions);
+    aRole['span'] = makeSpanLayer(mentions);
     aRole['externalReferences'] = {'#text': '', 'externalRef': []};
     aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
 //    aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
-    if (referents && referents.length>0){
-        referents.forEach(function(ref){
-            aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'refer', 'timestamp': timestamp}});
-        });
-    }
+    // if (referents && referents.length>0){
+    //     referents.forEach(function(ref){
+    //         aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'refer', 'timestamp': timestamp}});
+    //     });
+    // }
     return aRole;
 }
 
-var createNewCoRefEntry = function() {
-    
+var createNewCoRefEntry = function(id, type, span, reference, session_id, timestamp) {
+    external_reference = {
+        '#text': '',
+        'attr': {
+            'reference': reference,
+            'resource': 'http://www.wikidata.org',
+            'source': session_id,
+            'reftype': 'http://semanticweb.cs.vu.nl/2009/11/sem/' + type,
+            'timestamp': timestamp
+        }
+    }
+
+    var type_attr = 'event' ? type == 'event' : 'entity';
+    var result = {
+        '#text': '',
+        'attr': { 'id': id, 'status': 'manual', 'type': type_attr },
+        'span': makeSpanLayer(span),
+        'externalRefrences': {
+            '#text': '',
+            'externalRef':  [external_reference]
+        }
+    };
+
+    return result
 }
 
 // Annotate selected terms with a frame in JSON object
 // Parameters: object, object, string
-var annotateFrame = function(jsonData, annotations, sessionId){
+var annotateFrame = function(jsonData, annotations, sessionId) {
     var frame = annotations['frame'];
     var reltype = annotations['reltype'];
     var tids = annotations['mentions'];
@@ -953,7 +958,7 @@ var annotateFrame = function(jsonData, annotations, sessionId){
 
         jsonData['NAF']['srl'] = new_srl;
 
-        return result = {'prid': pr_id, 'json': jsonData};;
+        return result = {'prid': pr_id, 'json': jsonData};
     }
 
     // Update existing predicate
@@ -970,8 +975,7 @@ var annotateFrame = function(jsonData, annotations, sessionId){
                 return {'prid': activePredicate, 'json': jsonData};
             }
         }
-    }
-    
+    }   
 }
 
 var addExternalRefsRole=function(aRole, semRole, sessionId, referents, timestamp){
@@ -992,7 +996,7 @@ var annotateRole = function(jsonData, annotations, sessionId) {
     if ('srl' in jsonData['NAF']){
         var predicates = jsonData['NAF']['srl']['predicate'];
 
-        if (!Array.isArray(predicates)) predicates=[predicates];
+        if (!Array.isArray(predicates)) predicates = [predicates];
 
         for (var i = 0; i < predicates.length; i++){
             if (predicates[i]['attr']['id'] == roleData['prid']){
@@ -1025,8 +1029,8 @@ var annotateRole = function(jsonData, annotations, sessionId) {
     }
 }
 
-var addAnnotationsToJson = function(jsonData, annotations, sessionId){
-    if (annotations['anntype'] == 'taskFrame') {
+var addAnnotationsToJson = function(jsonData, annotations, sessionId) {
+    if (annotations['anntype'] == '2') {
         return annotateFrame(jsonData, annotations, sessionId);
     } else {
         return annotateRole(jsonData, annotations, sessionId);
@@ -1039,7 +1043,7 @@ var createTermEntry = function(term_id, term_data) {
     term_entry['#text'] = '';
     term_entry['attr'] = { "id": term_id, "lemma": term_data["lemma"], "pos": term_data["pos"], "phrase_type": term_data["type"] }
     term_entry['attr']['id'] = term_id;
-    term_entry['span'] = makeSpanLayer(term_entry, term_data["word_span"]);
+    term_entry['span'] = makeSpanLayer(term_data["word_span"]);
     term_entry["component"] = [];
 
     for (var i = 0; i < term_data["components"].length; i++) {
@@ -1148,8 +1152,40 @@ var addMarkableCorrectionToJson = function(json_data, task, correction, session_
     }
 }
 
-var addCoReferenceToJson = function(json_data, task, task_data, session_id) {
-    console.log(task_data)
+var addCoReferenceToJson = function(json_data, task_data, session_id) {
+    var coreference_id = 1;
+    var corefs = undefined;
+
+    // Create coreferences layer if it does not exist
+    if (!('coreferences' in json_data['NAF'])) {
+        json_data['NAF']['coreferences'] = { '#text': '', 'coref': [] }; 
+        corefs = json_data['NAF']['coreferences']['coref'];
+    }
+
+    // Find ID for new coref
+    else {
+        corefs = json_data['NAF']['coreferences']['coref'];
+        if (!Array.isArray(corefs)) {
+            corefs = [corefs]
+        }
+
+        for (coref in corefs) {
+            var cur_id = parseInt(corefs['attr']['id'].replace('co', ''));
+            if (cur_id > coreference_id) {
+                coreference_id = cur_id;
+            }
+        }
+    }
+
+    var timestamp = new Date().toISOString().replace(/\..+/, '');
+
+    // Create coref entry
+    corefs.push(createNewCoRefEntry(coreference_id, task_data['type'],
+                                    task_data['terms'], task_data['referent'],
+                                    session_id, timestamp))
+
+    json_data['NAF']['coreferences']['coref'] = corefs
+    return json_data
 }
 
 var saveNAF = function(file_name, json_data, callback){
@@ -1296,7 +1332,7 @@ app.get('/get_roles', isAuthenticated, function(req, res) {
     } else {
         var docid = req.query['docid'];
 
-        loadNAFFile(docid, req.user.user, false, function(rawData){
+        loadNAFFile(docid, false, function(rawData){
             var the_id = req.query['prid'];
 
             getRolesForPredicate(rawData, the_id, function(roleData) {
@@ -1323,18 +1359,18 @@ app.post('/store_markable_correction', isAuthenticated, function(req, res) {
         var document_id = req.body["doc_id"];
 
         // Load NAF file using incident info
-        loadNAFFile(document_id, user, false, function(naf_data) {
+        loadNAFFile(document_id, false, function(naf_data) {
             var language = document_id.split('/')[0];
             var title = document_id.split('/')[1];
-            var user_annotation_dir = ANNOTATION_DIR + user + '/' + language + '/';
+            var annotation_dir = ANNOTATION_DIR + language + '/';
 
-            // Make new directory for user and language if needed
-            mkdirp(user_annotation_dir, function (error) {
+            // Make new directory for language if needed
+            mkdirp(annotation_dir, function (error) {
                 if (error) {
                     console.error("Error with creating a directory:\n" + error);
                 } else {
                     // Update JSON with new annotations
-                    var naf_file = user_annotation_dir + title + ".naf";
+                    var naf_file = annotation_dir + title + ".naf";
                     
                     // Add markables to JSON data
                     var new_json = addMarkableCorrectionToJson(naf_data, task, correction_data, req.sessionID);
@@ -1375,18 +1411,18 @@ app.post('/store_annotations', isAuthenticated, function(req, res) {
         var document_id = annotations["doc_id"];
 
         // Load NAF file using incident info
-        loadNAFFile(document_id, user, false, function(naf_data) {
+        loadNAFFile(document_id, false, function(naf_data) {
             var language = document_id.split('/')[0];
             var title = document_id.split('/')[1];
-            var user_annotation_dir = ANNOTATION_DIR + user + '/' + language + '/';
+            var annotation_dir = ANNOTATION_DIR + language + '/';
 
             // Make new directory for user and language if needed
-            mkdirp(user_annotation_dir, function (error) {
+            mkdirp(annotation_dir, function (error) {
                 if (error) {
                     console.error("Error with creating a directory:\n" + error);
                 } else {
                     // Update JSON with new annotations
-                    var naf_file = user_annotation_dir + title + ".naf";
+                    var naf_file = annotation_dir + title + ".naf";
                     var new_naf_data = addAnnotationsToJson(naf_data, annotations, req.sessionID);
 
                     var updatedJson = saveSessionInfo(new_naf_data["json"], req.sessionID, user, login_time);
@@ -1420,24 +1456,24 @@ app.get("/get_structured_data", isAuthenticated, function(req, res) {
 
         var json_data = inc2str[incident_id];
         var file_path = ANNOTATION_DIR + user + "/customrefs.json";
+        res.send(json_data);
 
         // Load custom referents data
-        fs.readFile(file_path, "utf-8", function(error, data) {
-            if (error) {
-                console.log(error);
-                res.sendStatus(500);
-            } else {
-                data = data.trim();
+        // fs.readFile(file_path, "utf-8", function(error, data) {
+        //     if (error) {
+        //         console.log(error);
+        //         res.sendStatus(500);
+        //     } else {
+        //         data = data.trim();
 
-                // Check if data in file
-                if (data && data != "") {
-                    customRefs = JSON.parse(data);
-                    if (customRefs[incident_id]) json_data['user:custom'] = customRefs[incident_id];
-                }
+        //         // Check if data in file
+        //         if (data && data != "") {
+        //             customRefs = JSON.parse(data);
+        //             if (customRefs[incident_id]) json_data['user:custom'] = customRefs[incident_id];
+        //         }
 
-                res.send(json_data);
-            }
-        });
+        //     }
+        // });
     }
 });
 
@@ -1457,24 +1493,23 @@ app.post('/store_reference', isAuthenticated, function(req, res){
         var document_id = req.body["doc_id"];
 
         // Load NAF file using incident info
-        loadNAFFile(document_id, user, false, function(naf_data) {
+        loadNAFFile(document_id, false, function(naf_data) {
             var language = document_id.split('/')[0];
             var title = document_id.split('/')[1];
-            var user_annotation_dir = ANNOTATION_DIR + user + '/' + language + '/';
+            var annotation_dir = ANNOTATION_DIR + language + '/';
 
             // Make new directory for user and language if needed
-            mkdirp(user_annotation_dir, function (error) {
+            mkdirp(annotation_dir, function (error) {
                 if (error) {
                     console.error("Error with creating a directory:\n" + error);
                 } else {
-                    var naf_file = user_annotation_dir + title + ".naf";
+                    var naf_file = annotation_dir + title + ".naf";
                     
                     // Add coreferences to JSON data
                     var new_json = addCoReferenceToJson(naf_data, task_data, req.sessionID);
-                    new_json = saveSessionInfo(new_json['json'], req.sessionID, user, login_time);
+                    new_json = saveSessionInfo(new_json, req.sessionID, user, login_time);
 
                     console.log("File " + document_id + " loaded. Now updating and saving.");
-
                     // Save JSON in NAF
                     saveNAF(naf_file, new_json, function(error) {
                         if (error) {
