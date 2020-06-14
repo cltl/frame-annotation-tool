@@ -923,6 +923,7 @@ var annotateFrame = function(jsonData, annotations, sessionId) {
     var tids = annotations['mentions'];
     var activePredicate = annotations['predicate'];
     var pr_id = "";
+    var pr_num = 0;
     var srl = [];
 
     // Create SRL layer if not exists
@@ -939,8 +940,8 @@ var annotateFrame = function(jsonData, annotations, sessionId) {
 
         // Selected term(s) is not yet a predicate
         if (!activePredicate) {
-            var pr_num = (parseInt(predicates[predicates.length - 1]['attr']['id'].substring(2)) || 0) + 1;
-            var pr_id = "pr" + pr_num;
+            pr_num = (parseInt(predicates[predicates.length - 1]['attr']['id'].substring(2)) || 0) + 1;
+            pr_id = "pr" + pr_num;
         }
     }
 
@@ -948,15 +949,20 @@ var annotateFrame = function(jsonData, annotations, sessionId) {
 
     // Create new predicate if selected term(s) is not predicate already
     if (!activePredicate) {
-        var new_predicate = createNewPredicateEntry(pr_id, frame, sessionId, reltype, tids, timestamp);
-        var new_predicate_span = new_predicate['span']['target'];
+        for (tid in tids) {
+            target = [tids[tid]]
+            pr_id = "pr" + pr_num;
+            var new_predicate = createNewPredicateEntry(pr_id, frame, sessionId, reltype, target, timestamp);
+            var new_predicate_span = new_predicate['span']['target'];
 
-        // Check for overlap in predicate spans, and deprecate older versions
-        var new_srl = deprecatePredicateSpanOverlap(srl, pr_id, new_predicate_span);
-        
-        new_srl['predicate'].push(new_predicate);
+            // Check for overlap in predicate spans, and deprecate older versions
+            var new_srl = deprecatePredicateSpanOverlap(srl, pr_id, new_predicate_span);
+            
+            new_srl['predicate'].push(new_predicate);
 
-        jsonData['NAF']['srl'] = new_srl;
+            jsonData['NAF']['srl'] = new_srl;
+            pr_num += 1;
+        }
 
         return result = {'prid': pr_id, 'json': jsonData};
     }
