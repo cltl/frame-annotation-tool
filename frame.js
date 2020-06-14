@@ -674,11 +674,10 @@ var json2info = function(jsonObj, nafName, callback){
 
         var term_id = term['attr']['id'];
         var term_type = term["attr"]["phrase_type"];
-        var term_targets = [term['span']['target']];
-        var term_components = term['component'];
 
         // Term is multi word compound
         if (term_type == "idiom" || term_type == "multi_word") {
+            var term_components = term['component'];
             /*
             for (var c = 0; c < term_components.length; c++){
                 var comp = term_components[c];
@@ -699,6 +698,7 @@ var json2info = function(jsonObj, nafName, callback){
         }
         // Term is component
         else if (term_type == "component") {
+            var term_targets = [term['span']['target']];
             var termTokens = [];
             var parent_term = multi_word_data[term_id]
 
@@ -721,6 +721,7 @@ var json2info = function(jsonObj, nafName, callback){
         }
         // Term is singleton
         else {
+            var term_targets = [term['span']['target']];
             var termTokens = [];
             for (var t = 0; t < term_targets.length; t++){
                 var target = term_targets[t];
@@ -788,6 +789,8 @@ var loadMultipleNAFs = function(nafs, theUser, callback){
 
 var makeSpanLayer = function(tids) {
     var result = {'#text': '', 'target': []};
+
+    console.log(tids)
 
     for (var i = 0; i < tids.length; i++) {
         if (tids[i] != "unexpressed") {
@@ -1049,12 +1052,11 @@ var createTermEntry = function(term_id, term_data) {
     term_entry['#text'] = '';
     term_entry['attr'] = { "id": term_id, "lemma": term_data["lemma"], "pos": term_data["pos"], "phrase_type": term_data["type"] }
     term_entry['attr']['id'] = term_id;
-    term_entry['span'] = makeSpanLayer(term_data["word_span"]);
-    term_entry["component"] = [];
+    term_entry["component"] = term_data['components'];
 
-    for (var i = 0; i < term_data["components"].length; i++) {
-        term_entry["component"][i] = { "attr": { "id":  term_data["components"][i] }};
-    }
+    // for (var i = 0; i < term_data["components"].length; i++) {
+    //     term_entry["component"][i] = { "attr": { "id":  term_data["components"][i] }};
+    // }
 
     return term_entry;
 }
@@ -1076,8 +1078,8 @@ var createMultiWordTerm = function(json_data, task, correction, session_id) {
         type = "idiom";
     }
 
-    var word_span = [];
     var components = correction["tokens"];
+    var component_layer = makeSpanLayer(components);
     var term_num = term_layer.length + 1;
 
     for (var i = 0; i < components.length; i++) {
@@ -1094,10 +1096,6 @@ var createMultiWordTerm = function(json_data, task, correction, session_id) {
             var cur_term_wspan = term_layer[i]["span"]["target"];
 
             if (!Array.isArray(cur_term_wspan)) cur_term_wspan = [cur_term_wspan];
-
-            for (var j = 0; j < cur_term_wspan.length; j++) {
-                word_span.push(cur_term_wspan[j]["attr"]["id"]);
-            }
         }
     }
 
@@ -1106,8 +1104,7 @@ var createMultiWordTerm = function(json_data, task, correction, session_id) {
         "lemma": correction["lemma"],
         "pos": pos,
         "type": type,
-        "word_span": word_span,
-        "components": components
+        "components": component_layer
     }
 
     var new_term = createTermEntry(term_id, term_data);
