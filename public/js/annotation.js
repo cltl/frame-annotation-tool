@@ -498,6 +498,10 @@ var addToken = function(token_id, token, annotated, refs, lus, parent_term) {
         var reference = '';
         var ann_class = '';
 
+        if (refs[short_token_id]) {
+            reference = 'data-ref=' + refs[parent_term];
+        }
+
         if (refs[parent_term]) {
             reference = 'data-ref=' + refs[parent_term];
         }
