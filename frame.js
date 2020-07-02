@@ -679,13 +679,16 @@ var json2info = function(jsonObj, nafName, callback){
         var term_ids = coref['span']['target'];
         if (!Array.isArray(term_ids)) term_ids = [term_ids];
 
-        var ext_ref = coref['externalReferences']['externalRef'];
+        var ext_ref = coref['externalReferences'];
+        ext_ref = ext_ref !== undefined ? ext_ref['externalRef'] : [];
 
-        getMostRecentExternalReference(ext_ref, function(type, ref) {
-            for (var j = 0; j < term_ids.length; j++) {
-                ready_corefs[term_ids[j]['attr']['id']] = type;
-            }
-        });
+        if (ext_ref) {
+            getMostRecentExternalReference(ext_ref, function(type, ref) {
+                for (var j = 0; j < term_ids.length; j++) {
+                    ready_corefs[term_ids[j]['attr']['id']] = type;
+                }
+            });
+        }
     }
     
     // Iterate through term layer
