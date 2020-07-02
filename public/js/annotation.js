@@ -114,6 +114,10 @@ $(function() {
         // Currently annotating references
         else if (current_task == '4') {
             $(selector).toggleClass('marked');
+
+            if (is_annotated) {
+                activateReferent($(this));
+            }
         }
     });
 
@@ -198,6 +202,7 @@ var updateTask = function() {
     $('.correctionSelectors').hide();
     $('.frameSelectors').hide();
     $('.elementSelectors').hide();
+    $('[data-ref!=""][data-ref]').removeClass('annotated');
 
     if (current_task == '1') {
         $('.correctionSelectors').show();
@@ -206,6 +211,8 @@ var updateTask = function() {
         $('.frameSelectors').show();
     } else if (current_task == '3') {
         $('.elementSelectors').show();
+    } else if (current_task == '4') {
+        $('[data-ref!=""][data-ref]').addClass('annotated');
     }
 
     clearSelection();
@@ -242,6 +249,13 @@ var activatePredicateRightPanel = function(theId) {
     var docId = elems[0].replace(/_/g, ' ');
     var tid = elems[1];
     activatePredicate(docId, tid);
+}
+
+var activateReferent = function(elem) {
+    var ref_uri = elem.data('ref');
+    $('.structured-data').removeClass('marked');
+    console.log($('[data-uri="' + ref_uri + '"]'));
+    $('[data-uri="' + ref_uri + '"]').addClass('marked');
 }
 
 var activatePredicateFromText = function(elem) {
@@ -474,13 +488,19 @@ var makeHtml = function(ref){
     return myHtml;
 }
 
-var addToken = function(token_id, token, annotated, lus, parent_term) {
+var addToken = function(token_id, token, annotated, refs, lus, parent_term) {
     if (token == '\n') return '<br/>';
 
     else {
         var short_token_id = token_id.split('.')[2];
         var doc_and_sent = token_id.split('.').slice(0, 2);
         var term_selector = token_id;
+        var reference = '';
+        var ann_class = '';
+
+        if (refs[parent_term]) {
+            reference = 'data-ref=' + refs[parent_term];
+        }
 
         if (parent_term != 'none' && parent_term != 'undefined') {
             term_selector = doc_and_sent + '.' + parent_term;
@@ -489,21 +509,21 @@ var addToken = function(token_id, token, annotated, lus, parent_term) {
         
         // Frame annotation for current token
         if (annotated['frames'][short_token_id] || annotated['frames'][parent_term]) {
-            return '<span id=' + token_id + ' class="markable annotated" term-selector="' + term_selector + '">' + token + '</span> ';
+            ann_class = 'annotated';
         }
 
-        return '<span id=' + token_id + ' class="markable" term-selector="' + term_selector + '">' + token + '</span> ';
+        return '<span id=' + token_id + ' class="markable ' + ann_class + '" ' + reference + ' term-selector="' + term_selector + '">' + token + '</span> ';
     }
 }
 
-var addTokens = function(tokens, docId, anns, lus){
+var addTokens = function(tokens, docId, anns, refs, lus){
     var text = '';
 
     for (var token_num in tokens) {
         var token_info = tokens[token_num];
         var parent_term = token_info.parent_term;
         var tokenId = docId.replace(/ /g, '_') + '.' + token_info.sent + '.' + token_info.tid;
-        var newToken = addToken(tokenId, token_info.text, anns, lus, parent_term);
+        var newToken = addToken(tokenId, token_info.text, anns, refs, lus, parent_term);
         var uniqueId = docId.replace(/ /g, '_') + '#' + token_info.tid;
 
         unique2tool[uniqueId] = tokenId;
@@ -517,7 +537,6 @@ var loadTextsFromFile = function(incident_id, callback){
     $('#pnlLeft').html('');
 
     $.get('/load_incident', { 'incident': incident_id }, function(res, status) {
-        console.log(status);
         unique2tool = {};
         var all_html = ''; 
         var c = 0;
@@ -536,7 +555,7 @@ var loadTextsFromFile = function(incident_id, callback){
             var sourcetype = data[doc_num]['sourcetype'];
 
             var title_tokens = data[doc_num]['title'];
-            title = addTokens(title_tokens, docId, data[doc_num]['annotations'], lusLang);
+            title = addTokens(title_tokens, docId, data[doc_num]['annotations'], data[doc_num]['references'], lusLang);
 
             var header = '<div class="panel panel-default" id="' + doc_num + '">';
             header += '<div class="panel-heading"><h4 class="panel-title">' + title; 
@@ -545,7 +564,7 @@ var loadTextsFromFile = function(incident_id, callback){
 
             var body = '<div class="panel-body">';
             var body_tokens = data[doc_num]['body'];
-            body += addTokens(body_tokens, docId, data[doc_num]['annotations'], lusLang);
+            body += addTokens(body_tokens, docId, data[doc_num]['annotations'], data[doc_num]['references'], lusLang);
             body += '</div></div>';
 
             all_html += header + body;    
@@ -912,6 +931,11 @@ var validateReference = function() {
         return $(this).attr('term-selector');
     }).get();
 
+    var selected_unique = [];
+    $.each(selected, function(i, el){
+        if($.inArray(el, selected_unique) === -1) selected_unique.push(el);
+    });
+
     if (!(selected.length > 0)) {
         return [false, 'Select at least one markable']
     }
@@ -924,9 +948,9 @@ var validateReference = function() {
         return [false, 'Select a referent'];
     }
 
-    var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
+    var doc_id = selected_unique[0].split('.')[0].replace(/_/g, ' ');
     var incident = $('#pickfile').val();
-    var task_data = { 'terms': selected, 'referent': referent, 'type': type };
+    var task_data = { 'terms': selected_unique, 'referent': referent, 'type': type };
 
     return[true, { 'incident': incident, 'doc_id': doc_id, 'task': 1, 'task_data': task_data }];
 }

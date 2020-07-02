@@ -46,6 +46,10 @@ div.disqualified * {
     width: 100%;
 }
 
+.structured-data.marked {
+    background: #BB8FCE !important;
+}
+
 span.marked {
     background: #0f0 !important;
 }
@@ -145,10 +149,6 @@ label.inactive {
 
 .info-panel-4 {
     background: #F4ECF7;
-}
-
-.info-panel-5 {
-    background: #EAECEE;    
 }
 
 select {

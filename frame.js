@@ -258,9 +258,9 @@ var getMultiWordData = function(terms) {
         var term = terms[i];
         var term_id = term["attr"]["id"];
         var term_type = term["attr"]["phrase_type"]
-        var term_components = term["component"];
 
         if (term_type == "idiom" || term_type == "multi_word") {
+            var term_components = term["component"]['target'];
             for (var j = 0; j < term_components.length; j++) {
                 result[term_components[j]["attr"]["id"]] = term_id;
             }
@@ -578,7 +578,6 @@ var getPredicateAnnotations = function(pr_id, span, external_references, callbac
  * @param {function}    callback    Success callback
  */
 var prepareAnnotations = function(srl, callback) {
-    // 
     var result = { "frames": {}, "roles": {} };
     var predicates_done = 0;
 
@@ -652,7 +651,11 @@ var json2info = function(jsonObj, nafName, callback){
 
     // Get all terms
     var terms = jsonObj['NAF']['terms']['term'];
-    var multi_word_data = getMultiWordData(terms);
+    var corefs_layer = jsonObj['NAF']['coreferences'];
+    var corefs = corefs_layer !== undefined ? corefs_layer['coref'] : []
+    if (!Array.isArray(corefs)) corefs = [corefs];
+
+    var multi_word_data = getMultiWordData(terms)
 
     var srl = [];
 
@@ -665,11 +668,28 @@ var json2info = function(jsonObj, nafName, callback){
     // Resulting lists
     var ready_title_terms = [];
     var ready_body_terms = [];
+    var ready_corefs = {};
 
     var wikiTitle = jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
+
+    // Iterate through coref layer
+    for (var i = 0; i < corefs.length; i++) {
+        var coref = corefs[i];
+
+        var term_ids = coref['span']['target'];
+        if (!Array.isArray(term_ids)) term_ids = [term_ids];
+
+        var ext_ref = coref['externalReferences']['externalRef'];
+
+        getMostRecentExternalReference(ext_ref, function(type, ref) {
+            for (var j = 0; j < term_ids.length; j++) {
+                ready_corefs[term_ids[j]['attr']['id']] = type;
+            }
+        });
+    }
     
-    // Iterate trough term layer
-    for (var i = 0; i < terms.length; i++){
+    // Iterate through term layer
+    for (var i = 0; i < terms.length; i++) {
         var term = terms[i];
 
         var term_id = term['attr']['id'];
@@ -700,7 +720,7 @@ var json2info = function(jsonObj, nafName, callback){
         else if (term_type == "component") {
             var term_targets = [term['span']['target']];
             var termTokens = [];
-            var parent_term = multi_word_data[term_id]
+            var parent_term = multi_word_data[term_id];
 
             for (var t = 0; t < term_targets.length; t++){
                 var target = term_targets[t];
@@ -741,12 +761,12 @@ var json2info = function(jsonObj, nafName, callback){
             }
         }
 
-        if (i == terms.length - 1){
+        if (i == terms.length - 1) {
             console.log("Prepare annotations for " + nafName + ". Srl:");
 
             prepareAnnotations(srl, function(ready_srl) {
                 console.log('All annotations ready');
-                callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl, 'source': wikiTitle, 'sourcetype': wikiTitle.includes('wikipedia') ? "secondary" : "primary"});
+                callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl, 'references': ready_corefs, 'source': wikiTitle, 'sourcetype': wikiTitle.includes('wikipedia') ? "secondary" : "primary"});
             });
         }
     }
@@ -789,8 +809,6 @@ var loadMultipleNAFs = function(nafs, theUser, callback){
 
 var makeSpanLayer = function(tids) {
     var result = {'#text': '', 'target': []};
-
-    console.log(tids)
 
     for (var i = 0; i < tids.length; i++) {
         if (tids[i] != "unexpressed") {
@@ -909,7 +927,7 @@ var createNewCoRefEntry = function(id, type, span, reference, session_id, timest
         '#text': '',
         'attr': { 'id': id, 'status': 'manual', 'type': type_attr },
         'span': makeSpanLayer(span),
-        'externalRefrences': {
+        'externalReferences': {
             '#text': '',
             'externalRef':  [external_reference]
         }
