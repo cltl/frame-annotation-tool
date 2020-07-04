@@ -113,11 +113,13 @@ $(function() {
 
         // Currently annotating references
         else if (current_task == '4') {
-            $(selector).toggleClass('marked');
 
             if (is_annotated) {
+                clearSelection();
                 activateReferent($(this));
             }
+
+            $(selector).toggleClass('marked');
         }
     });
 

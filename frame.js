@@ -1179,6 +1179,7 @@ var addMarkableCorrectionToJson = function(json_data, task, correction, session_
 var addCoReferenceToJson = function(json_data, task_data, session_id) {
     var coreference_id = 1;
     var corefs = undefined;
+    console.log(task_data);
 
     // Create coreferences layer if it does not exist
     if (!('coreferences' in json_data['NAF'])) {
@@ -1189,12 +1190,11 @@ var addCoReferenceToJson = function(json_data, task_data, session_id) {
     // Find ID for new coref
     else {
         corefs = json_data['NAF']['coreferences']['coref'];
-        if (!Array.isArray(corefs)) {
-            corefs = [corefs]
-        }
+        if (!Array.isArray(corefs)) corefs = [corefs];
 
-        for (coref in corefs) {
-            var cur_id = parseInt(corefs['attr']['id'].replace('co', ''));
+        for (i in corefs) {
+            var coref = corefs[i];
+            var cur_id = parseInt(coref['attr']['id'].replace('co', ''));
             if (cur_id > coreference_id) {
                 coreference_id = cur_id;
             }
@@ -1204,9 +1204,13 @@ var addCoReferenceToJson = function(json_data, task_data, session_id) {
     var timestamp = new Date().toISOString().replace(/\..+/, '');
 
     // Create coref entry
-    corefs.push(createNewCoRefEntry(coreference_id, task_data['type'],
-                                    task_data['terms'], task_data['referent'],
-                                    session_id, timestamp))
+    var terms = task_data['terms'];
+    for (i in terms) {
+        term = terms[i];
+        corefs.push(createNewCoRefEntry(coreference_id, task_data['type'],
+                                        [term], task_data['referent'],
+                                        session_id, timestamp))
+    }
 
     json_data['NAF']['coreferences']['coref'] = corefs
     return json_data
