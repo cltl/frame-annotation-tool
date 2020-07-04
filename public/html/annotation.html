@@ -44,71 +44,104 @@
 
             <!-- Task, Task Details and Structured Data row -->
             <div class="row mt-4 justify-content-center" id="annrow">
+
+                <!-- Task and Task Details Selectors -->
                 <div class="row w-100">
-                    <div class="col-sm-8">
+                    <!-- Task Selector-->
+                    <div class="taskSelectors col-sm-3">
+                        <label>Annotation type: </label>
+                        <br/>
+                        <select id="taskSelector" onchange="updateTask()">
+                            <option value="-1" selected>-Pick annotation type-</option>
+                            <option value="1">Markable Correction</option>
+                            <option value="2">Frame Annotation</option>
+                            <option value="3">Frame Element Annotation</option>
+                            <option value="4">Reference</option>
+                            <option value="5">Structured Data</option>
+                        </select>
+                    </div>
 
-                        <!-- Task and Task Details Selectors -->
-                        <div class="row">
-                            <!-- Task Selector-->
-                            <div class="taskSelectors col-sm-4">
-                                <label>Annotation type: </label>
-                                <br/>
-                                <select id="taskSelector" onchange="updateTask()">
-                                    <option value="-1" selected>-Pick annotation type-</option>
-                                    <option value="1">Markable Correction</option>
-                                    <option value="2">Frame Annotation</option>
-                                    <option value="3">Frame Element Annotation</option>
-                                    <option value="4">Reference</option>
-                                </select>
-                            </div>
+                    <!-- Markable Correction Selector -->
+                    <!-- Correction Type -->
+                    <div class="correctionSelectors col-sm-3">
+                        <label>Choose Correction Type:</label><br/>
+                        <select id="correctionChooser">
+                            <option value="-1" selected>-Pick correction type-</option>
+                            <option value="1">Create phrasal verb</option>
+                            <option value="2">Remove phrasal verb</option>
+                            <option value="3">Create idiom</option>
+                            <option value="4">Remove idiom</option>
+                            <option value="5">Create compound</option>
+                            <option value="6">Remove compound</option>
+                        </select>
+                    </div>
+                    <!-- Lemma -->
+                    <div class="correctionSelectors col-sm-3">
+                        <label>Lemma:</label><br/>
+                        <input id="correctionLemma" type="text" class="w-100">
+                    </div>
 
-                            <!-- Markable Correction Selector -->
-                            <!-- Correction Type -->
-                            <div class="correctionSelectors col-sm-4">
-                                <label>Choose Correction Type:</label><br/>
-                                <select id="correctionChooser">
-                                    <option value="-1" selected>-Pick correction type-</option>
-                                    <option value="1">Create phrasal verb</option>
-                                    <option value="2">Remove phrasal verb</option>
-                                    <option value="3">Create idiom</option>
-                                    <option value="4">Remove idiom</option>
-                                    <option value="5">Create compound</option>
-                                    <option value="6">Remove compound</option>
-                                </select>
-                            </div>
-                            <!-- Lemma -->
-                            <div class="correctionSelectors col-sm-4">
-                                <label>Lemma:</label><br/>
-                                <input id="correctionLemma" type="text" class="w-100">
-                            </div>
+                    <!-- Frame Selectors -->
+                    <!-- Frame Type -->
+                    <div class="frameSelectors col-sm-3">
+                        <label>Frame Type</label><br/>
+                        <select id="frameChooser" onchange="updateChosenFrameInfo()">
+                            <option value="-1" selected>-Pick frame-</option>
+                        </select>
+                    </div>
+                    <!-- Relation Type -->
+                    <div class="frameSelectors col-sm-3">
+                        <label>Relation type:</label><br/>
+                        <select id="relChooser">
+                            <option value="-1" selected>-Pick relation-</option>
+                            <option value="evoke">evokes</option>
+                            <option value="type">isOfType</option>
+                        </select>
+                    </div>
 
-                            <!-- Frame Selectors -->
-                            <!-- Frame Type -->
-                            <div class="frameSelectors col-sm-4">
-                                <label>Frame Type</label><br/>
-                                <select id="frameChooser" onchange="updateChosenFrameInfo()">
-                                    <option value="-1" selected>-Pick frame-</option>
-                                </select>
-                            </div>
-                            <!-- Relation Type -->
-                            <div class="frameSelectors col-sm-4">
-                                <label>Relation type:</label><br/>
-                                <select id="relChooser">
-                                    <option value="-1" selected>-Pick relation-</option>
-                                    <option value="evoke">evokes</option>
-                                    <option value="type">isOfType</option>
-                                </select>
-                            </div>
+                    <!-- Frame Element Selectors-->
+                    <!-- Frame Element -->
+                    <div class="elementSelectors col-sm-3">
+                        <label>Role:</label><br/>
+                        <select id="roleChooser" onchange="updateChosenRoleInfo()">
+                            <option value="-1" selected>-Pick frame role-</option>
+                        </select>
+                    </div>
 
-                            <!-- Frame Element Selectors-->
-                            <!-- Frame Element -->
-                            <div class="elementSelectors col-sm-4">
-                                <label>Choose role:</label><br/>
-                                <select id="roleChooser" onchange="updateChosenRoleInfo()">
-                                    <option value="-1" selected>-Pick frame role-</option>
-                                </select>
-                            </div>
-                        </div>
+                    <!-- Structured Data Selectors -->
+                    <!-- Task -->
+                    <div class="structuredSelectors col-sm-3">
+                        <label>Action:</label><br />
+                        <select id="actionChooser" onchange="updateStructeredTask()">
+                            <option value="-1" selected>-Pick action-</option>
+                            <option value="1">Add</option>
+                            <option value="2">Remove</option>
+                        </select>
+                    </div>
+                    <!-- Relation (in case of Add) -->
+                    <div class="structuredSelectors addSelectors col-sm-2">
+                        <label>Relation:</label><br />
+                        <select id="relChooser2">
+                            <option value="-1" selected>-Pick relation-</option>
+                            <option value="sem:hasActor">sem:hasActor</option>
+                            <option value="sem:hasPlace">sem:hasPlace</option>
+                        </select>
+                    </div>
+                    <!-- Structured data info -->
+                    <div class="structuredSelectors addSelectors col-sm-2">
+                        <label>Wikidata URI:</label><br/>
+                        <input id="wikidataURI" type="text" class="w-100">
+                    </div>
+                    <div class="structuredSelectors addSelectors col-sm-2">
+                        <label>Label:</label><br/>
+                        <input id="wikidataLabel" type="text" class="w-100">
+                    </div>
+                    <!-- Remove selector (in case of Remove) -->
+                    <div class="structuredSelectors removeSelectors col-sm-3">
+                        <label>Item to remove:</label><br />
+                        <select id="removeChooser">
+                            <option value="-1" selected>-Pick item-</option>
+                        </select>
                     </div>
                 </div>
 

@@ -1479,7 +1479,6 @@ app.get("/get_structured_data", isAuthenticated, function(req, res) {
         var user = req.user.user
 
         var json_data = inc2str[incident_id];
-        var file_path = ANNOTATION_DIR + user + "/customrefs.json";
         res.send(json_data);
 
         // Load custom referents data
@@ -1502,7 +1501,7 @@ app.get("/get_structured_data", isAuthenticated, function(req, res) {
 });
 
 // TODO: refactor
-app.post('/store_reference', isAuthenticated, function(req, res){
+app.post('/store_reference', isAuthenticated, function(req, res) {
     var user = req.user.user;
     var login_time = req.session.visited;
 
@@ -1546,6 +1545,40 @@ app.post('/store_reference', isAuthenticated, function(req, res){
                     });
                 }
             });
+        });
+    }
+});
+
+app.post('/store_structured_data', isAuthenticated, function(req, res) {
+    var user = req.user.user;
+
+    console.log("Storing structured data received from " + user);
+
+    if (!req.body.incident) {
+        console.error("Storing of structured data: incident not specified - user: " + user);
+        res.sendStatus(400);
+    } else {
+        // Get task data from request body
+        var task_data = req.body["task_data"] || {};
+        var incident_id = req.body["incident"];
+        
+        if (task_data['action'] == 1) {
+            // Add wdt item to inc2str
+            var relation = task_data['relation'];
+            var item = task_data['wdt_uri'] + ' | ' + task_data['label'];
+            inc2str[incident_id][relation].push(item);
+        } else {
+            // Remove wdt item from inc2str
+            var item = task_data['item'];
+            var relation = task_data['relation'];
+
+            var index = inc2str[incident_id][relation].indexOf(item);
+            if (index !== -1) inc2str[incident_id][relation].splice(index, 1);
+        }
+
+        // Store inc2str
+        fs.writeFile(inc2str_file, JSON.stringify(inc2str), function() {
+
         });
     }
 });

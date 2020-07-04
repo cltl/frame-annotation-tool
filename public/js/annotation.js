@@ -202,6 +202,7 @@ var updateTask = function() {
     $('.correctionSelectors').hide();
     $('.frameSelectors').hide();
     $('.elementSelectors').hide();
+    $('.structuredSelectors').hide();
     $('[data-ref!=""][data-ref]').removeClass('annotated');
 
     if (current_task == '1') {
@@ -213,12 +214,28 @@ var updateTask = function() {
         $('.elementSelectors').show();
     } else if (current_task == '4') {
         $('[data-ref!=""][data-ref]').addClass('annotated');
+    } else if (current_task == '5') {
+        $('.structuredSelectors').show();
+        $('.removeSelectors').hide();
+        $('.addSelectors').hide();
     }
 
     clearSelection();
     clearChosenFrameInfo();
     clearChosenRoleInfo();
     clearRoleDropdown();
+}
+
+var updateStructeredTask = function() {
+    var task = $("#actionChooser").val();
+
+    if (task == "1") {
+        $(".addSelectors").show();
+        $(".removeSelectors").hide();
+    } else {
+        $(".addSelectors").hide();
+        $(".removeSelectors").show();
+    }
 }
 
 var loadFrames = function() {
@@ -472,8 +489,41 @@ var renderStructuredData = function(incident_uri, data){
 
 var getStructuredData = function(inc){
     $.get('/get_structured_data', { 'incident': inc }, function(data, status) {
-        //var data=JSON.parse(data);
         renderStructuredData(inc, data);
+
+        $("#removeChooser").empty();
+        $("#removeChooser").append($('<option value="-1" selected>-Pick item-</option>'));
+
+        var place_list = data['sem:hasPlace'];
+        var actor_list = data['sem:hasActor'];
+
+        var opt_group = $('<optgroup label="sem:hasPlace"></optgroup>');
+        for (var i = 0; i < place_list.length; i++) {
+            var place = place_list[i].split(' | ');
+            var place_uri = place[0];
+            var place_str = place[1];
+
+            var item_val = 'sem:hasPlace;' + place_uri + ' | ' + place_str
+            
+            var option = '<option value="' + item_val + '">' + place_str + '</option>';
+            opt_group.append($(option));
+        }
+
+        $("#removeChooser").append(opt_group);
+
+        opt_group = $('<optgroup label="sem:hasActor"></optgroup>');
+        for (var i = 0; i < actor_list.length; i++) {
+            var actor = actor_list[i].split(' | ');
+            var actor_uri = actor[0];
+            var actor_str = actor[1];
+
+            var item_val = 'sem:hasActor;' + actor_uri + ' | ' + actor_str
+            
+            var option = '<option value="' + item_val + '">' + actor_str + '</option>';
+            opt_group.append($(option));
+        }
+
+        $("#removeChooser").append(opt_group);
     });
 }
 
@@ -632,6 +682,7 @@ var loadIncident = function(){
             $('#bigdiv').show();
             $('.frameSelectors').hide();
             $('.elementSelectors').hide();
+            $('.structuredSelectors').hide();
             $('#activeFrame').text('none');
             $('#activePredicate').text('');
             $('#taskSelector').val('-1');
@@ -650,6 +701,7 @@ var defaultValues = function(){
     $('.correctionSelectors').hide();
     $('.frameSelectorss').hide();
     $('.elementSelectors').hide();
+    $('.structuredSelectors').hide();
     $('#referents').html('');
     $('.referent').removeClass('referent');
     $('#activeRole').text('');
@@ -940,7 +992,7 @@ var validateReference = function() {
         if($.inArray(el, selected_unique) === -1) selected_unique.push(el);
     });
 
-    if (!(selected.length > 0)) {
+    if (!(selected_unique.length > 0)) {
         return [false, 'Select at least one markable']
     }
 
@@ -957,6 +1009,46 @@ var validateReference = function() {
     var task_data = { 'terms': selected_unique, 'referent': referent, 'type': type };
 
     return[true, { 'incident': incident, 'doc_id': doc_id, 'task': 1, 'task_data': task_data }];
+}
+
+var validateStructuredData = function() {
+    var action = $("#actionChooser").val();
+
+    var incident = $('#pickfile').val();
+
+    if (action == "-1") {
+        return [false, 'Select data annotation action'];
+    } else if (action == "1") {
+        var relation = $("#relChooser2").val();
+        var wdt_uri = $('#wikidataURI').val();
+        var label = $('#wikidataLabel').val();
+
+        if (relation == '-1') {
+            return [false, 'Select a relation type'];
+        }
+
+        if (!(wdt_uri.startsWith('http://www.wikidata.org/entity'))) {
+            return [false, 'Wikdidata URI must start with wikidata url']
+        }
+
+        if (label == '') {
+            return [false, 'No label specified'];
+        }
+
+        var task_data = { 'action': 1, 'relation': relation, 'wdt_uri': wdt_uri, 'label': label }
+        return [true, { 'incident': incident, 'task': 5, 'task_data': task_data } ]
+    } else {
+        var item = $("#removeChooser").val().split(';');
+        var rel = item[0];
+        var val = item[1];
+
+        if (item == '-1') {
+            return [false, 'Select an item to remove'];
+        }
+
+        var task_data = { 'action': 2, 'relation': rel, 'item': val };
+        return [true, { 'incident': incident, 'task': 5, 'task_data': task_data } ]
+    }
 }
 
 var storeCorrectionsAndReload = function(correction_data) {
@@ -1006,6 +1098,12 @@ var storeReferenceAndReload = function(reference_data) {
     });
 }
 
+var storeStructuredData = function(data) {
+    $.post('/store_structured_data', data).done(function(result) {
+        loadIncident();
+    });
+}
+
 var validateAndSave = function() {
     // No task selected
     if (current_task == '-1'){
@@ -1035,14 +1133,24 @@ var validateAndSave = function() {
     }
 
     // Reference annotation selected
-    else {
+    else if (current_task == '4') {
         var validation = validateReference();
 
         if (validation[0]) {
-            console.log(validation[1])
             storeReferenceAndReload(validation[1]);
         } else {
-            printInfo(validation[1])
+            printInfo(validation[1]);
+        }
+    }
+    
+    // Structured data editing selected
+    else if (current_task == '5') {
+        var validation = validateStructuredData();
+
+        if (validation[0]) {
+            storeStructuredData (validation[1]);
+        } else {
+            printInfo(validation[1]);
         }
     }
 }
