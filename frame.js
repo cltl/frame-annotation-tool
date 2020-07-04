@@ -1561,7 +1561,7 @@ app.post('/store_structured_data', isAuthenticated, function(req, res) {
         // Get task data from request body
         var task_data = req.body["task_data"] || {};
         var incident_id = req.body["incident"];
-        
+
         if (task_data['action'] == 1) {
             // Add wdt item to inc2str
             var relation = task_data['relation'];
@@ -1578,7 +1578,7 @@ app.post('/store_structured_data', isAuthenticated, function(req, res) {
 
         // Store inc2str
         fs.writeFile(inc2str_file, JSON.stringify(inc2str), function() {
-
+            res.sendStatus(200);
         });
     }
 });
