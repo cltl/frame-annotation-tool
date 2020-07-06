@@ -1,44 +1,10 @@
-html,body{
-    position: relative;
-    height: 100%;
-}
-
-.bolded{
-    font-weight: bold;
-}
-
-#addedTxts{
-    background: #fffff0;
-    font-weight: bold;
-}
-
-#newDoc {
-    background: #fafad2;
-}
-
-div.disqualified button {
-    color: #fff;
-}
-
-div.disqualified * {
-    color: #999;
-}
-
-#pnlLeft{
-    overflow-y: scroll;
-}
-
-.panel-title{
-    font-size: 1.5rem;
-}
-
-.selected{
-    background: #0f0;
-}
-
-#annrow{
+#annotation-controls {
     background: #dfe;
     padding: 1rem 0;
+}
+
+.document-title {
+    font-size: 1.5rem;
 }
 
 .table-condensed{
@@ -46,6 +12,24 @@ div.disqualified * {
     width: 100%;
 }
 
+/* Messages */
+.error-msg {
+    color: red;
+}
+
+.info-msg {
+    color: blue;
+}
+
+.success-msg {
+    color: green;
+}
+
+.warning-msg {
+    color: orange;
+}
+
+/* Markables */
 .structured-data.marked {
     background: #BB8FCE !important;
 }
@@ -58,17 +42,12 @@ span.annotated.marked {
     background: #BB8FCE !important;
 }
 
-span.base {
-    color: white;
-}
-
 span.info-marked {
     background: #BB8FCE;
 }
 
-span.role {
-    mix-blend-mode: multiply;
-}
+
+
 
 a.referent {
     background: #BB8FCE;
@@ -108,14 +87,6 @@ label.inactive {
 
 .event_g {
     background: #808000;
-}
-
-.good_info {
-    color: #0f0;
-}
-
-.bad_info {
-    color: #f00;
 }
 
 .annotated {
