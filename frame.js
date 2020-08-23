@@ -35,6 +35,7 @@ app.use(passport.session());
 
 var flash = require('connect-flash');
 const { off } = require('process');
+const { json } = require('express');
 app.use(flash());
 
 // Set paths
@@ -1110,7 +1111,8 @@ function createCompound(json_data, task_data) {
     for (var i in term_layer) {
         if (term_layer[i]['attr']['id'] == task_data['term_id']) {
             term_layer_el = i;
-            term_layer[i]['attr']['compound_type'] = 'endocentric'
+            term_layer[i]['attr']['compound_type'] = 'endocentric';
+            term_layer[i]['attr']['head'] = task_data['term_id'] + '.c' + task_data['sub_head'];
             task_data['wf_id'] = [term_layer[i]['span']['target']][0]['attr']['id'].toString();
         }
     }
@@ -1162,6 +1164,7 @@ function removeCompound(json_data, task_data) {
             term_layer_el = i;
             term_layer[i]['component'] = [];
             delete term_layer[i]['attr']['compound_type'];
+            delete term_layer[i]['attr']['head'];
             task_data['wf_id'] = [term_layer[i]['span']['target']][0]['attr']['id'].toString();
         }
     }
@@ -1726,18 +1729,18 @@ app.post('/store_structured_data', isAuthenticated, function(req, res) {
 
 // var task_data = {
 //     'term_id': 't9',
-//     'head': 1,
+//     'sub_head': 1,
 //     'subdivisions': [
 //         { 'length': 3, 'cdata': 'Mas', 'lemma': 'Mas', 'pos': 'NOUN' },
 //         { 'length': 5, 'cdata': 'sacre', 'lemma': 'sacre', 'pos': 'NOUN' }
 //     ]
 // }
 
-// var task_data = {
-//     'term_id': 't9'
-// }
+var task_data = {
+    'term_id': 't9'
+}
 
-// saveAnnotationToNaf('en/Ludlow Massacre', undefined, -1, task_data)
+saveAnnotationToNaf('en/Ludlow Massacre', undefined, -1, task_data)
 
 app.listen(PORT, function() {
     console.log('started annotation tool nodejs backend on port ' + PORT);
