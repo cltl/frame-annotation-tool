@@ -34,6 +34,7 @@ app.use(passport.initialize())
 app.use(passport.session());  
 
 var flash = require('connect-flash');
+const { off } = require('process');
 app.use(flash());
 
 // Set paths
@@ -1082,6 +1083,104 @@ var createTermEntry = function(term_id, term_data) {
     return term_entry;
 }
 
+function createSubtoken(par_id, sub_id, length, offset, cdata) {
+    return { 'attr': { 'id': par_id + '.sub' + sub_id, 'length': length, 'offset': offset },
+             '#text': '<![CDATA[' + cdata + ']]>'
+           }
+}
+
+function createComponent(par_id, sub_id, lemma, pos, target) {
+    return { 'attr': { 'id': par_id + '.c' + sub_id, 'lemma': lemma, 'pos': pos },
+             'span': { 'target': { 'attr': { 'id': [target] }}}
+           }
+}
+
+function createCompound(json_data, task_data) {
+    var text_layer = json_data['NAF']['text']['wf'];
+    var term_layer = json_data['NAF']['terms']['term'];
+
+    var offset = 0
+    var text_layer_el = 0;
+    var term_layer_el = 0
+
+    if (!Array.isArray(text_layer)) text_layer = [text_layer];
+    if (!Array.isArray(term_layer)) term_layer = [term_layer];
+
+    // Find the index of the term layer element to edit
+    for (var i in term_layer) {
+        if (term_layer[i]['attr']['id'] == task_data['term_id']) {
+            term_layer_el = i;
+            term_layer[i]['attr']['compound_type'] = 'endocentric'
+            task_data['wf_id'] = [term_layer[i]['span']['target']][0]['attr']['id'].toString();
+        }
+    }
+
+    // Find the index of the text layer element to edit
+    for (var i in text_layer) {
+        if (text_layer[i]['attr']['id'] == task_data['wf_id']) {
+            text_layer_el = i;
+            offset = text_layer[i]['attr']['offset']
+        }
+    }
+
+    text_layer[text_layer_el]['subtoken'] = [];
+    term_layer[term_layer_el]['component'] = [];
+    
+    var subdivision_data = task_data['subdivisions'];
+
+    // Apply subdivisions
+    for (var i in subdivision_data) {
+        var cur_subdivision = subdivision_data[i];
+
+        var n_id = parseInt(i) + 1;
+        var target = task_data['wf_id'] + '.sub' + n_id;
+
+        text_layer[text_layer_el]['subtoken'].push(createSubtoken(task_data['wf_id'], n_id, cur_subdivision['length'], offset, cur_subdivision['cdata']));
+        term_layer[term_layer_el]['component'].push(createComponent(task_data['term_id'], n_id, cur_subdivision['lemma'], cur_subdivision['pos'], target));
+        offset += parseInt(cur_subdivision['length']);
+    }
+
+    json_data['NAF']['text']['wf'] = text_layer;
+    json_data['NAF']['terms']['term'] = term_layer;
+
+    return json_data;
+}
+
+function removeCompound(json_data, task_data) {
+    var text_layer = json_data['NAF']['text']['wf'];
+    var term_layer = json_data['NAF']['terms']['term'];
+
+    var text_layer_el = 0;
+    var term_layer_el = 0;
+
+    if (!Array.isArray(text_layer)) text_layer = [text_layer];
+    if (!Array.isArray(term_layer)) term_layer = [term_layer];
+    
+    // Find the index of the term layer element to edit
+    for (var i in term_layer) {
+        if (term_layer[i]['attr']['id'] == task_data['term_id']) {
+            term_layer_el = i;
+            term_layer[i]['component'] = [];
+            delete term_layer[i]['attr']['compound_type'];
+            task_data['wf_id'] = [term_layer[i]['span']['target']][0]['attr']['id'].toString();
+        }
+    }
+
+    // Find the index of the text layer element to edit
+    for (var i in text_layer) {
+        if (text_layer[i]['attr']['id'] == task_data['wf_id']) {
+            text_layer_el = i;
+            delete text_layer[i]['subtoken'];
+        }
+    }
+
+    json_data['NAF']['text']['wf'] = text_layer;
+    json_data['NAF']['terms']['term'] = term_layer;
+
+    return json_data;
+}
+
+
 var createMultiWordTerm = function(json_data, task, correction, session_id) {
     var term_layer = json_data["NAF"]["terms"]["term"];
 
@@ -1232,7 +1331,41 @@ var saveNAF = function(file_name, json_data, callback){
   });
 }
 
-// TEST
+function saveAnnotationToNaf(document, session, task, task_data) {
+    loadNAFFile(document, false, function(naf_data) {
+        var language = document.split('/')[0];
+        var title = document.split('/')[1];
+        var annotation_dir = ANNOTATION_DIR + language + '/';
+
+        mkdirp(annotation_dir, function (error) {
+            if (error) {
+                console.error("Error with creating a directory:\n" + error);
+            } else {
+                if (task == 1) {
+                    naf_data = createCompound(naf_data, task_data);
+                } else if (task == -1) {
+                    naf_data = removeCompound(naf_data, task_data);
+                }
+
+                // Update JSON with new annotations
+                var output_file = annotation_dir + title + ".naf";
+
+                // naf_data = saveSessionInfo(naf_data["json"], session['id'], session['user'], session['time']);
+
+                console.log("File " + document + " loaded. Now updating and saving.");
+
+                saveNAF(output_file, naf_data, function(error) {
+                    if (error) {
+                        console.log('Error obtained with saving: ' + error);
+                        // res.status(400).json({ "error": error });
+                    } else {
+                        // res.sendStatus(200);
+                    }
+                });
+            }
+        })
+    });
+}
 
 // =====================================
 // QUERY ENDPOINTS =====================
@@ -1591,8 +1724,23 @@ app.post('/store_structured_data', isAuthenticated, function(req, res) {
 // START THE SERVER! ===================
 // =====================================
 
+// var task_data = {
+//     'term_id': 't9',
+//     'head': 1,
+//     'subdivisions': [
+//         { 'length': 3, 'cdata': 'Mas', 'lemma': 'Mas', 'pos': 'NOUN' },
+//         { 'length': 5, 'cdata': 'sacre', 'lemma': 'sacre', 'pos': 'NOUN' }
+//     ]
+// }
+
+// var task_data = {
+//     'term_id': 't9'
+// }
+
+// saveAnnotationToNaf('en/Ludlow Massacre', undefined, -1, task_data)
+
 app.listen(PORT, function() {
-	console.log('started annotation tool nodejs backend on port ' + PORT);
+    console.log('started annotation tool nodejs backend on port ' + PORT);
 });
 
 module.exports = app;
