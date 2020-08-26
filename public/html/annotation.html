@@ -61,24 +61,35 @@
                         </select>
                     </div>
 
-                    <!-- Markable Correction Selector -->
-                    <!-- Correction Type -->
+                    <!-- Markable Correction Selectors -->
+                    <!-- Correction Task -->
                     <div class="mcn-selectors col-sm-3">
-                        <label>Choose Correction Type:</label><br/>
-                        <select id="mcn-task-select">
+                        <label>Select Correction Task:</label><br/>
+                        <select id="mcn-task-select" onchange="updateMCNTask()">
                             <option value="None" selected>-Pick correction type-</option>
-                            <option value="1">Create phrasal verb</option>
-                            <option value="2">Remove phrasal verb</option>
-                            <option value="3">Create idiom</option>
-                            <option value="4">Remove idiom</option>
-                            <option value="5">Create compound</option>
-                            <option value="6">Remove compound</option>
+                            <option value="1">Create</option>
+                            <option value="2">Remove</option>
+                        </select>
+                    </div>
+                    <!-- Correction Type -->
+                    <div class="mcn-selectors mcn-add-selectors col-sm-3">
+                        <label>Selet Correction Type:</label><br/>
+                        <select id="mcn-type-select" onchange="updateMCNType()">
+                            <option value="None" selected>-Pick correction type-</option>
+                            <option value="1">Phrasal verb</option>
+                            <option value="2">Idiom</option>
+                            <option value="3">Compound</option>
                         </select>
                     </div>
                     <!-- Lemma -->
-                    <div class="mcn-selectors col-sm-3">
+                    <div class="mcn-selectors mcn-add-selectors2 col-sm-3">
                         <label>Lemma:</label><br/>
                         <input id="mcn-lemma-input" type="text" class="w-100">
+                    </div>
+                    <!-- Subdivide -->
+                    <div class="mcn-selectors mcn-add-selectors3 col-sm-3">
+                        <label>Subdivide:</label><br/>
+                        <input id="mcn-subdivide-input" type="text" class="w-100" onchange="updateCPDSubdivide()">
                     </div>
 
                     <!-- Frame Selectors -->
@@ -112,7 +123,7 @@
                     <!-- Task -->
                     <div class="sde-selectors col-sm-3">
                         <label>Action:</label><br />
-                        <select id="sde-action-select" onchange="updateStructeredTask()">
+                        <select id="sde-action-select" onchange="updateSDETask()">
                             <option value="None" selected>-Pick action-</option>
                             <option value="1">Add</option>
                             <option value="2">Remove</option>
@@ -149,7 +160,7 @@
                 <div class="row w-100 mt-2">
                     <!-- Control Buttons and Boxes -->
                     <div class="col-sm-12">
-                        <button class="btn btn-success btn-ann" onclick="validateAndSave()">Save</button>
+                        <button class="btn btn-success btn-ann" onclick="saveChanges()">Save</button>
                         <button class="btn btn-info btn-aux" onclick="clearSelection()">Clear selection</button>
                     </div>
                 </div>
@@ -159,12 +170,24 @@
             <div class="row mt-4" id="content-container">
 
                 <!-- Text Panel -->
-                <div id="doc-container" class="col-sm-9"></div>
+                <div id="doc-container" style='padding: 0' class="col-sm-9 pr-3"></div>
 
                 <!-- Information Panel -->
-                <div id="inf-container" class="col-sm-3">
+                <div id="inf-container" style='padding: 0' class="col-sm-3">
 
                     <!-- Structured Data -->
+                    <div id="mcn-cpd-create" class="info-panel-0">
+                        <h4>Create Compound</h4>
+                        <table id="cpd-subdivisions" class="table-condensed">
+                            <tr>
+                                <th>Token</th>
+                                <th>Lemma</th>
+                                <th>POS</th>
+                                <th>Head</th>
+                            </tr>
+                        </table>
+                    </div>
+                    
                     <div class="info-panel-0">
                         <h4>Structured Data</h4>
                         <div id="ip-sdi"></div>

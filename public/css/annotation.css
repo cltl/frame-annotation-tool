@@ -34,11 +34,11 @@
     background: #BB8FCE !important;
 }
 
-span.marked {
+.markable.marked {
     background: #0f0 !important;
 }
 
-span.annotated.marked {
+.markable.annotated.marked {
     background: #BB8FCE !important;
 }
 
@@ -46,61 +46,20 @@ span.info-marked {
     background: #BB8FCE;
 }
 
-
-
-
-a.referent {
-    background: #BB8FCE;
-}
-
-label.active {
-    background: #0f0;
-}
-
-label.inactive {
-    background: #f00;
-}
-
-.event_Change_of_leadership {
-    background: #F4A460;
-}
-
-.event_Killing {
-    background: #0ff;
-}
-
-.event_Offenses {
-    background: #77f;
-}
-
-.event_ {
-    background: #f99;
-}
-
-.event_d {
-    background: #ffffb3;
-}
-
-.event_o {
-    background: #F5DEB3;
-}
-
-.event_g {
-    background: #808000;
-}
-
 .annotated {
     font-weight: bold;
 }
 
-.suggested {
-    border-style: groove;
+.annotated-depends {
+    font-weight: bold;
+    font-style: italic;
 }
 
-.clickme {
-    border-style: groove;
+.annotated-depends.marked {
+    background-color: #BB8FCE !important;
 }
 
+/* Info panels */
 .info-panel-0 {
     margin-bottom: 10px;
     background: #EBF5FB;
@@ -129,8 +88,4 @@ select {
 input[type=text] {
     line-height: 9px;
     font-size: 9px;
-}
-
-#newReferent {
-    width: 100%;
 }

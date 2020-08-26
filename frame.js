@@ -1,5 +1,5 @@
 var express = require('express');
-var request = require('request');
+// var request = require('request');
 var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy
 var cookieParser = require('cookie-parser');
@@ -10,7 +10,7 @@ var fs = require('fs');
 var xmlParser = require('fast-xml-parser');
 var jsonParser = require("fast-xml-parser").j2xParser;
 var morgan = require('morgan');
-var glob = require('glob');
+// var glob = require('glob');
 var mkdirp = require('mkdirp');
 var _ = require('underscore');
 
@@ -1271,10 +1271,18 @@ var removeMultiWordTerm = function(json_data, correction, session_id) {
 
 var addMarkableCorrectionToJson = function(json_data, task, correction, session_id) {
     // Create phrasal verb or idiom
-    if (task == 1 || task == 3) {
-        return createMultiWordTerm(json_data, task, correction, session_id)
-    } else if (task == 2 || task == 4) {
-        return removeMultiWordTerm(json_data, correction, session_id)
+    if (task == 1) {
+        if (correction['type'] == 1 || correction['type'] == 2) {
+            return createMultiWordTerm(json_data, task, correction, session_id)
+        } else {
+            return createCompound(json_data, correction)
+        }
+    } else {
+        if (correction['type'] == 1 || correction['type'] == 2) {
+            return removeMultiWordTerm(json_data, correction, session_id)
+        } else {
+            return removeCompound(json_data, correction);
+        }
     }
 }
 
@@ -1736,11 +1744,11 @@ app.post('/store_structured_data', isAuthenticated, function(req, res) {
 //     ]
 // }
 
-var task_data = {
-    'term_id': 't9'
-}
+// var task_data = {
+//     'term_id': 't9'
+// }
 
-saveAnnotationToNaf('en/Ludlow Massacre', undefined, -1, task_data)
+// saveAnnotationToNaf('en/Ludlow Massacre', undefined, -1, task_data)
 
 app.listen(PORT, function() {
     console.log('started annotation tool nodejs backend on port ' + PORT);
