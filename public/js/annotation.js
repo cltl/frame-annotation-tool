@@ -386,7 +386,6 @@ function loadIncident() {
                 // Show controls
                 $('#annotation-controls').show();
                 $('#content-container').show();
-                showAnnotations();
             }
         });
     } else{
@@ -1116,94 +1115,6 @@ var clearActiveRoleTable = function() {
     $('#selectedPredicateRoleInfo').find('tr:gt(0)').remove();
 }
 
-var retrieveSpansWithClass = function(cls){
-    var allMentions = $(cls).map(function() {
-        return $(this).attr('id');
-    }).get();
-    return allMentions;
-}
-
-var makeHtml = function(ref){
-    var splitted = ref.split('|');
-    var valLink=splitted[0];
-    var valText=splitted[1];
-    if ($.trim(valText)=='') 
-        myHtml=valLink;
-    else 
-        myHtml = '<a href="' + valLink + '" target="_blank">' + valText + '</a>';
-    return myHtml;
-}
-
-var showAnnotations = function(){
-    $('#trails').html('');
-    var html = '';
-
-    for (var document_id in annotations){
-        html += '<b>' + document_id + '</b><br/>';
-
-        for (var token in annotations[document_id]['frames']) {
-            var annotation = annotations[document_id]['frames'][token];
-
-            var display_document_id = document_id.replace(/ /g, '_');
-            var display_annotation_id = display_document_id + '#' + token;
-
-            var $elem = selectSpanUniqueID(display_document_id, token); 
-            var aText = $elem.text();
-
-            var row = aText + ',' + token + ',' + (annotation['premon'] || noFrameType) + ',' + annotation['predicate'];
-            html += '<span id="' + display_annotation_id + '" class="clickme" onclick=activatePredicateRightPanel(this.id)>' + row + '</span><br/>';
-        }
-    }
-
-    $('#trails').html(html);
-
-}
-
-var getMaxPredicateID = function(docAnnotations){
-    maxId=0;
-    console.log(docAnnotations);
-    for (var key in docAnnotations){
-        var tidAnnotation=docAnnotations[key];
-        var prid=tidAnnotation['predicate'];
-        var pridNum=parseInt(prid.substring(2));
-        if (pridNum>maxId) maxId=pridNum;
-    }
-    console.log(maxId);
-    return maxId;
-}
-
-var reloadInside = function() {
-    if($('span.marked').length > 0){
-        var marked = $('span.marked').map(function() {
-            return $(this).attr('id');
-        }).get();
-
-        var data_event = '';
-        if (current_task == '2') {
-            var firstDocId = marked[0].split('.')[0].replace(/_/g, ' ');
-            var maxPredicateId = getMaxPredicateID(annotations[firstDocId]);
-
-            for (var i = 0; i < marked.length; i++){
-                var active = marked[i];
-                var elems = active.split('.');
-                var docId = elems[0].replace(/_/g, ' ');
-                var tid = elems[2];
-
-                annotations[docId]['frames'][tid] = { 'premon': $('#fan-type-select').val(), 'predicate': 'pr' + (maxPredicateId + 1).toString() };
-            }
-
-            showAnnotations();
-
-            data_event = $('#fan-type-select').val();
-            $('span.marked').attr('data-event', data_event);
-
-            $('span.marked').removeClass().addClass('markable').addClass('annotated');
-        }
-
-        current_task = 'None';
-    }
-}
-
 function reloadDropdown(elementId, sourceList, defaultOption) {
     var $el = $(elementId);
     $el.empty(); // remove old options
@@ -1216,40 +1127,3 @@ function reloadDropdown(elementId, sourceList, defaultOption) {
         });
     }
 }
-
-
-
-var clearRoleDropdown = function() {
-    reloadDropdownWithGroups('#fea-role-select', {}, [], '-Pick a frame role-');
-}
-
-var checkCoreRolesAnnotation = function(document_id, predicate_id, callback) {
-    $.get('/get_roles', { 'docid': document_id, 'prid': predicate_id }, function(data, status) {
-        console.log(data);
-
-        for (var premon in data) {
-            if (data[premon]['fe_type'] == 'Core' && !data[premon]['annotated']) {
-                callback(false);
-                return;
-            }
-        }
-
-        callback(true);
-        return;
-    });
-}
-
-var allValuesSame = function(sent) {
-    for(var i = 1; i < sent.length; i++)
-    {
-        if(sent[i] !== sent[0])
-            return false;
-    }
-    return true;
-}
-
-var sameSentence = function(allMentions){
-    var sents = allMentions.map(function(x) {return x.substring(0,x.lastIndexOf('.')); });
-    return allValuesSame(sents);
-}
-
