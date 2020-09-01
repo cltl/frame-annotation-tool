@@ -240,33 +240,26 @@ var moreRecent = function(date_a, date_b) {
 // QUERY UTILS =========================
 // =====================================
 
-var getTokenData = function(tokens){
+var getTokenData = function(token_layer) {
     var result = {};
 
-    for (var i = 0; i < tokens.length; i++){
-        var token = tokens[i];
-        var tid = token['attr']['id'];
-        var sent = token['attr']['sent'];
-        result[tid] = {'sent': sent, 'text': token['__cdata']};
-    }
+    for (var i in token_layer) {
+        var token = token_layer[i];
+        var token_id = token['attr']['id'];
+        var token_sent = token['attr']['sent'];
+        var token_subs = {};
+        
+        // Token has subtokens
+        if (token['subtoken'] != undefined) {
+            var subtokens = token['subtoken'];
+            if (!Array.isArray(subtokens)) subtokens = [subtokens];
 
-    return result;
-}
-
-var getMultiWordData = function(terms) {
-    var result = {};
-
-    for (var i = 0; i < terms.length; i++){
-        var term = terms[i];
-        var term_id = term["attr"]["id"];
-        var term_type = term["attr"]["phrase_type"]
-
-        if (term_type == "idiom" || term_type == "multi_word") {
-            var term_components = term["component"]['target'];
-            for (var j = 0; j < term_components.length; j++) {
-                result[term_components[j]["attr"]["id"]] = term_id;
+            for (var j in subtokens) {
+                token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['__cdata'] };
             }
         }
+
+        result[token_id] = { 'sent': token_sent, 'text': token['__cdata'], 'sub': token_subs};
     }
 
     return result;
@@ -459,28 +452,27 @@ var deprecatePredicateSpanOverlap = function(srl, predicate_id, span) {
 
 // Get a the type and referents of the most recent annotation of a predicate
 // Parameters: array, callback
-var getMostRecentExternalReference = function(ext_refs, callback) {
-    var type = '';
+var getMostRecentExternalReference = function(references, callback) {
     var refers = [];
 
-    if (ext_refs) {
-        if (!(Array.isArray(ext_refs))) {
-            type = ext_refs['attr']['reference'];
+    if (references) {
+        // Only a single external reference
+        if (!(Array.isArray(references))) {
+            var type = references['attr']['reference'];
             callback(type, refers);
         } else {
             var most_recent_stamp = null;
             var referenceRels = {};
 
             // Check each annotation (external ref)
-            for (var e = 0; e < ext_refs.length; e++) {
-                var ext_ref = ext_refs[e];
-                var ext_ref_type = ext_ref['attr']['reftype'];
-                var ext_ref_stamp = ext_ref['attr']['timestamp'];
-                var ext_ref_referent = ext_ref['attr']['reference'];
+            for (var i in references) {
+                var reference = references[i];
+                var reference_time = reference['attr']['timestamp'];
+                var reference_type = reference['attr']['reftype'];
 
-                // Frame annotation
-                if (ext_ref_type === 'type') {
-                    if (moreRecent(most_recent_stamp, ext_ref_stamp)) {
+                // Type is frame annotation
+                if (reference_type == 'type') {
+                    if (moreRecent(most_recent_stamp, reference_time)) {
                         type = ext_ref_type;
                         most_recent_stamp = ext_ref_stamp;
                     }
@@ -644,144 +636,120 @@ var prepareAnnotations = function(srl, callback) {
     }
 }
 
-// Get NAF info from JSON object
-// Parameters: object, string, callback
-var json2info = function(jsonObj, nafName, callback){
-    // Get all tokens
-    var tokens = jsonObj['NAF']['text']['wf'];
-    var token_data = getTokenData(tokens);
+/**
+ * Convert raw NAF object to a formated json object with annotations
+ * @param {object}      json_data   The raw NAF object to be converted
+ * @param {string}      doc_name    The name of the NAF document
+ */
+var json2info = function(json_data, doc_name) {
+    // Get token layer and convert to formatted data
+    var token_layer = json_data['NAF']['text']['wf'];
+    var token_data = getTokenData(token_layer);
 
-    // Get all terms
-    var terms = jsonObj['NAF']['terms']['term'];
-    var corefs_layer = jsonObj['NAF']['coreferences'];
-    var corefs = corefs_layer !== undefined ? corefs_layer['coref'] : []
-    if (!Array.isArray(corefs)) corefs = [corefs];
+    // Get term layer
+    var term_layer = json_data['NAF']['terms']['term'];
 
-    var multi_word_data = getMultiWordData(terms)
+    // Get coreferences layer
+    var coref_layer = json_data['NAF']['coreferences'];
+    var coref_layer = coref_layer != undefined ? coref_layer['coref'] : [];
+    if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
 
-    var srl = [];
+    // Get SRL layer
+    var srl_layer = json_data['NAF']['srl'];
+    var srl_layer = srl_layer != undefined ? srl_layer['predicate'] : [];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
-    if (jsonObj['NAF']['srl']) {
-        srl = jsonObj['NAF']['srl']['predicate'];
-    }
+    var body_result = [];
+    var title_result = [];
 
-    var termData = {};
-
-    // Resulting lists
-    var ready_title_terms = [];
-    var ready_body_terms = [];
-    var ready_corefs = {};
-
-    var wikiTitle = jsonObj['NAF']['nafHeader']['public']['attr']['uri'];
-
-    // Iterate through coref layer
-    for (var i = 0; i < corefs.length; i++) {
-        var coref = corefs[i];
-
-        var term_ids = coref['span']['target'];
-        if (!Array.isArray(term_ids)) term_ids = [term_ids];
-
-        var ext_ref = coref['externalReferences'];
-        ext_ref = ext_ref !== undefined ? ext_ref['externalRef'] : [];
-
-        if (ext_ref) {
-            getMostRecentExternalReference(ext_ref, function(type, ref) {
-                for (var j = 0; j < term_ids.length; j++) {
-                    ready_corefs[term_ids[j]['attr']['id']] = type;
-                }
-            });
-        }
-    }
-    
-    // Iterate through term layer
-    for (var i = 0; i < terms.length; i++) {
-        var term = terms[i];
-
+    // Loop trough term layer
+    for (var i in term_layer) {
+        var term = term_layer[i];
         var term_id = term['attr']['id'];
-        var term_type = term["attr"]["phrase_type"];
 
-        // Term is multi word compound
-        if (term_type == "idiom" || term_type == "multi_word") {
-            var term_components = term['component'];
-            /*
-            for (var c = 0; c < term_components.length; c++){
-                var comp = term_components[c];
-                var compId = comp['attr']['id'];
-                var lemma = comp['attr']['lemma'];
-                
-                var tokenId = term_targets[0]['attr']['id'];
-                var sent = token_data[tokenId]['sent'];
-                var termData = {'text': lemma, 'tid': compId, 'sent': sent};
+        // Term is part of multiword
+        if (term['attr']['component_of'] != undefined) {
+            term_id = term['attr']['component_of'];
+            var target_token_id = term['span']['target']['attr']['id'];
+            var target_token = token_data[target_token_id];
+            var term_data = { 'text': target_token['text'], 'tid': term_id, 'type': 'multiword', 'sent': target_token['sent'] };
 
-                if (sent == '1') {
-                    ready_title_terms.push(termData);
-                }
-
-                else ready_body_terms.push(termData);
-            }
-            */
-        }
-        // Term is component
-        else if (term_type == "component") {
-            var term_targets = [term['span']['target']];
-            var termTokens = [];
-            var parent_term = multi_word_data[term_id];
-
-            for (var t = 0; t < term_targets.length; t++){
-                var target = term_targets[t];
-                var targetId = target['attr']['id'];
-                var targetInfo = token_data[targetId];
-                var sent = targetInfo['sent'];
-
-                termTokens.push(targetInfo['text']);
-            }
-
-            var termData = { "text": termTokens.join(' '), "tid": term_id, "parent_term": parent_term, "sent": sent };
-            
-            if (sent == '1') {
-                ready_title_terms.push(termData);
+            if (target_token['sent'] == '1') {
+                title_result.push(term_data);
             } else {
-                ready_body_terms.push(termData);
+                body_result.push(term_data);
             }
         }
+
+        // Term is part compound
+        else if (term['attr']['compound_type'] != undefined) {
+            var sub_terms = term['component'];
+            var target_token_id = term['span']['target']['attr']['id'];
+            var target_token = token_data[target_token_id];
+
+            for (var j in sub_terms) {
+                var sub_term = sub_terms[j];
+                var sub_term_id = sub_term['attr']['id'];
+
+                var target_subtoken_id = sub_term['span']['target']['attr']['id'];
+                var target_sub_token = target_token['sub'][target_subtoken_id];
+                var sub_term_data = { 'text': target_sub_token['text'], 'tid': sub_term_id, 'type': 'compound', 'sent': target_token['sent'] };
+
+                if (target_token['sent'] == '1') {
+                    title_result.push(sub_term_data);
+                } else {
+                    body_result.push(sub_term_data);
+                }
+            }
+        }
+
         // Term is singleton
         else {
-            var term_targets = [term['span']['target']];
-            var termTokens = [];
-            for (var t = 0; t < term_targets.length; t++){
-                var target = term_targets[t];
-                var targetId = target['attr']['id'];
-                var targetInfo = token_data[targetId];
-                var sent = targetInfo['sent'];
+            var target_token_id = term['span']['target']['attr']['id'];
+            var target_token = token_data[target_token_id];
+            var term_data = { 'text': target_token['text'], 'tid': term_id, 'type': 'singleton', 'sent': target_token['sent'] }
 
-                termTokens.push(targetInfo['text']);
-            }
-
-            var termData = { "text": termTokens.join(' '), "tid": term_id, "parent_term": "none", "sent": sent };
-            
-            if (sent == '1') {
-                ready_title_terms.push(termData);
+            if (target_token['sent'] == '1') {
+                title_result.push(term_data);
             } else {
-                ready_body_terms.push(termData);
+                body_result.push(term_data);
             }
-        }
-
-        if (i == terms.length - 1) {
-            console.log("Prepare annotations for " + nafName + ". Srl:");
-
-            prepareAnnotations(srl, function(ready_srl) {
-                console.log('All annotations ready');
-                callback({'title': ready_title_terms, 'body': ready_body_terms, 'name': nafName, 'annotations': ready_srl, 'references': ready_corefs, 'source': wikiTitle, 'sourcetype': wikiTitle.includes('wikipedia') ? "secondary" : "primary"});
-            });
         }
     }
+
+    return { 'title': title_result, 'body': body_result, 'name': doc_name, 'annotations': [], 'references': [] }
+
+    // // Iterate through coreferences layer
+    // for (var i in corefs) {
+    //     var coreference = corefs[i];
+
+    //     var term_ids = coref['span']['target'];
+    //     if (!Array.isArray(term_ids)) term_ids = [term_ids];
+
+    //     var ext_ref = coref['externalReferences'];
+    //     ext_ref = ext_ref !== undefined ? ext_ref['externalRef'] : [];
+
+    //     if (ext_ref) {
+    //         getMostRecentExternalReference()
+    //         getMostRecentExternalReference(ext_ref, function(type, ref) {
+    //             for (var j = 0; j < term_ids.length; j++) {
+    //                 ready_corefs[term_ids[j]['attr']['id']] = type;
+    //             }
+    //         });
+    //     }
+    // }
 }
 
-// Load a NAF file and return JSON
-// Parameters: string, string, bool, callback
+/**
+ * Load a single NAF file into a json object
+ * @param {string}      filename    The name of the naf file to load
+ * @param {boolean}     adapt       Set to true if output format should be info
+ * @param {callback}    callback    Function to call when done loading file
+ */
 function loadNAFFile(filename, adapt, callback) {
-    var file_path = ANNOTATION_DIR + filename + '.naf';
 
+    // Check annotated version first
+    var file_path = ANNOTATION_DIR + filename + '.naf';
     if (!(fs.existsSync(file_path))) {
         file_path = DATA_DIR + filename + '.naf';
     }
@@ -790,23 +758,29 @@ function loadNAFFile(filename, adapt, callback) {
         var json = xmlParser.parse(data, xmlOptions);
 
         if (adapt) {
-            json2info(json, filename, callback);
+            callback(json2info(json, filename));
         } else {
             callback(json);
         }
     });
 }
 
-// Load multiple NAFs
-var loadMultipleNAFs = function(nafs, theUser, callback){
-    var data = [];
+/**
+ * Load multiple NAF files into a single json object
+ * @param {array}       nafs        Array containing the filenames to load
+ * @param {callback}    callback    Function to call when done loadin files
+ */
+var loadMultipleNAFs = function(nafs, callback){
+    var result = [];
 
     // Load each NAF file and return if all files are loaded
     for (var i = 0; i < nafs.length; i++) {
-        loadNAFFile(nafs[i], true, function(nafData) {
-            data.push(nafData);
-            if (data.length == nafs.length) {
-                callback(data);
+        loadNAFFile(nafs[i], true, function(json_data) {
+            result.push(json_data);
+
+            // Call callback when ready
+            if (result.length == nafs.length) {
+                callback(result);
             }
         });
     }
@@ -1414,7 +1388,7 @@ app.get("/get_project_incidents", isAuthenticated, function(req, res) {
 app.get('/load_incident', isAuthenticated, function(req, res) {
     // Check if incident is provided
     if (!req.query['incident']) {
-        res.sendStatus(400); //("Not OK: incident id not specified");
+        res.sendStatus(400);
     } else {        
         // Get naf files using parameters
         var incident_id = req.query['incident'];
@@ -1447,7 +1421,7 @@ app.get('/load_incident', isAuthenticated, function(req, res) {
             var naf_files = inc2doc[incident_id];
 
             // Load NAF files and return
-            loadMultipleNAFs(naf_files, req.user.user, function(data) {
+            loadMultipleNAFs(naf_files, function(data) {
                 console.log("All nafs loaded. returning the result now");
                 res.send({ "nafs": data });
             });
@@ -1734,21 +1708,6 @@ app.post('/store_structured_data', isAuthenticated, function(req, res) {
 // =====================================
 // START THE SERVER! ===================
 // =====================================
-
-// var task_data = {
-//     'term_id': 't9',
-//     'sub_head': 1,
-//     'subdivisions': [
-//         { 'length': 3, 'cdata': 'Mas', 'lemma': 'Mas', 'pos': 'NOUN' },
-//         { 'length': 5, 'cdata': 'sacre', 'lemma': 'sacre', 'pos': 'NOUN' }
-//     ]
-// }
-
-// var task_data = {
-//     'term_id': 't9'
-// }
-
-// saveAnnotationToNaf('en/Ludlow Massacre', undefined, -1, task_data)
 
 app.listen(PORT, function() {
     console.log('started annotation tool nodejs backend on port ' + PORT);

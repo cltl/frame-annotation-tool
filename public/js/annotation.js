@@ -459,65 +459,55 @@ function saveChanges() {
 // RENDERING ===========================
 // =====================================
 
-function renderToken(token_id, text, annotations, references, parent_term, term_type) {
-    if (text == '\n') return '<br/>';
+function renderToken(term, term_id_pre) {
+    if (term.text == '\n') return '<br/>';
+    
+    var term_selector = term_id_pre + '.' + term.tid;
+    // // Set term selector to parent term if it is a multiword-subtoken
+    // if (parent_term != 'none' && parent_term != 'undefined') {
+    //     term_selector = doc_and_sent + '.' + parent_term;
+    //     term_selector = term_selector.replace(',', '.');
+    //     term_id = parent_term;
+    // }
 
-    else {
-        var short_token_id = token_id.split('.')[2];
-        var doc_and_sent = token_id.split('.').slice(0, 2);
-        var term_selector = token_id;
-        var term_id = short_token_id;
+    // var annotated_ref = '';
+    // var annotated_fra = '';
 
-        // Set term selector to parent term if it is a multiword-subtoken
-        if (parent_term != 'none' && parent_term != 'undefined') {
-            term_selector = doc_and_sent + '.' + parent_term;
-            term_selector = term_selector.replace(',', '.');
-            term_id = parent_term;
-        }
+    // // Reference annotation for current token
+    // if (references[term_id]) {
+    //     var reference = references[term_id]
+    //     annotated_ref = ' reference="' + reference + '"';
+    // }
 
-        var annotated_ref = '';
-        var annotated_fra = '';
+    // // Frame annotation for current token
+    // if (annotations['frames'][term_id]) {
+    //     var frame = annotations['frames'][term_id]['premon'];
+    //     annotated_fra = ' frame="' + frame + '"';
 
-        // Reference annotation for current token
-        if (references[term_id]) {
-            var reference = references[term_id]
-            annotated_ref = ' reference="' + reference + '"';
-        }
+    //     var pr_id = annotations['frames'][term_id]['predicate'];
+    //     annotated_fra += ' predicate="' + pr_id + '"';
+    // }
 
-        // Frame annotation for current token
-        if (annotations['frames'][term_id]) {
-            var frame = annotations['frames'][term_id]['premon'];
-            annotated_fra = ' frame="' + frame + '"';
+    // // Role annotation for current token
+    // else if (annotations['roles'][term_id]) {
+    //     var role = annotations['roles'][term_id][0]['premon'];
+    //     annotated_fra = ' role="' + role + '"';
 
-            var pr_id = annotations['frames'][term_id]['predicate'];
-            annotated_fra += ' predicate="' + pr_id + '"';
-        }
+    //     var pr_id = annotations['roles'][term_id][0]['predicate'];
+    //     annotated_fra += ' predicate="' + pr_id + '"';
+    // }
 
-        // Role annotation for current token
-        else if (annotations['roles'][term_id]) {
-            var role = annotations['roles'][term_id][0]['premon'];
-            annotated_fra = ' role="' + role + '"';
-
-            var pr_id = annotations['roles'][term_id][0]['predicate'];
-            annotated_fra += ' predicate="' + pr_id + '"';
-        }
-
-        return '<span class="markable" term-selector="' + term_selector + '" term-type="' + term_type + '" ' + annotated_ref + annotated_fra + '>' + text + '</span> ';
-    }
+    // return '<span class="markable" term-selector="' + term_selector + '" ' + annotated_ref + annotated_fra + '>' + term.text + '</span> ';
+    return '<span class="markable" term-selector="' + term_selector + '" ' + term.type + '>' + term.text + '</span> ';
 }
 
-function renderTokens(tokens, docId, anns, refs) {
+function renderTokens(terms, doc_id, annotations, references) {
     var text = '';
 
-    for (var token_num in tokens) {
-        var token_info = tokens[token_num];
-        var parent_term = token_info.parent_term;
-        var term_type = token_info.term_type;
-        var tokenId = docId.replace(/ /g, '_') + '.' + token_info.sent + '.' + token_info.tid;
-        var newToken = renderToken(tokenId, token_info.text, anns, refs, parent_term, term_type);
-
-        // unique2tool[uniqueId] = tokenId;
-        text += newToken;
+    for (var i in terms) {
+        var term = terms[i];
+        var term_id_pre = doc_id.replace(/ /g, '_') + '.' + term.sent;
+        text += renderToken(term, term_id_pre);
     }
 
     return text;
@@ -700,21 +690,23 @@ function validateCorrection() {
     var correction_subdiv_head = -1;
     var correction_subdiv_vali = true;
 
-    for (var i in correction_subdivisions) {
-        var id = 'subdiv_' + i;
-        var cdata = $('#' + id + '_t').html();
-        var lemma = $('#' + id + '_l').val();
-        var pos = $('#' + id + '_p').val();
-        var len = cdata.length;
+    if (mcn_type == '3') {
+        for (var i in correction_subdivisions) {
+            var id = 'subdiv_' + i;
+            var cdata = $('#' + id + '_t').html();
+            var lemma = $('#' + id + '_l').val();
+            var pos = $('#' + id + '_p').val();
+            var len = cdata.length;
 
-        if (lemma == '' || pos == '') {
-            correction_subdiv_vali = false;
-        }
+            if (lemma == '' || pos == '') {
+                correction_subdiv_vali = false;
+            }
 
-        correction_subdiv_props.push({ 'length': len, 'cdata': cdata, 'lemma': lemma, 'pos': pos });
+            correction_subdiv_props.push({ 'length': len, 'cdata': cdata, 'lemma': lemma, 'pos': pos });
 
-        if ($('#' + id + '_h').is(':checked')) {
-            correction_subdiv_head = i;
+            if ($('#' + id + '_h').is(':checked')) {
+                correction_subdiv_head = i;
+            }
         }
     }
 
