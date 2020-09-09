@@ -1,5 +1,3 @@
-const { request } = require("../../frame");
-
 var WDT_PREFIX = 'http://wikidata.org/wiki/';
 var type2Label = {'Q132821': 'murder', 'Q168983': 'conflagration'};
 
@@ -162,7 +160,14 @@ function hexToRGB(color) {
 function getSelected() {
     return $.unique($('.marked').not('.annotated-depends')
         .not('.structured-data').map(function() {
-        return $(this).attr('term-selector');
+        return $(this).attr('term-selector').split('.')[2];
+    }).get());
+}
+
+function getDocId() {
+    return $.unique($('.marked').not('.annotated-depends')
+        .not('.structured-data').map(function() {
+        return $(this).attr('term-selector').split('.')[0].replace(/_/g, ' ');
     }).get());
 }
 
@@ -395,7 +400,6 @@ function loadIncident() {
     }
 }
 
-// TODO: Add doc_id to store and reload
 function saveChanges() {
     // No task selected
     if (current_task == 'None'){
@@ -770,7 +774,6 @@ function validateCorrection() {
     // Create
     if (correction_task == '1') {
         if (correction_type == '1' || correction_type == '2') {
-            // var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
             var task_data = { 'mcn_task': correction_task,
                               'mcn_type': correction_type,
                               'lemma': correction_lemma,
@@ -906,9 +909,11 @@ var validateStructuredData = function() {
 // STORE UTILS =========================
 // =====================================
 
-function storeAndReload(doc_id, task_data) {
-   var request_data = { 'doc_id': doc_id, 'task': current_task, 'task_data': task_data };
-   $.post('/store_annotation', request_data).done(function(result) {
+function storeAndReload(task_data) {
+    var doc_id = getDocId();
+    var request_data = { 'doc_id': doc_id, 'task_id': current_task, 'task_data': task_data };
+
+    $.post('/store_annotation', request_data).done(function(result) {
         printMessage('Successfully saved annotations', 'success');
         loadIncident();
     }).fail(function(err) {

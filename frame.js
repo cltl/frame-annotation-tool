@@ -551,8 +551,16 @@ function loadMultipleNAFs(nafs, callback){
 
 // =====================================
 //#region Document writing utilities
+function createLayerIfNotExists(json_data, layer_name, layer_item_name) {
+    if (!(layer_name in json_data)) {
+        json_data[layer_name] = {};
+        json_data[layer_name][layer_item_name] = [];
+    }
 
-var addExternalReferences = function(object, reference_data) {
+    return json_data;
+}
+
+function addExternalReferences(object, reference_data) {
     references = object['externalReferences']['externalRef']
     if (!Array.isArray(references)) references = [references]; 
 
@@ -562,17 +570,20 @@ var addExternalReferences = function(object, reference_data) {
 }
 
 //#region Markable correction
-// TODO: Make sure multiword layer exists
 function addMultiwordEntry(json_data, multiword_data) {
+    json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'multiwords', 'mw');
     var mw_layer = json_data['NAF']['multiwords']['mw'];
     if (!Array.isArray(mw_layer)) mw_layer = [mw_layer];
+
+    multiword_data['mcn_type'] = multiword_data['mcn_type'] == 1 ? 'phrasal' : 'idiom';
+    var pos = multiword_data['mcn_type'] == 1 ? 'VERB' : '';
 
     // Prepare multiword entry creation
     var multiword_id = 'mw' + (mw_layer.length + 1).toString();
     var multiword_entry = { 'attr': { 'id': multiword_id,
-                                      'type': multiword_data['type'],
+                                      'type': multiword_data['mcn_type'],
                                       'lemma': multiword_data['lemma'],
-                                      'pos': multiword_data['pos'] },
+                                      'pos': pos },
                             'component': []};
 
     // Add each target term to component layer of multiword entry
@@ -752,8 +763,8 @@ function removeCompoundEntry(json_data, target_id) {
 //#endregion
 
 //#region Frame annotation
-// TODO: Make sure SRL layer exists
 function addPredicateEntry(json_data, predicate_data, session_id) {
+    json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'srl', 'predicate');
     var srl_layer = json_data['NAF']['srl']['predicate'];
     if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
     
@@ -802,7 +813,6 @@ function deprecatePredicateEntry(json_data, target_id) {
 //#endregion
 
 //#region Frame element annotation
-// TODO: Handle unexpressed roles
 function addRoleEntry(json_data, target_id, role_data, session_id) {
     var srl_layer = json_data['NAF']['srl']['predicate'];
     if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
@@ -824,8 +834,10 @@ function addRoleEntry(json_data, target_id, role_data, session_id) {
                                'externalReferences:': { 'externalRef': [] }};
             
             // Construct span layer
-            var target_data = { 'attr': { 'id': role_data['target_term'] }};
-            role_entry['span']['target'].push(target_data);
+            if (role_data['target_term'] != 'unexpressed') {
+                var target_data = { 'attr': { 'id': role_data['target_term'] }};
+                role_entry['span']['target'].push(target_data);
+            }
 
             // Construct external references layer in role
             var reference_data = { 'reference': role_data['role'],
@@ -880,8 +892,8 @@ function deprecateRoleEntry(json_data, parent_id, target_id) {
 //#endregion
 
 //#region Coreference annotation
-// TODO: Make sure coreferences layer exists
 function addCoreferenceEntry(json_data, coreference_data, session_id) {
+    json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'coreferences', 'coref');
     var coref_layer = json_data['NAF']['coreferences']['coref'];
     if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
 
@@ -934,11 +946,13 @@ function deprecateCoreferenceEntry(json_data, target_id) {
 
 // =====================================
 //#region Endpoint handling utilities
+// FIXME: Fix xml parse issue
 function handleMarkableCorrection(json_data, task_data) {
     // Add markable correction
     if (task_data['mcn_task'] == 1) {
         if (task_data['mcn_type'] == 1 || task_data['mcn_type'] == 2) {
-            return addMultiwordEntry(json_data, task_data);
+            json_data, mw_id = addMultiwordEntry(json_data, task_data);
+            return updateMultiwordTerms(json_data, mw_id, task_data['selected'])
         } else if (task_data['mcn_type'] == 1) {
             return addCompoundEntry(json_data, task_data);
         }
@@ -986,6 +1000,10 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
 
 // TODO: Handle frame element update
 function handleFrameElementAnnotation(json_data, task_data, session_id) {
+    if (task_data['selected'] == []) {
+        task_data['selected'] = ['unexpressed'];
+    }
+
     // Create new predicate for each term in span
     for (var i in task_data['selected']) {
         var role_data = { 'role': task_data['role'],
@@ -1210,6 +1228,7 @@ var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
 var saveNAF = function(file_name, json_data, callback){
     var parser = new jsonParser(jsonOptions);
     var xml = parser.parse(json_data);
+    console.log(JSON.stringify(json_data));
 
     fs.writeFile(file_name, xml, function(err, data) {
         if (err) {
@@ -1225,14 +1244,14 @@ var saveNAF = function(file_name, json_data, callback){
 // =====================================
 // QUERY ENDPOINTS =====================
 // =====================================
-app.get('/store_annotation', isAuthenticated, function(req, res) {
+app.post('/store_annotation', isAuthenticated, function(req, res) {
     var user = req.user.user;
     var login_time = req.session.visited;
 
     console.log('Storing annotation from: ' + user);
 
     var document_id = req.body.doc_id;
-    var task_id = req.body.task_id;
+    var task_id = parseInt(req.body.task_id);
     var task_data = req.body.task_data;
 
     // Load NAF file for editing
@@ -1241,8 +1260,6 @@ app.get('/store_annotation', isAuthenticated, function(req, res) {
         var title = document_id.split('/')[1];
         var annotation_dir = ANNOTATION_DIR + language + '/';
         var annotated_file_path = annotation_dir + title + ".naf";
-
-        // TODO: Handle session ID
 
         if (task_id == 1) {
             json_data = handleMarkableCorrection(json_data, task_data);
