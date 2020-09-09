@@ -1,3 +1,6 @@
+// =====================================
+//#region Load dependencies
+
 var express = require('express');
 // var request = require('request');
 var passport = require('passport');
@@ -16,6 +19,10 @@ var _ = require('underscore');
 
 var app = express();
 
+//#endregion
+
+// =====================================
+//#region Applcation configuration
 app.use(express.static(__dirname + '/public/html'));
 app.set('views', __dirname + '/public/html');
 app.engine('html', require('ejs').renderFile);
@@ -103,8 +110,10 @@ var jsonOptions = {
     indentBy: "",
     supressEmptyNode: true,
 };
+//#endregion
 
-// Files
+// =====================================
+//#region Load data files
 fs.readFile(inc2doc_file, 'utf8', function (err, data) {
     if (err) throw err; // we'll not consider error handling for now
     inc2doc = JSON.parse(data);
@@ -134,11 +143,10 @@ fs.readFile(frame_info_file, 'utf8', function (err, data){
     if (err) throw err; // we'll not consider error handling for now
     allFramesInfo = JSON.parse(data);
 });
+//#endregion
 
 // =====================================
-// ROUTING FUNCTIONS ===================
-// =====================================
-
+//#region Application routes
 app.get('/', function(req, res){
     res.sendFile('index.html', {root:'./public/html'});
 });
@@ -150,11 +158,10 @@ app.get('/dash', isAuthenticated, function(req, res){
 app.get('/annotation', isAuthenticated, function(req, res){
     res.render('annotation.html', { username: req.user.user });
 });
+//#endregion
 
 // =====================================
-// PASSPORT FUNCTIONS ==================
-// =====================================
-
+//#region Passport function
 passport.use(new LocalStrategy(function(username, password, done) {
     fs.readFile('allowed.json', 'utf8', function (err, data) {
         if (err) throw err; // we'll not consider error handling for now
@@ -187,16 +194,10 @@ app.get('/logout', function(req, res) {
 
     res.redirect('/');
 });
+//#endregion
 
 // =====================================
-// AUTH UTILS ==========================
-// =====================================
-
-var isAdmin = function (u){
-    return (['piek', 'filip', 'marten'].indexOf(u)>-1);
-}
-
-// route middleware to make sure a user is logged in
+//#region Authentication utilities
 function isAuthenticated(req, res, next) {
 
     // if user is authenticated in the session, carry on 
@@ -206,17 +207,16 @@ function isAuthenticated(req, res, next) {
     // if they aren't redirect them to the home page
     res.redirect('/');
 }
+//#endregion
 
 // =====================================
-// HELPER UTILS ========================
-// =====================================
-
+//#region Helper utilities
 /**
  * Returns a sorted array of objects based on the sorting key
  * @param {array}       objects     Array of objects to be sorted
  * @param {string}      key         Key of objects to sort on
  */
-var sortObjectsByKey = function(objects, key) {
+function sortObjectsByKey(objects, key) {
     return objects.sort(function(a, b) {
         var a_key = a[key];
         var b_key = b[key];
@@ -229,18 +229,46 @@ var sortObjectsByKey = function(objects, key) {
  * @param {string}      date_a      First date to check
  * @param {string}      date_b      Second date to check
  */
-var moreRecent = function(date_a, date_b) {
+function moreRecent(date_a, date_b) {
     if (!date_a)
         return true;
     else
         return new Date(date_a) <= new Date(date_b);
 }
+//#endregion
 
 // =====================================
-// QUERY UTILS =========================
-// =====================================
+//#region Document reading utilities
+function getLatestExternalReference(references) {
+    // Only 1 external reference found
+    if (!(Array.isArray(references))) {
+        return references['attr']['reference'];
+    } else {
+        var most_recent = undefined;
 
-var getTokenData = function(token_layer) {
+        // Check timestamp of each reference
+        for (var i in references) {
+            var reference = references[i];
+            var reference_time = reference['attr']['timestamp'];
+
+            if (most_recent) {
+                if (moreRecent(most_recent['attr']['timestamp'], reference_time)) {
+                    most_recent = reference;
+                }
+            } else {
+                most_recent = reference;
+            }
+        }
+
+        return most_recent['attr']['reference'];
+    }
+}
+
+/**
+ * Convert raw NAF token layer object to a formated json object
+ * @param {object}      token_layer The raw NAF object to be converted
+ */
+function readTokenLayer(token_layer) {
     var result = {};
 
     for (var i in token_layer) {
@@ -265,6 +293,740 @@ var getTokenData = function(token_layer) {
     return result;
 }
 
+/**
+ * FIXME: Handle multiword and compound deprection
+ * 
+ * Convert raw NAF term layer object to a formated json object
+ * @param {object}      term_layer  The raw NAF object to be converted
+ * @param {object}      token_data  Information of all tokens in token layer
+ */
+function readTermLayer(term_layer, token_data) {
+    var result = [[], []];
+
+    // Loop trough term layer
+    for (var i in term_layer) {
+        var term = term_layer[i];
+        var term_id = term['attr']['id'];
+
+        // Term is part of multiword
+        if (term['attr']['component_of'] != undefined) {
+            term_id = term['attr']['component_of'];
+            var target_token_id = term['span']['target']['attr']['id'];
+            var target_token = token_data[target_token_id];
+            var term_data = { 'text': target_token['text'], 'tid': term_id, 'type': 'multiword', 'sent': target_token['sent'] };
+
+            if (target_token['sent'] == '1') {
+                result[0].push(term_data);
+            } else {
+                result[1].push(term_data);
+            }
+        }
+
+        // Term is part compound
+        else if (term['attr']['compound_type'] != undefined) {
+            var sub_terms = term['component'];
+            var target_token_id = term['span']['target']['attr']['id'];
+            var target_token = token_data[target_token_id];
+
+            for (var j in sub_terms) {
+                var sub_term = sub_terms[j];
+                var sub_term_id = sub_term['attr']['id'];
+
+                var target_subtoken_id = sub_term['span']['target']['attr']['id'];
+                var target_sub_token = target_token['sub'][target_subtoken_id];
+                var sub_term_data = { 'text': target_sub_token['text'], 'tid': sub_term_id, 'type': 'compound', 'sent': target_token['sent'] };
+
+                if (target_token['sent'] == '1') {
+                    result[0].push(sub_term_data);
+                } else {
+                    result[1].push(sub_term_data);
+                }
+            }
+        }
+
+        // Term is singleton
+        else {
+            var target_token_id = term['span']['target']['attr']['id'];
+            var target_token = token_data[target_token_id];
+            var term_data = { 'text': target_token['text'], 'tid': term_id, 'type': 'singleton', 'sent': target_token['sent'] }
+
+            if (target_token['sent'] == '1') {
+                result[0].push(term_data);
+            } else {
+                result[1].push(term_data);
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Convert raw NAF role layer object to a formated json object
+ * @param {object}      role_layer  The raw NAF object to be converted
+ */
+function readRoleLayer(role_layer) {
+    var result = [];
+
+    if (!(Array.isArray(role_layer))) role_layer = [role_layer];
+
+    // Loop over each frame element for current predicate
+    for (var i in frame_elements) {
+        var frame_element = frame_elements[i];
+
+        var references = frame_element['externalReferences']['externalRef'];
+        var reference = getLatestExternalReference(references);
+
+        var frame_element_span = frame_element['span']['target'];
+        if (!(Array.isArray(frame_element_span))) frame_element_span = [frame_element_span];
+
+        // Store frame element data need in result
+        result.push({ 'reference': reference, 'span': frame_element_span });
+    }
+
+    return result;
+}
+
+/**
+ * Convert raw NAF SRL layer object to a formated json object
+ * @param {object}      srl_layer   The raw NAF object to be converted
+ */
+function readSRLLayer(srl_layer) {
+    var result = [{}, {}];
+
+    // Loop over each entry in SRL layer
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_id = predicate['attr']['id'];
+
+        // Get most recent annotation for current predicate if not deprecated
+        if (predicate['attr']['status'] !== 'deprecated') {
+            var references = predicate['externalReferences']['externalRef'];
+            var reference = getLatestExternalReference(references);
+            
+            // Loop over each term in the predicate span
+            var predicate_span = predicate['span']['target'];
+            if (!(Array.isArray(predicate_span))) predicate_span = [predicate_span];
+
+            for (var i in predicate_span) {
+                // Store annotation for current term in result
+                var term = predicate_span[i];
+                var term_id = term['attr']['id'];
+
+                result[0][term_id] = { 'premon': reference, 'predicate': predicate_id };
+            }
+
+            // Get frame element annotations
+            if ('role' in predicate) {
+                var frame_elements = readRoleLayer(predicate['role']);
+
+                // Loop over each frame element
+                for (var j in frame_elements) {
+                    var frame_element = frame_elements[j]
+                    var reference = frame_element['reference'];
+
+                    // Loop over each term in frame element span
+                    for (var k in frame_element['span']) {
+                        var term = frame_element['span'][k];
+                        var term_id = term['attr']['id'];
+
+                        result[1][term_id] = { 'premon': reference, 'predicate': predicate_id };
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Convert raw NAF coreferences layer object to a formated json object
+ * @param {object}      coref_layer The raw NAF object to be converted
+ */
+function readCoreferencesLayer(coref_layer) {
+    var result = {};
+
+    // Iterate through coreferences layer
+    for (var i in coref_layer) {
+        var coreference = coref_layer[i];
+
+        var coref_span = coreference['span']['target'];
+        if (!Array.isArray(coref_span)) coref_span = [coref_span];
+
+        var references = coreference['externalReferences'];
+        references = references !== undefined ? references['externalRef'] : [];
+
+        if (references) {
+            var reference = getLatestExternalReference(references);
+            for (var i in coref_span) {
+                var term_id = coref_span[i]['attr']['id'];
+
+                result[term_id] = reference;
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Convert raw NAF object to a formated json object with annotations
+ * @param {object}      json_data   The raw NAF object to be converted
+ * @param {string}      doc_name    The name of the NAF document
+ */
+function readNAFFile(json_data, doc_name) {
+    // Get token layer and convert to formatted data
+    var token_layer = json_data['NAF']['text']['wf'];
+    var token_data = readTokenLayer(token_layer);
+
+    // Get term layer
+    var term_layer = json_data['NAF']['terms']['term'];
+
+    // Get coreferences layer
+    var coref_layer = json_data['NAF']['coreferences'];
+    var coref_layer = coref_layer != undefined ? coref_layer['coref'] : [];
+    if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
+
+    // Get SRL layer
+    var srl_layer = json_data['NAF']['srl'];
+    var srl_layer = srl_layer != undefined ? srl_layer['predicate'] : [];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    var term_info = readTermLayer(term_layer, token_data);
+    var predicates = readSRLLayer(srl_layer);
+    var coreferences = readCoreferencesLayer(coref_layer);
+
+    return { 'name': doc_name, 'title': term_info[0], 'body': term_info[1],
+             'frames': predicates[0], 'frame_elements': predicates[1],
+             'coreferences': coreferences }
+}
+
+/**
+ * Load a single NAF file into a json object
+ * @param {string}      filename    The name of the naf file to load
+ * @param {boolean}     adapt       Set to true if output format should be info
+ * @param {callback}    callback    Function to call when done loading file
+ */
+function loadNAFFile(filename, adapt, callback) {
+
+    // Check annotated version first
+    var file_path = ANNOTATION_DIR + filename + '.naf';
+    if (!(fs.existsSync(file_path))) {
+        file_path = DATA_DIR + filename + '.naf';
+    }
+
+    fs.readFile(file_path, 'utf-8', function(error, data) {
+        var json = xmlParser.parse(data, xmlOptions);
+
+        if (adapt) {
+            callback(readNAFFile(json, filename));
+        } else {
+            callback(json);
+        }
+    });
+}
+
+/**
+ * Load multiple NAF files into a single json object
+ * @param {array}       nafs        Array containing the filenames to load
+ * @param {callback}    callback    Function to call when done loadin files
+ */
+function loadMultipleNAFs(nafs, callback){
+    var result = [];
+
+    // Load each NAF file and return if all files are loaded
+    for (var i = 0; i < nafs.length; i++) {
+        loadNAFFile(nafs[i], true, function(json_data) {
+            result.push(json_data);
+
+            // Call callback when ready
+            if (result.length == nafs.length) {
+                callback(result);
+            }
+        });
+    }
+}
+//#endregion
+
+// =====================================
+//#region Document writing utilities
+
+var addExternalReferences = function(object, reference_data) {
+    references = object['externalReferences']['externalRef']
+    if (!Array.isArray(references)) references = [references]; 
+
+    references.push({ 'attr': reference_data })
+    object['externalReferences']['externalRef'] = references;
+    return object;
+}
+
+//#region Markable correction
+// TODO: Make sure multiword layer exists
+function addMultiwordEntry(json_data, multiword_data) {
+    var mw_layer = json_data['NAF']['multiwords']['mw'];
+    if (!Array.isArray(mw_layer)) mw_layer = [mw_layer];
+
+    // Prepare multiword entry creation
+    var multiword_id = 'mw' + (mw_layer.length + 1).toString();
+    var multiword_entry = { 'attr': { 'id': multiword_id,
+                                      'type': multiword_data['type'],
+                                      'lemma': multiword_data['lemma'],
+                                      'pos': multiword_data['pos'] },
+                            'component': []};
+
+    // Add each target term to component layer of multiword entry
+    var target_ids = multiword_data['target_ids'];
+    for (var i in target_ids) {
+        var component_id = multiword_id + '.c' + i.toString();
+        var target_term_id = target_ids[i].split('.')[2];
+        var component_entry = { 'attr': { 'id': component_id },
+                                'span': { 'target': { 'attr': { 'id': target_term_id }}}};
+        multiword_entry['component'].push(component_entry);
+    }
+
+    // Add entry to multiword layer
+    mw_layer.push(multiword_entry);
+    json_data["NAF"]["multiwords"]["mw"] = mw_layer;
+    return json_data, multiword_id;
+}
+
+function updateMultiwordTerms(json_data, multiword_id, target_term_ids) {
+    var term_layer = json_data['NAF']['terms']['term'];
+    if (!Array.isArray(term_layer)) term_layer = [term_layer];
+
+    for (var i in term_layer) {
+        var term = term_layer[i];
+        var term_id = term['attr']['id'];
+
+        if (term_id in target_term_ids) {
+            term_layer[i]['attr']['component_of'] = multiword_id;
+        }
+    }
+
+    json_data['NAF']['terms']['term'] = term_layer;
+    return json_data;
+}
+
+function addCompoundEntry(json_data, compound_data) {
+    var term_layer = json_data['NAF']['terms']['term'];
+    if (!Array.isArray(term_layer)) term_layer = [term_layer];
+
+    var token_id = undefined;
+    var term_head = compound_data['target_id'] + '.c' + compound_data['head'];
+
+    // Find the term layer element to edit
+    for (var i in term_layer) {
+        var term = term_layer[i]
+        var term_id = term['attr']['id'];
+
+        if (term_id == compound_data['target_id']) {
+            token_id = term['span']['target']['attr']['id'].toString();
+
+            // Update attribute information of term
+            term_layer[i]['attr']['compound_type'] = 'endocentric';
+            term_layer[i]['attr']['head'] = term_head;
+
+            // Add component layer
+            term_layer[i]['component'] = [];
+            for (var j in compound_data['subterms']) {
+                var subterm = compound_data['subterms'][j];
+                var subterm_id = compound_data['target_id'] + '.c' + j;
+                var subtoken_id = token_id + '.sub' + j;
+
+                var component_entry = { 'attr': { 'id': subterm_id,
+                                                  'pos': subterm['pos'],
+                                                  'lemma': subterm['lemma'] },
+                                        'span': { 'target': { 'attr': subtoken_id }}};
+                term_layer[i]['component'].push(component_entry);
+            }
+
+            break;
+        }
+    }
+
+    json_data['NAF']['terms']['term'] = term_layer;
+    return json_data, token_id;
+}
+
+function updateCompoundTokens(json_data, target_token_id, compound_data) {
+    var token_layer = json_data['NAF']['text']['wf'];
+    if (!Array.isArray(token_layer)) token_layer = [token_layer];
+
+    for (var i in token_layer) {
+        var token = token_layer[i];
+        var token_id = token['attr']['id'];
+
+        if (token_id == target_token_id) {
+            var offset = token['attr']['offset'];
+
+            token_layer[i]['subtoken'] = [];
+
+            for (var j in compound_data['subterms']) {
+                var subterm = compound_data['subterms'];
+                var subterm_length = subterm['length'];
+                var subterm_cdata = subterm['cdata'];
+                var subtoken_id = token_id + '.sub' + j;
+
+                var subtoken_entry = { 'attr': { 'id': subtoken_id,
+                                                 'length': subterm_length,
+                                                 'offset': offset,
+                                               },
+                                       '__cdata': subterm_cdata }
+                token_layer[i]['subtoken'].push(subtoken_entry);
+
+                offset += parseInt(subterm_length);
+            }
+
+            break;
+        }
+    }
+
+    json_data['NAF']['text']['wf'] = token_layer;
+    return json_data;
+}
+
+function deprecateMultiwordEntry(json_data, target_id) {
+    var term_layer = json_data["NAF"]["terms"]["term"];
+    if (!Array.isArray(term_layer)) term_layer = [term_layer];
+
+    var mw_layer = json_data['NAF']['multiwords']['mw'];
+    if (!Array.isArray(mw_layer)) mw_layer = [mw_layer];
+
+    for (var i in term_layer) {
+        var term = term_layer[i];
+        
+        if ('component_of' in term['attr'] && term['attr']['component_of'] == target_id) {
+            delete term_layer[i]['attr']['component_of'];
+        }
+    }
+
+    for (var i in mw_layer) {
+        var mw = mw_layer[i];
+        var mw_id = mw['attr']['id'];
+
+        if (mw_id == target_id) {
+            mw_layer[i]['attr']['status'] = 'deprecated';
+            break;
+        }
+    }
+
+    json_data["NAF"]["multiwords"]["mw"] = mw_layer;
+    json_data['NAF']['terms']['term'] = term_layer;
+    return json_data, multiword_id;
+}
+
+function removeCompoundEntry(json_data, target_id) {
+    var token_layer = json_data['NAF']['text']['wf'];
+    if (!Array.isArray(token_layer)) token_layer = [token_layer];
+
+    var term_layer = json_data['NAF']['terms']['term'];
+    if (!Array.isArray(term_layer)) term_layer = [term_layer];
+
+    for (var i in term_layer) {
+        var term_id = term_layer[i]['attr']['id'];
+
+        if (term_id == target_id) {
+            delete term_layer[i]['component'];
+            delete term_layer[i]['attr']['compound_type'];
+            delete term_layer[i]['attr']['head'];
+            target_id = term_layer[i]['span']['target'][0]['attr']['id'].toString();
+
+            break;
+        }
+    }
+
+    for (var i in token_layer) {
+        var token_id = token_layer[i]['attr']['id'];
+        
+        if (token_id == target_id) {
+            delete token_layer[i]['subtoken'];
+            break;
+        }
+    }
+
+    json_data['NAF']['text']['wf'] = text_layer;
+    json_data['NAF']['terms']['term'] = term_layer;
+    return json_data;
+}
+//#endregion
+
+//#region Frame annotation
+// TODO: Make sure SRL layer exists
+function addPredicateEntry(json_data, predicate_data, session_id) {
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+    
+    // Construct predicate entry using predicate data
+    var predicate_id = 'pr' + (srl_layer.length + 1).toString();
+    var predicate_entry = { 'attr': { 'id': predicate_id,
+                                      'status': 'manual' },
+                            'span': { 'target': [] },
+                            'externalReferences:': { 'externalRef': [] }};
+    
+    // Construct span layer
+    var target_data = { 'attr': { 'id': predicate_data['target_term'] }};
+    predicate_entry['span']['target'].push(target_data);
+    
+    // Construct external references layer in predicate
+    var reference_data = { 'reference': predicate_data['frame'],
+                           'resource': 'http://premon.fbk.eu/premon/fn17',
+                           'timestamp': new Date().toISOString().replace(/\..+/, ''),
+                           'source': session_id,
+                           'reftype': predicate_data['type'] };
+    predicate_entry = addExternalReferences(predicate_entry, reference_data);
+
+    // Store result in json_data and return
+    srl_layer.push(predicate_entry);
+    json_data['NAF']['srl']['predicate'] = srl_layer;
+    return json_data;
+}
+
+function deprecatePredicateEntry(json_data, target_id) {
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_id = predicate['attr']['id'];
+
+        if (predicate_id == target_id) {
+            srl_layer[i]['status'] = 'deprecated';
+            break;
+        }
+    }
+
+    json_data['NAF']['srl']['predicate'] = srl_layer;
+    return json_data;
+}
+//#endregion
+
+//#region Frame element annotation
+// TODO: Handle unexpressed roles
+function addRoleEntry(json_data, target_id, role_data, session_id) {
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    // Loop over predicates and find target predicate
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_id = predicate['attr']['id'];
+
+        if (predicate_id == target_id) {
+            var role_layer = predicate['role'];
+            if (!Array.isArray(role_layer)) role_layer = [role_layer];
+
+            // Construct role entry
+            var role_id = 'pr' + (role_layer.length + 1).toString();
+            var role_entry = { 'attr': { 'id': role_id,
+                                         'status': 'manual' },
+                               'span': { 'target': [] },
+                               'externalReferences:': { 'externalRef': [] }};
+            
+            // Construct span layer
+            var target_data = { 'attr': { 'id': role_data['target_term'] }};
+            role_entry['span']['target'].push(target_data);
+
+            // Construct external references layer in role
+            var reference_data = { 'reference': role_data['role'],
+                                   'resource': 'http://premon.fbk.eu/premon/fn17',
+                                   'timestamp': new Date().toISOString().replace(/\..+/, ''),
+                                   'source': session_id,
+                                   'reftype': '' }
+            role_entry = addExternalReferences(reference_data)
+
+            // Store result in json_data
+            srl_layer.push(predicate_entry);
+            json_data['NAF']['srl']['predicate'] = srl_layer;
+
+            break;
+        }
+    }
+
+    return json_data;
+}
+
+function deprecateRoleEntry(json_data, parent_id, target_id) {
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_id = predicate['attr']['id'];
+
+        if (predicate_id == parent_id) {
+            var role_layer = predicate['role'];
+
+            for (var j in role_layer) {
+                var role = role_layer[j];
+                var role_id = role['attr']['id'];
+
+                if (role_id == target_id) {
+                    srl_layer[i]['role'][j]['attr']['status'] = 'deprecated';
+                    break;
+                }
+            }
+
+            break;
+        }
+    }
+
+    json_data['NAF']['srl']['predicate'] = srl_layer;
+    return json_data;
+}
+//#endregion
+
+//#region Structured data editing
+//#endregion
+
+//#region Coreference annotation
+// TODO: Make sure coreferences layer exists
+function addCoreferenceEntry(json_data, coreference_data, session_id) {
+    var coref_layer = json_data['NAF']['coreferences']['coref'];
+    if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
+
+    // Construct coreference entry using reference data
+    var coreference_id = 'co' + (coref_layer.length + 1).toString();
+    var correference_entry = { 'attr': { 'id': coreference_id,
+                                         'status': 'manual',
+                                         'type': coreference_data['type'] },
+                               'span': { 'target': [] },
+                               'externalReferences': { 'externalRef': [] }};
+    
+    // Construct span layer
+    var target_data = { 'attr': { 'id': coreference_data['target_term'][i] }};
+    correference_entry['span']['target'].push(target_data);
+
+    // Construct external references layer in coreference
+    var reference_data = { 'reference': coreference_data['reference'],
+                           'resource': 'http://www.wikidata.org',
+                           'timestamp': new Date().toISOString().replace(/\..+/, ''),
+                           'source': session_id,
+                           'reftype': coreference_data['type'] };
+    correference_entry = addExternalReferences(correference_entry, reference_data);
+
+    // Store result in json_data and return
+    coref_layer.push(correference_entry);
+    json_data['NAF']['coreferences']['coref'] = coref_layer
+    return json_data;
+}
+
+function deprecateCoreferenceEntry(json_data, target_id) {
+    var coref_layer = json_data['NAF']['coreferences']['coref'];
+    if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
+
+    for (var i in coref_layer) {
+        var coref = coref_layer[i];
+        var coref_id = coref['attr']['id'];
+
+        if (coref_id == target_id) {
+            coref_layer[i]['status'] = 'deprecated';
+            break;
+        }
+    }
+
+    json_data['NAF']['coreferences']['coref'] = coref_layer;
+    return json_data;
+}
+//#endregion
+
+//#endregion
+
+// =====================================
+//#region Endpoint handling utilities
+function handleMarkableCorrection(json_data, task_data) {
+    // Add markable correction
+    if (task_data['mcn_task'] == 1) {
+        if (task_data['mcn_type'] == 1 || task_data['mcn_type'] == 2) {
+            return addMultiwordEntry(json_data, task_data);
+        } else if (task_data['mcn_type'] == 1) {
+            return addCompoundEntry(json_data, task_data);
+        }
+    }
+    
+    // Remove markable corrections
+    else if (task_data['mcn_task'] == 2) {
+        if (task_data['mcn_type'] == 1 || task_data['mcn_type'] == 2) {
+            return deprecateMultiwordEntry(json_data, task_data['target_id']);
+        } else if (task_data['mcn_type'] == 1) {
+            return removeCompoundEntry(json_data, task_data['target_id']);
+        }
+    }
+
+    // TODO: Handle incorrect task data
+}
+
+function handleFrameAnnotation(json_data, task_data, session_id) {
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    // Check for span overlap
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_target = predicate['span']['target'];
+
+        if (predicate_target['attr']['id'] in task_data['selected']) {
+            srl_layer[i]['status'] = 'deprecated';
+        }
+    }
+
+    // Update overlap deprecations
+    json_data['NAF']['srl']['predicate'] = srl_layer;
+
+    // Create new predicate for each term in selected
+    for (var i in task_data['selected']) {
+        var predicate_data = { 'frame': task_data['frame'],
+                               'type': task_data['type'],
+                               'target_term': task_data['selected'][i] };
+        json_data = addPredicateEntry(json_data, predicate_data, session_id);
+    }
+
+    return json_data;
+}
+
+// TODO: Handle frame element update
+function handleFrameElementAnnotation(json_data, task_data, session_id) {
+    // Create new predicate for each term in span
+    for (var i in task_data['selected']) {
+        var role_data = { 'role': task_data['role'],
+                          'target_term': task_data['selected'][i] };
+        json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
+    }
+
+    return json_data;
+}
+
+// TODO: Handle coreference update
+function handleCoreferenceAnnotation(json_data, task_data, session_id) {
+    var coref_layer = json_data['NAF']['coreferences']['coref'];
+    if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
+
+    // Check for span overlap on different wikidata reference
+    for (var i in coref_layer) {
+        var coref = coref_layer[i];
+        var coref_target = coref['span']['target'];
+
+        if (coref_target['attr']['id'] in task_data['selected']) {
+            coref_layer[i]['status'] = 'deprecated';
+            break;
+        }
+    }
+
+    json_data['NAF']['coreferences']['coref'] = coref_layer;
+
+    // Create new coreference entry for each term in selected
+    for (var i in task_data['selected']) {
+        var coreference_data = { 'reference': task_data['reference'],
+                                 'type': task_data['type'],
+                                 'target_term': task_data['selected'][i] };
+        json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
+    }
+
+    return addCoreferenceEntry(json_data, task_data)
+}
+//#endregion
+
+// =====================================
 var getActiveRoleAnnotation = function(annotation_refs, annotation_span, callback) {
     getMostRecentExternalReference(annotation_refs, function(element_id, referents) {
         callback(element_id, annotation_span);
@@ -409,401 +1171,7 @@ var getFrameElements = function(frame_id, callback) {
     callback({ "Core": core_elements, "Peripheral": peripheral_elements, "Extra-thematic": extra_thematic_elements, "Core-unexpressed": core_unexpressed_elements });
 }
 
-// Deprecate predicates with terms in span overlapping terms in provided span
-// Parameters: object, string, array, callback
-var deprecatePredicateSpanOverlap = function(srl, predicate_id, span) {
-    if (!Array.isArray(srl['predicate']) || srl['predicate'].length === 0) return srl;
-    if (!Array.isArray(span)) span = [span];
-
-    var predicates = srl['predicate']
-
-    // Iterate trough all terms in span
-    for (i = 0; i < span.length; ++i) {
-        var current_term_id = span[i]['attr']['id'];
-
-        // Iterate trough all predicates in SRL layer
-        for (j = 0; j < predicates.length; j++) {
-            var current_predicate = predicates[j];
-            var current_predicate_id = current_predicate['attr']['id'];
-            
-            // Skip predicate itself
-            if (current_predicate_id !== predicate_id) {
-                var current_predicate_span = current_predicate['span']['target'];
-
-                if (!Array.isArray(current_predicate_span)) current_predicate_span = [current_predicate_span];
-
-                // Iterate trough current predicate span
-                for (k = 0; k < current_predicate_span.length; k++) {
-                    var current_term_id_in_predicate = current_predicate_span[k]['attr']['id'];
-
-                    // Overlap found!
-                    if (current_term_id_in_predicate === current_term_id) {
-                        predicates[j]['attr']['status'] = "deprecate";
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    srl['predicate'] = predicates;
-    return srl;
-}
-
-// Get a the type and referents of the most recent annotation of a predicate
-// Parameters: array, callback
-var getMostRecentExternalReference = function(references, callback) {
-    var refers = [];
-
-    if (references) {
-        // Only a single external reference
-        if (!(Array.isArray(references))) {
-            var type = references['attr']['reference'];
-            callback(type, refers);
-        } else {
-            var most_recent_stamp = null;
-            var referenceRels = {};
-
-            // Check each annotation (external ref)
-            for (var i in references) {
-                var reference = references[i];
-                var reference_time = reference['attr']['timestamp'];
-                var reference_type = reference['attr']['reftype'];
-
-                // Type is frame annotation
-                if (reference_type == 'type') {
-                    if (moreRecent(most_recent_stamp, reference_time)) {
-                        type = ext_ref_type;
-                        most_recent_stamp = ext_ref_stamp;
-                    }
-                }
-                
-                // Reference annotation
-                else if (ext_ref_type === 'refer') {
-                    // Add reference to array of references
-                    if (!referenceRels[ext_ref_stamp]) {
-                        referenceRels[ext_ref_stamp] = [ext_ref_referent];
-                    } else {
-                        referenceRels[ext_ref_stamp].push(ext_ref_referent);
-                    }
-                }
-                
-                if (e === ext_refs.length - 1) {
-                    if (referenceRels[most_recent_stamp]) {
-                        refers = referenceRels[most_recent_stamp];
-                    }
-
-                    callback(type, refers);
-                }
-            }
-        }
-    } else {
-        callback(type, refers);
-    }
-}
-
-// Get role annotation information for a specific predicate
-// Parameters: string, list, callback
-var getPredicateRoles = function(pr_id, roles, callback) {
-    var result = { "unexpressed": [] };
-    var roles_done = 0;
-
-    if (!(Array.isArray(roles))) roles = [roles];
-    if (roles.length < 1) callback(result);
-
-    // Get annotations for all roles of current predicate
-    for(var i = 0; i < roles.length; i++) {
-        var role = roles[i];
-        var role_span = role['span']['target'];
-        var role_refs = role['externalReferences']['externalRef'];
-
-        if (!(Array.isArray(role_span))) role_span = [role_span];
-
-        // Get most recent annotation for current role
-        getMostRecentExternalReference(role_refs, function(type, referents) {
-            if (role["span"] === "") {
-                result["unexpressed"].push({ "premon": type, "predicate": pr_id });
-                roles_done++;
-
-                if (roles_done >= roles.length) {
-                    callback(result);
-                }
-            } else {    
-                for (var j = 0; j < role_span.length; j++) {
-                    var cur_t_id = role_span[j]["attr"]["id"];
-                    var cur_term = { "premon": type, "predicate": pr_id };
-
-                    if (!(Array.isArray(result[cur_t_id]))) result[cur_t_id] = [];
-                    result[cur_t_id].push(cur_term);
-                }
-
-                roles_done++;
-
-                if (roles_done >= roles.length) {
-                    callback(result);
-                }
-            }
-        });
-    }
-}
-
-// Get the frame annotations for a specific predicate
-// Parameters: string, list, list, callback
-var getPredicateAnnotations = function(pr_id, span, external_references, callback) {
-    var result = {};
-
-    // Get the most recent annotation for predicate
-    getMostRecentExternalReference(external_references, function(type, referents) {
-        for (var i = 0; i < span.length; i++) {
-            // Add list entry for current term in predicate span
-            var cur_t_id = span[i]['attr']['id'];
-            var cur_term = { "premon": type, "predicate": pr_id };
-
-            result[cur_t_id] = cur_term;
-        }
-
-        callback(result);
-    });
-}
-
-/**
- * Get a list of annotations made in the SRL layer of a NAF document
- * @param {object}      srl         Object containing SRL layer of NAF
- * @param {function}    callback    Success callback
- */
-var prepareAnnotations = function(srl, callback) {
-    var result = { "frames": {}, "roles": {} };
-    var predicates_done = 0;
-
-    if (!Array.isArray(srl)) srl = [srl];
-    if (!srl || srl.length == 0) callback(result);
-
-    // Iterate trough SRL layer
-    for (var i = 0; i < srl.length; i++) {
-        var cur_pr = srl[i];
-        var cur_pr_id = cur_pr['attr']['id'];
-        var cur_pr_annotation = cur_pr['attr']['status'];
-        var cur_pr_refs = cur_pr['externalReferences']['externalRef'];
-        var cur_pr_span = cur_pr['span']['target'];
-
-        if (!(Array.isArray(cur_pr_span))) cur_pr_span = [cur_pr_span];
-
-        var span_done = false;
-        var roles_done = false;
-
-        // If current predicate is annotated
-        if (cur_pr_annotation !== "deprecate") {
-            getPredicateAnnotations(cur_pr_id, cur_pr_span, cur_pr_refs, function(annotations) {
-                Object.keys(annotations).forEach((key, index) => {
-                    result["frames"][key] = annotations[key];
-                });
-
-                span_done = true;
-                if (span_done && roles_done) {
-                    predicates_done++;
-                    if (predicates_done >= srl.length) callback(result);
-                }
-            });
-
-            // Get role annotations for current predicate
-            if ("role" in cur_pr) {
-                getPredicateRoles(cur_pr_id, cur_pr["role"], function(annotations) {
-                    Object.keys(annotations).forEach((key, index) => {
-                        if (!(Array.isArray(result["roles"][key]))) result["roles"][key] = [];
-                        
-                        for (var j = 0; j < annotations[key].length; j++) {
-                            result["roles"][key].push(annotations[key][j]);
-                        }
-                    });
-                    
-                    roles_done = true;
-                    if (span_done && roles_done) {
-                        predicates_done++;
-                        if (predicates_done >= srl.length) callback(result);
-                    }
-                });
-            } else {
-                roles_done = true;
-                if (span_done && roles_done) {
-                    predicates_done++;
-                    if (predicates_done >= srl.length) callback(result);
-                }
-            }
-        } else {
-            predicates_done++;
-            if (predicates_done >= srl.length) callback(result);
-        }
-    }
-}
-
-/**
- * Convert raw NAF object to a formated json object with annotations
- * @param {object}      json_data   The raw NAF object to be converted
- * @param {string}      doc_name    The name of the NAF document
- */
-var json2info = function(json_data, doc_name) {
-    // Get token layer and convert to formatted data
-    var token_layer = json_data['NAF']['text']['wf'];
-    var token_data = getTokenData(token_layer);
-
-    // Get term layer
-    var term_layer = json_data['NAF']['terms']['term'];
-
-    // Get coreferences layer
-    var coref_layer = json_data['NAF']['coreferences'];
-    var coref_layer = coref_layer != undefined ? coref_layer['coref'] : [];
-    if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
-
-    // Get SRL layer
-    var srl_layer = json_data['NAF']['srl'];
-    var srl_layer = srl_layer != undefined ? srl_layer['predicate'] : [];
-    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
-
-    var body_result = [];
-    var title_result = [];
-
-    // Loop trough term layer
-    for (var i in term_layer) {
-        var term = term_layer[i];
-        var term_id = term['attr']['id'];
-
-        // Term is part of multiword
-        if (term['attr']['component_of'] != undefined) {
-            term_id = term['attr']['component_of'];
-            var target_token_id = term['span']['target']['attr']['id'];
-            var target_token = token_data[target_token_id];
-            var term_data = { 'text': target_token['text'], 'tid': term_id, 'type': 'multiword', 'sent': target_token['sent'] };
-
-            if (target_token['sent'] == '1') {
-                title_result.push(term_data);
-            } else {
-                body_result.push(term_data);
-            }
-        }
-
-        // Term is part compound
-        else if (term['attr']['compound_type'] != undefined) {
-            var sub_terms = term['component'];
-            var target_token_id = term['span']['target']['attr']['id'];
-            var target_token = token_data[target_token_id];
-
-            for (var j in sub_terms) {
-                var sub_term = sub_terms[j];
-                var sub_term_id = sub_term['attr']['id'];
-
-                var target_subtoken_id = sub_term['span']['target']['attr']['id'];
-                var target_sub_token = target_token['sub'][target_subtoken_id];
-                var sub_term_data = { 'text': target_sub_token['text'], 'tid': sub_term_id, 'type': 'compound', 'sent': target_token['sent'] };
-
-                if (target_token['sent'] == '1') {
-                    title_result.push(sub_term_data);
-                } else {
-                    body_result.push(sub_term_data);
-                }
-            }
-        }
-
-        // Term is singleton
-        else {
-            var target_token_id = term['span']['target']['attr']['id'];
-            var target_token = token_data[target_token_id];
-            var term_data = { 'text': target_token['text'], 'tid': term_id, 'type': 'singleton', 'sent': target_token['sent'] }
-
-            if (target_token['sent'] == '1') {
-                title_result.push(term_data);
-            } else {
-                body_result.push(term_data);
-            }
-        }
-    }
-
-    return { 'title': title_result, 'body': body_result, 'name': doc_name, 'annotations': [], 'references': [] }
-
-    // // Iterate through coreferences layer
-    // for (var i in corefs) {
-    //     var coreference = corefs[i];
-
-    //     var term_ids = coref['span']['target'];
-    //     if (!Array.isArray(term_ids)) term_ids = [term_ids];
-
-    //     var ext_ref = coref['externalReferences'];
-    //     ext_ref = ext_ref !== undefined ? ext_ref['externalRef'] : [];
-
-    //     if (ext_ref) {
-    //         getMostRecentExternalReference()
-    //         getMostRecentExternalReference(ext_ref, function(type, ref) {
-    //             for (var j = 0; j < term_ids.length; j++) {
-    //                 ready_corefs[term_ids[j]['attr']['id']] = type;
-    //             }
-    //         });
-    //     }
-    // }
-}
-
-/**
- * Load a single NAF file into a json object
- * @param {string}      filename    The name of the naf file to load
- * @param {boolean}     adapt       Set to true if output format should be info
- * @param {callback}    callback    Function to call when done loading file
- */
-function loadNAFFile(filename, adapt, callback) {
-
-    // Check annotated version first
-    var file_path = ANNOTATION_DIR + filename + '.naf';
-    if (!(fs.existsSync(file_path))) {
-        file_path = DATA_DIR + filename + '.naf';
-    }
-
-    fs.readFile(file_path, 'utf-8', function(error, data) {
-        var json = xmlParser.parse(data, xmlOptions);
-
-        if (adapt) {
-            callback(json2info(json, filename));
-        } else {
-            callback(json);
-        }
-    });
-}
-
-/**
- * Load multiple NAF files into a single json object
- * @param {array}       nafs        Array containing the filenames to load
- * @param {callback}    callback    Function to call when done loadin files
- */
-var loadMultipleNAFs = function(nafs, callback){
-    var result = [];
-
-    // Load each NAF file and return if all files are loaded
-    for (var i = 0; i < nafs.length; i++) {
-        loadNAFFile(nafs[i], true, function(json_data) {
-            result.push(json_data);
-
-            // Call callback when ready
-            if (result.length == nafs.length) {
-                callback(result);
-            }
-        });
-    }
-}
-
-var makeSpanLayer = function(tids) {
-    var result = {'#text': '', 'target': []};
-
-    for (var i = 0; i < tids.length; i++) {
-        if (tids[i] != "unexpressed") {
-            var tid = tids[i].split('.');
-
-            if (tid.length > 1) {
-                result['target'].push({'#text': '', 'attr':{'id': tid[2]}});
-            } else {
-                result['target'].push({'#text': '', 'attr':{'id': tid}});
-            }
-        }
-    }
-
-    return result;
-}
-
+// TODO: Refactor needed
 var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
     var actionTime=new Date().toISOString().replace(/\..+/, '');
     var nafHeaders=jsonData['NAF']['nafHeader'];
@@ -839,467 +1207,6 @@ var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
     }
 }
 
-// Add external references layer to JSON predicate object
-// Parameters: object, string, string, string, string
-var addExternalRefs = function(aPredicate, frame, sessionId, reltype, timestamp) {
-    externalRefs = aPredicate['externalReferences']['externalRef']
-    if (!Array.isArray(externalRefs)) externalRefs = [externalRefs]; 
-
-    if (frame != 'none')
-        externalRefs.push({'#text': '', 'attr': {'reference': frame, 'resource': 'FrameNet', 'source': sessionId, 'reftype': reltype, 'timestamp': timestamp}});
-    
-    aPredicate['externalReferences']['externalRef'] = externalRefs;
-    return aPredicate;
-}
-
-// Create JSON object for new predicate
-// Parameters: string, string, string, string, list, string
-var createNewPredicateEntry = function(pr_id, frame, sessionId, reltype, tids, timestamp) {
-    var aPredicate = {};
-
-    aPredicate['#text'] = '';
-    aPredicate['attr'] = {};
-    aPredicate['attr']['id'] = pr_id;
-    aPredicate['attr']['status'] = "manual";
-    aPredicate['externalReferences'] = {'#text': '', 'externalRef': []};
-
-    var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, timestamp);
-
-    aPredicate['span'] = makeSpanLayer(tids);
-    aPredicate['role'] = [];
-
-    return aPredicate;
-}
-
-var createNewRoleEntry = function(rl_id, semRole, sessionId, referents, mentions, timestamp) {
-    var aRole = {};
-
-    aRole['#text'] = '';
-    aRole['attr'] = {}
-    aRole['attr']['id'] = rl_id;
-    aRole['span'] = makeSpanLayer(mentions);
-    aRole['externalReferences'] = {'#text': '', 'externalRef': []};
-    aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
-//    aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole.split('@')[0], 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'evoke'}});
-    // if (referents && referents.length>0){
-    //     referents.forEach(function(ref){
-    //         aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'refer', 'timestamp': timestamp}});
-    //     });
-    // }
-    return aRole;
-}
-
-var createNewCoRefEntry = function(id, type, span, reference, session_id, timestamp) {
-    external_reference = {
-        '#text': '',
-        'attr': {
-            'reference': reference,
-            'resource': 'http://www.wikidata.org',
-            'source': session_id,
-            'reftype': 'http://semanticweb.cs.vu.nl/2009/11/sem/' + type,
-            'timestamp': timestamp
-        }
-    }
-
-    var type_attr = 'event' ? type == 'event' : 'entity';
-    var result = {
-        '#text': '',
-        'attr': { 'id': id, 'status': 'manual', 'type': type_attr },
-        'span': makeSpanLayer(span),
-        'externalReferences': {
-            '#text': '',
-            'externalRef':  [external_reference]
-        }
-    };
-
-    return result
-}
-
-// Annotate selected terms with a frame in JSON object
-// Parameters: object, object, string
-var annotateFrame = function(jsonData, annotations, sessionId) {
-    var frame = annotations['frame'];
-    var reltype = annotations['reltype'];
-    var tids = annotations['mentions'];
-    var activePredicate = annotations['predicate'];
-    var pr_id = "";
-    var pr_num = 0;
-    var srl = [];
-
-    // Create SRL layer if not exists
-    if (!('srl' in jsonData['NAF'])){
-        srl = {}
-        srl['#text'] = '';
-        srl['predicate'] = [];
-        pr_id = "pr1";
-    } else {
-        srl = jsonData['NAF']['srl'];
-        if (!(Array.isArray(srl['predicate']))) srl['predicate'] = [srl['predicate']];
-
-        var predicates = srl['predicate'];
-
-        // Selected term(s) is not yet a predicate
-        if (!activePredicate) {
-            pr_num = (parseInt(predicates[predicates.length - 1]['attr']['id'].substring(2)) || 0) + 1;
-            pr_id = "pr" + pr_num;
-        }
-    }
-
-    var timestamp = new Date().toISOString().replace(/\..+/, '');
-
-    // Create new predicate if selected term(s) is not predicate already
-    if (!activePredicate) {
-        for (tid in tids) {
-            target = [tids[tid]]
-            pr_id = "pr" + pr_num;
-            var new_predicate = createNewPredicateEntry(pr_id, frame, sessionId, reltype, target, timestamp);
-            var new_predicate_span = new_predicate['span']['target'];
-
-            // Check for overlap in predicate spans, and deprecate older versions
-            var new_srl = deprecatePredicateSpanOverlap(srl, pr_id, new_predicate_span);
-            
-            new_srl['predicate'].push(new_predicate);
-
-            jsonData['NAF']['srl'] = new_srl;
-            pr_num += 1;
-        }
-
-        return result = {'prid': pr_id, 'json': jsonData};
-    }
-
-    // Update existing predicate
-    else {
-        for (var i = 0; i < srl['predicate'].length; i++) {
-            var aPredicate = srl['predicate'][i];
-
-            if (aPredicate['attr']['id'] === activePredicate) {
-                var aPredicate = addExternalRefs(aPredicate, frame, sessionId, reltype, timestamp);
-
-                srl['predicate'].push(aPredicate);
-                jsonData['srl'] = srl;
-
-                return {'prid': activePredicate, 'json': jsonData};
-            }
-        }
-    }   
-}
-
-var addExternalRefsRole=function(aRole, semRole, sessionId, referents, timestamp){
-    if (semRole!='none')
-        aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': semRole, 'resource': 'FrameNet', 'source': sessionId, 'reftype': 'type', 'timestamp': timestamp}});
-    if (referents && referents.length>0){
-        referents.forEach(function(ref){
-            aRole['externalReferences']['externalRef'].push({'#text': '', 'attr': {'reference': ref, 'resource': 'Wikidata', 'source': sessionId, 'reftype': 'reference', 'timestamp': timestamp}});
-        });
-    }
-    return aRole;
-}
-
-var annotateRole = function(jsonData, annotations, sessionId) {
-    var roleData = annotations;
-    var timestamp = new Date().toISOString().replace(/\..+/, '');
-
-    if ('srl' in jsonData['NAF']){
-        var predicates = jsonData['NAF']['srl']['predicate'];
-
-        if (!Array.isArray(predicates)) predicates = [predicates];
-
-        for (var i = 0; i < predicates.length; i++){
-            if (predicates[i]['attr']['id'] == roleData['prid']){
-                if (!('role' in predicates[i]))
-                    predicates[i]['role'] = [];
-                else if (!(Array.isArray(predicates[i]['role'])))
-                    predicates[i]['role'] = [predicates[i]['role']];
-
-                var existingRoles = predicates[i]['role'];
-
-                if (!roleData['rlid']) { // create a new role entry
-                    var rl_id = 'rl' + (existingRoles.length + 1).toString();
-                    var aRole = createNewRoleEntry(rl_id, roleData['semRole'], sessionId, roleData['referents'], roleData['mentions'], timestamp);
-
-                    predicates[i]['role'].push(aRole);
-                    return {'prid': roleData['prid'], 'json': jsonData};
-                } else { //update existing role entry
-                    for (var i=0; i<existingRoles.length; i++){
-                        var aRole=existingRoles[i];
-                        if (aRole['attr']['id']==roleData['rlid']){
-                            var aRole=addExternalRefsRole(aRole, roleData['semRole'], sessionId, roleData['referents'], timestamp);
-                            return {'prid': roleData['prid'], 'json': jsonData};
-                        }
-                    }
-                }
-            }
-        }
-    } else{
-        return {'prid': roleData['prid'], 'json': jsonData};
-    }
-}
-
-var addAnnotationsToJson = function(jsonData, annotations, sessionId) {
-    if (annotations['anntype'] == '2') {
-        return annotateFrame(jsonData, annotations, sessionId);
-    } else {
-        return annotateRole(jsonData, annotations, sessionId);
-    }
-}
-
-var createTermEntry = function(term_id, term_data) {
-    var term_entry = {};
-
-    term_entry['#text'] = '';
-    term_entry['attr'] = { "id": term_id, "lemma": term_data["lemma"], "pos": term_data["pos"], "phrase_type": term_data["type"] }
-    term_entry['attr']['id'] = term_id;
-    term_entry["component"] = term_data['components'];
-
-    // for (var i = 0; i < term_data["components"].length; i++) {
-    //     term_entry["component"][i] = { "attr": { "id":  term_data["components"][i] }};
-    // }
-
-    return term_entry;
-}
-
-function createSubtoken(par_id, sub_id, length, offset, cdata) {
-    return { 'attr': { 'id': par_id + '.sub' + sub_id, 'length': length, 'offset': offset },
-             '#text': '<![CDATA[' + cdata + ']]>'
-           }
-}
-
-function createComponent(par_id, sub_id, lemma, pos, target) {
-    return { 'attr': { 'id': par_id + '.c' + sub_id, 'lemma': lemma, 'pos': pos },
-             'span': { 'target': { 'attr': { 'id': [target] }}}
-           }
-}
-
-function createCompound(json_data, task_data) {
-    var text_layer = json_data['NAF']['text']['wf'];
-    var term_layer = json_data['NAF']['terms']['term'];
-
-    var offset = 0
-    var text_layer_el = 0;
-    var term_layer_el = 0
-
-    if (!Array.isArray(text_layer)) text_layer = [text_layer];
-    if (!Array.isArray(term_layer)) term_layer = [term_layer];
-
-    // Find the index of the term layer element to edit
-    for (var i in term_layer) {
-        if (term_layer[i]['attr']['id'] == task_data['term_id']) {
-            term_layer_el = i;
-            term_layer[i]['attr']['compound_type'] = 'endocentric';
-            term_layer[i]['attr']['head'] = task_data['term_id'] + '.c' + task_data['sub_head'];
-            task_data['wf_id'] = [term_layer[i]['span']['target']][0]['attr']['id'].toString();
-        }
-    }
-
-    // Find the index of the text layer element to edit
-    for (var i in text_layer) {
-        if (text_layer[i]['attr']['id'] == task_data['wf_id']) {
-            text_layer_el = i;
-            offset = text_layer[i]['attr']['offset']
-        }
-    }
-
-    text_layer[text_layer_el]['subtoken'] = [];
-    term_layer[term_layer_el]['component'] = [];
-    
-    var subdivision_data = task_data['subdivisions'];
-
-    // Apply subdivisions
-    for (var i in subdivision_data) {
-        var cur_subdivision = subdivision_data[i];
-
-        var n_id = parseInt(i) + 1;
-        var target = task_data['wf_id'] + '.sub' + n_id;
-
-        text_layer[text_layer_el]['subtoken'].push(createSubtoken(task_data['wf_id'], n_id, cur_subdivision['length'], offset, cur_subdivision['cdata']));
-        term_layer[term_layer_el]['component'].push(createComponent(task_data['term_id'], n_id, cur_subdivision['lemma'], cur_subdivision['pos'], target));
-        offset += parseInt(cur_subdivision['length']);
-    }
-
-    json_data['NAF']['text']['wf'] = text_layer;
-    json_data['NAF']['terms']['term'] = term_layer;
-
-    return json_data;
-}
-
-function removeCompound(json_data, task_data) {
-    var text_layer = json_data['NAF']['text']['wf'];
-    var term_layer = json_data['NAF']['terms']['term'];
-
-    var text_layer_el = 0;
-    var term_layer_el = 0;
-
-    if (!Array.isArray(text_layer)) text_layer = [text_layer];
-    if (!Array.isArray(term_layer)) term_layer = [term_layer];
-    
-    // Find the index of the term layer element to edit
-    for (var i in term_layer) {
-        if (term_layer[i]['attr']['id'] == task_data['term_id']) {
-            term_layer_el = i;
-            term_layer[i]['component'] = [];
-            delete term_layer[i]['attr']['compound_type'];
-            delete term_layer[i]['attr']['head'];
-            task_data['wf_id'] = [term_layer[i]['span']['target']][0]['attr']['id'].toString();
-        }
-    }
-
-    // Find the index of the text layer element to edit
-    for (var i in text_layer) {
-        if (text_layer[i]['attr']['id'] == task_data['wf_id']) {
-            text_layer_el = i;
-            delete text_layer[i]['subtoken'];
-        }
-    }
-
-    json_data['NAF']['text']['wf'] = text_layer;
-    json_data['NAF']['terms']['term'] = term_layer;
-
-    return json_data;
-}
-
-
-var createMultiWordTerm = function(json_data, task, correction, session_id) {
-    var term_layer = json_data["NAF"]["terms"]["term"];
-
-    if (!Array.isArray(term_layer)) term_layer = [term_layer];
-
-    var pos = "";
-    var type = "";
-
-    // Set POS and phrase type given the task
-    if (task == 1) {
-        pos = "V";
-        type = "multi_word";
-    } else if (task == 3) {
-        pos = "idio";
-        type = "idiom";
-    }
-
-    var components = correction["tokens"];
-    var component_layer = makeSpanLayer(components);
-    var term_num = term_layer.length + 1;
-
-    for (var i = 0; i < components.length; i++) {
-        components[i] = components[i].split(".")[2];
-    }
-
-    // Iterate trough terms in term layer
-    for (var i = 0; i < term_layer.length; i++) {
-        var cur_term_id = term_layer[i]["attr"]["id"];
-
-        // Current term in correction tokens
-        if (components.indexOf(cur_term_id) >= 0) {
-            term_layer[i]["attr"]["phrase_type"] = "component";
-            var cur_term_wspan = term_layer[i]["span"]["target"];
-
-            if (!Array.isArray(cur_term_wspan)) cur_term_wspan = [cur_term_wspan];
-        }
-    }
-
-    var term_id = "t" + term_num;
-    var term_data = {
-        "lemma": correction["lemma"],
-        "pos": pos,
-        "type": type,
-        "components": component_layer
-    }
-
-    var new_term = createTermEntry(term_id, term_data);
-
-    term_layer.push(new_term);
-    json_data["NAF"]["terms"]["term"] = term_layer;
-
-    return json_data;
-}
-
-var removeMultiWordTerm = function(json_data, correction, session_id) {
-    var term_layer = json_data["NAF"]["terms"]["term"];
-
-    if (!Array.isArray(term_layer)) term_layer = [term_layer];
-
-    var correction_term_id = correction["term_id"];
-    var correction_components = correction["components"];
-
-    for (var i = 0; i < correction_components.length; i++) {
-        correction_components[i] = correction_components[i].split(".")[2];
-    }
-
-    // Iterate trough terms in term layer
-    for (var i = 0; i < term_layer.length; i++) {
-        var cur_term_id = term_layer[i]["attr"]["id"];
-
-        // Remove multi word term
-        if (cur_term_id == correction_term_id) {
-            term_layer.splice(i, 1);
-        }
-        // Update multi word components
-        else if (correction_components.indexOf(cur_term_id) >= 0) {
-            term_layer[i]["attr"]["phrase_type"] = "singleton";
-        } 
-    }
-
-    json_data["NAF"]["terms"]["term"] = term_layer;
-
-    return json_data;
-}
-
-var addMarkableCorrectionToJson = function(json_data, task, correction, session_id) {
-    // Create phrasal verb or idiom
-    if (task == 1) {
-        if (correction['type'] == 1 || correction['type'] == 2) {
-            return createMultiWordTerm(json_data, task, correction, session_id)
-        } else {
-            return createCompound(json_data, correction)
-        }
-    } else {
-        if (correction['type'] == 1 || correction['type'] == 2) {
-            return removeMultiWordTerm(json_data, correction, session_id)
-        } else {
-            return removeCompound(json_data, correction);
-        }
-    }
-}
-
-var addCoReferenceToJson = function(json_data, task_data, session_id) {
-    var coreference_id = 1;
-    var corefs = undefined;
-    console.log(task_data);
-
-    // Create coreferences layer if it does not exist
-    if (!('coreferences' in json_data['NAF'])) {
-        json_data['NAF']['coreferences'] = { '#text': '', 'coref': [] }; 
-        corefs = json_data['NAF']['coreferences']['coref'];
-    }
-
-    // Find ID for new coref
-    else {
-        corefs = json_data['NAF']['coreferences']['coref'];
-        if (!Array.isArray(corefs)) corefs = [corefs];
-
-        for (i in corefs) {
-            var coref = corefs[i];
-            var cur_id = parseInt(coref['attr']['id'].replace('co', ''));
-            if (cur_id > coreference_id) {
-                coreference_id = cur_id;
-            }
-        }
-    }
-
-    var timestamp = new Date().toISOString().replace(/\..+/, '');
-
-    // Create coref entry
-    var terms = task_data['terms'];
-    for (i in terms) {
-        term = terms[i];
-        corefs.push(createNewCoRefEntry(coreference_id, task_data['type'],
-                                        [term], task_data['referent'],
-                                        session_id, timestamp))
-    }
-
-    json_data['NAF']['coreferences']['coref'] = corefs
-    return json_data
-}
-
 var saveNAF = function(file_name, json_data, callback){
     var parser = new jsonParser(jsonOptions);
     var xml = parser.parse(json_data);
@@ -1308,53 +1215,66 @@ var saveNAF = function(file_name, json_data, callback){
         if (err) {
             console.log(err);
             callback(err);
-        }
-        else {
+        } else {
             console.log('updated!');
             callback(false);
         }
   });
 }
 
-function saveAnnotationToNaf(document, session, task, task_data) {
-    loadNAFFile(document, false, function(naf_data) {
-        var language = document.split('/')[0];
-        var title = document.split('/')[1];
+// =====================================
+// QUERY ENDPOINTS =====================
+// =====================================
+app.get('/store_annotation', isAuthenticated, function(req, res) {
+    var user = req.user.user;
+    var login_time = req.session.visited;
+
+    console.log('Storing annotation from: ' + user);
+
+    var document_id = req.body.doc_id;
+    var task_id = req.body.task_id;
+    var task_data = req.body.task_data;
+
+    // Load NAF file for editing
+    loadNAFFile(document_id, false, function(json_data) {
+        var language = document_id.split('/')[0];
+        var title = document_id.split('/')[1];
         var annotation_dir = ANNOTATION_DIR + language + '/';
+        var annotated_file_path = annotation_dir + title + ".naf";
 
-        mkdirp(annotation_dir, function (error) {
+        // TODO: Handle session ID
+
+        if (task_id == 1) {
+            json_data = handleMarkableCorrection(json_data, task_data);
+        } else if (task_id == 2) {
+            json_data = handleFrameAnnotation(json_data, task_data, req.sessionID);
+            json_data = saveSessionInfo(json_data, req.sessionID, user, login_time);
+        } else if (task_id == 3) {
+            json_data = handleFrameElementAnnotation(json_data, task_data, req.sessionID);
+            json_data = saveSessionInfo(json_data, req.sessionID, user, login_time);
+        } else if (task_id == 4) {
+            json_data = handleCoreferenceAnnotation(json_data, task_data);
+        } else {
+            // TODO: Handle invalid task
+        }
+
+        mkdirp(annotation_dir, function(error) {
             if (error) {
-                console.error("Error with creating a directory:\n" + error);
+                console.error('Error while creating annotation directory:\n' + error);
             } else {
-                if (task == 1) {
-                    naf_data = createCompound(naf_data, task_data);
-                } else if (task == -1) {
-                    naf_data = removeCompound(naf_data, task_data);
-                }
-
-                // Update JSON with new annotations
-                var output_file = annotation_dir + title + ".naf";
-
-                // naf_data = saveSessionInfo(naf_data["json"], session['id'], session['user'], session['time']);
-
-                console.log("File " + document + " loaded. Now updating and saving.");
-
-                saveNAF(output_file, naf_data, function(error) {
+                saveNAF(annotated_file_path, json_data, function(error) {
                     if (error) {
-                        console.log('Error obtained with saving: ' + error);
-                        // res.status(400).json({ "error": error });
+                        console.error('Error while saving NAF: ' + error);
+                        res.sendStatus(400).json({ "error": error });
                     } else {
-                        // res.sendStatus(200);
+                        console.log("Successfully saved annotation");
+                        res.sendStatus(200);
                     }
                 });
             }
         })
     });
-}
-
-// =====================================
-// QUERY ENDPOINTS =====================
-// =====================================
+});
 
 // Endpoint to get all projects and incident types
 app.get("/projects", isAuthenticated, function(req, res) {
@@ -1488,109 +1408,6 @@ app.get('/get_roles', isAuthenticated, function(req, res) {
     }
 });
 
-// Endpoint to store markable corrections set in request body
-app.post('/store_markable_correction', isAuthenticated, function(req, res) {
-    // Get user information
-    var user = req.user.user;
-    console.log("Storing markable correction received from " + user);
-
-    // Check if incident id is provided
-    if (!req.body.incident) {
-        console.error("Storing of markable correction: incident not specified - user: " + user);
-        res.sendStatus(400);
-    } else {
-        // Get annotation data from request body
-        var task = req.body["task"];
-        var correction_data = req.body["task_data"] || {};
-        var document_id = req.body["doc_id"];
-
-        // Load NAF file using incident info
-        loadNAFFile(document_id, false, function(naf_data) {
-            var language = document_id.split('/')[0];
-            var title = document_id.split('/')[1];
-            var annotation_dir = ANNOTATION_DIR + language + '/';
-
-            // Make new directory for language if needed
-            mkdirp(annotation_dir, function (error) {
-                if (error) {
-                    console.error("Error with creating a directory:\n" + error);
-                } else {
-                    // Update JSON with new annotations
-                    var naf_file = annotation_dir + title + ".naf";
-                    
-                    // Add markables to JSON data
-                    var new_json = addMarkableCorrectionToJson(naf_data, task, correction_data, req.sessionID);
-
-                    console.log("File " + document_id + " loaded. Now updating and saving.");
-
-                    // Save JSON in NAF
-                    saveNAF(naf_file, new_json, function(error) {
-                        if (error) {
-                            console.log('Error obtained with saving: ' + error);
-                            res.sendStatus(400).json({ "error": error });
-                        } else {
-                            console.log("Sending response");
-                            res.sendStatus(200);
-                        }
-                    });
-                }
-            });
-        });
-    }
-});
-
-// Endpoint to store annotations set in request body
-app.post('/store_annotations', isAuthenticated, function(req, res) {
-    // Get user information
-    var user = req.user.user;
-    var login_time = req.session.visited;
-
-    console.log("Storing request received from " + user);
-
-    // Check if incident id is provided
-    if (!req.body.incident) {
-        console.error("Storing of annotations: incident not specified - user: " + user);
-        res.sendStatus(400);
-    } else {
-        // Get annotation data from request body
-	    var annotations = req.body.annotations || {};
-        var document_id = annotations["doc_id"];
-
-        // Load NAF file using incident info
-        loadNAFFile(document_id, false, function(naf_data) {
-            var language = document_id.split('/')[0];
-            var title = document_id.split('/')[1];
-            var annotation_dir = ANNOTATION_DIR + language + '/';
-
-            // Make new directory for user and language if needed
-            mkdirp(annotation_dir, function (error) {
-                if (error) {
-                    console.error("Error with creating a directory:\n" + error);
-                } else {
-                    // Update JSON with new annotations
-                    var naf_file = annotation_dir + title + ".naf";
-                    var new_naf_data = addAnnotationsToJson(naf_data, annotations, req.sessionID);
-
-                    var updatedJson = saveSessionInfo(new_naf_data["json"], req.sessionID, user, login_time);
-                    var pr_id = new_naf_data["prid"];
-
-                    console.log("File " + document_id + " loaded. Now updating and saving.");
-
-                    saveNAF(naf_file, updatedJson, function(error) {
-                        if (error) {
-                            console.log('Error obtained with saving: ' + error);
-                            res.status(400).json({ "error": error });
-                        } else {
-                            console.log("Sending response with predicate ID " + pr_id);
-                            res.send({ "prid": pr_id, "docid": document_id });
-                        }
-                    });
-                }
-            });
-        });
-    }
-});
-
 // Endpoint to get structured data for an incident (with user annotations)
 app.get("/get_structured_data", isAuthenticated, function(req, res) {
     if (!req.query["incident"]) {
@@ -1619,55 +1436,6 @@ app.get("/get_structured_data", isAuthenticated, function(req, res) {
 
         //     }
         // });
-    }
-});
-
-// TODO: refactor
-app.post('/store_reference', isAuthenticated, function(req, res) {
-    var user = req.user.user;
-    var login_time = req.session.visited;
-
-    console.log("Storing markable correction received from " + user);
-
-    if (!req.body.incident) {
-        console.error("Storing of markable correction: incident not specified - user: " + user);
-        res.sendStatus(400);
-    } else {
-        // Get task data from request body
-        var task_data = req.body["task_data"] || {};
-        var document_id = req.body["doc_id"];
-
-        // Load NAF file using incident info
-        loadNAFFile(document_id, false, function(naf_data) {
-            var language = document_id.split('/')[0];
-            var title = document_id.split('/')[1];
-            var annotation_dir = ANNOTATION_DIR + language + '/';
-
-            // Make new directory for user and language if needed
-            mkdirp(annotation_dir, function (error) {
-                if (error) {
-                    console.error("Error with creating a directory:\n" + error);
-                } else {
-                    var naf_file = annotation_dir + title + ".naf";
-                    
-                    // Add coreferences to JSON data
-                    var new_json = addCoReferenceToJson(naf_data, task_data, req.sessionID);
-                    new_json = saveSessionInfo(new_json, req.sessionID, user, login_time);
-
-                    console.log("File " + document_id + " loaded. Now updating and saving.");
-                    // Save JSON in NAF
-                    saveNAF(naf_file, new_json, function(error) {
-                        if (error) {
-                            console.log('Error obtained with saving: ' + error);
-                            res.sendStatus(400).json({ "error": error });
-                        } else {
-                            console.log("Sending response");
-                            res.sendStatus(200);
-                        }
-                    });
-                }
-            });
-        });
     }
 });
 
@@ -1706,7 +1474,7 @@ app.post('/store_structured_data', isAuthenticated, function(req, res) {
 });
 
 // =====================================
-// START THE SERVER! ===================
+// START THE SERVER ====================
 // =====================================
 
 app.listen(PORT, function() {

@@ -1,3 +1,5 @@
+const { request } = require("../../frame");
+
 var WDT_PREFIX = 'http://wikidata.org/wiki/';
 var type2Label = {'Q132821': 'murder', 'Q168983': 'conflagration'};
 
@@ -393,6 +395,7 @@ function loadIncident() {
     }
 }
 
+// TODO: Add doc_id to store and reload
 function saveChanges() {
     // No task selected
     if (current_task == 'None'){
@@ -404,7 +407,7 @@ function saveChanges() {
         var validation = validateCorrection();
 
         if (validation[0]) {
-            storeCorrectionsAndReload(validation[1]);
+            storeAndReload(validation[1]);
         } else {
             printMessage(validation[1], 'error')
         }
@@ -415,7 +418,7 @@ function saveChanges() {
         var validation = validateFrameAnnotation();
 
         if (validation[0]) {
-            storeFrameAnnotationsAndReload(validation[1]);
+            storeAndReload(validation[1]);
         } else {
             printMessage(validation[1], 'error');
         }
@@ -426,7 +429,7 @@ function saveChanges() {
         var validation = validateRoleAnnotation();
 
         if (validation[0]) {
-            storeRoleAnnotationsAndReload(validation[1]);
+            storeAndReload(validation[1]);
         } else {
             printMessage(validation[1], 'error');
         }
@@ -437,7 +440,7 @@ function saveChanges() {
         var validation = validateReference();
 
         if (validation[0]) {
-            storeReferenceAndReload(validation[1]);
+            storeAndReload(validation[1]);
         } else {
             printMessage(validation[1], 'error');
         }
@@ -448,7 +451,7 @@ function saveChanges() {
         var validation = validateStructuredData();
 
         if (validation[0]) {
-            storeStructuredData(validation[1]);
+            storeAndReload(validation[1]);
         } else {
             printMessage(validation[1], 'error');
         }
@@ -678,7 +681,7 @@ function loadRoles(callback) {
 // =====================================
 // VALIDATION UTILS ====================
 // =====================================
-
+// TODO: Handle remove correction correctly
 function validateCorrection() {
     var correction_task = mcn_task;
     var correction_type = mcn_type;
@@ -767,30 +770,32 @@ function validateCorrection() {
     // Create
     if (correction_task == '1') {
         if (correction_type == '1' || correction_type == '2') {
-            var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
-            var incident = $('#ic-inc-select').val();
-            var task_data = { 'type': correction_type, 'lemma': correction_lemma, 'tokens': selected };
+            // var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
+            var task_data = { 'mcn_task': correction_task,
+                              'mcn_type': correction_type,
+                              'lemma': correction_lemma,
+                              'tokens': selected };
 
-            return[true, { 'incident': incident, 'doc_id': doc_id, 'task': correction_task, 'task_data': task_data }];
+            return[true, task_data];
         } else {
             var term_id_split = selected[0].split('');
             var term_id = 't' + term_id_split[term_id_split.length - 1];
 
-            var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
-            var incident = $('#ic-inc-select').val();
-            var task_data = { 'type': correction_type, 'term_id': term_id, 'sub_head': correction_subdiv_head, 'subdivisions': correction_subdiv_props };
+            var task_data = { 'mcn_task': correction_task,
+                              'mcn_type': correction_type,
+                              'target_id': term_id,
+                              'head': correction_subdiv_head,
+                              'subterms': correction_subdiv_props };
 
-            return[true, { 'incident': incident, 'doc_id': doc_id, 'task': correction_task, 'task_data': task_data }];
+            return[true, task_data];
         }
     }
 
     // Remove
     else {
-        var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
-        var incident = $('#ic-inc-select').val();
-        var task_data = { 'term_id': parent_term, 'components': selected };
+        var task_data = { 'mcn_type': 'A', 'target_id': parent_term };
 
-        return[true, { 'incident': incident, 'doc_id': doc_id, 'task': correction_task, 'task_data': task_data }];
+        return[true, task_data];
     }
 }
 
@@ -808,11 +813,10 @@ function validateFrameAnnotation() {
     var selected = getSelected();
 
     if (!(selected.length > 0)) {
-        return [false, 'Please select at least one mention'];
+        return [false, 'Please select at least one markable'];
     }
 
-    var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
-    task_data = { 'anntype': current_task, 'doc_id': doc_id, 'frame': frame_type, 'reltype': frame_relation, 'mentions': selected };
+    var task_data = { 'frame': frame_type, 'type': frame_relation, 'selected': selected };
     return [true, task_data];
 }
 
@@ -831,17 +835,10 @@ function validateRoleAnnotation() {
         }
     }
 
-    var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
     var pr_id = $('.annotated-depends.marked').attr('predicate');
     
-    // No marked roles 
-    if (!(selected.length > 0)) {
-        annotationData = {'anntype': current_task, 'doc_id': doc_id, 'prid': pr_id, 'mentions': ['unexpressed'], 'semRole': role };
-    } else {
-        annotationData = {'anntype': current_task, 'doc_id': doc_id, 'prid': pr_id, 'mentions': selected, 'semRole': role };
-    }
-
-    return [true, annotationData];
+    var task_data = { 'pr_id': pr_id, 'role': role, 'selected': selected };
+    return [true, task_data];
 }
 
 var validateReference = function() {
@@ -861,11 +858,8 @@ var validateReference = function() {
         return [false, 'Select a referent'];
     }
 
-    var doc_id = selected[0].split('.')[0].replace(/_/g, ' ');
-    var incident = $('#ic-inc-select').val();
-    var task_data = { 'terms': selected, 'referent': referent_uri, 'type': referent_type };
-
-    return[true, { 'incident': incident, 'doc_id': doc_id, 'task': 1, 'task_data': task_data }];
+    var task_data = { 'selected': selected, 'reference': referent_uri, 'type': referent_type };
+    return[true, task_data];
 }
 
 var validateStructuredData = function() {
@@ -893,7 +887,7 @@ var validateStructuredData = function() {
         }
 
         var task_data = { 'action': 1, 'relation': relation, 'wdt_uri': wdt_uri, 'label': label }
-        return [true, { 'incident': incident, 'task': 5, 'task_data': task_data } ]
+        return [true, { 'task': 5, 'task_data': task_data } ]
     } else {
         var item = $("#sde-remove-select").val().split(';');
         var rel = item[0];
@@ -904,7 +898,7 @@ var validateStructuredData = function() {
         }
 
         var task_data = { 'action': 2, 'relation': rel, 'item': val };
-        return [true, { 'incident': incident, 'task': 5, 'task_data': task_data } ]
+        return [true, { 'task': 5, 'task_data': task_data } ]
     }
 }
 
@@ -912,39 +906,13 @@ var validateStructuredData = function() {
 // STORE UTILS =========================
 // =====================================
 
-function storeCorrectionsAndReload(data) {
-    $.post('/store_markable_correction', data).done(function(result) {
+function storeAndReload(doc_id, task_data) {
+   var request_data = { 'doc_id': doc_id, 'task': current_task, 'task_data': task_data };
+   $.post('/store_annotation', request_data).done(function(result) {
         printMessage('Successfully saved annotations', 'success');
         loadIncident();
     }).fail(function(err) {
         printMessage('There was an error while saving your annotations', 'warning');
-    });
-}
-
-function storeFrameAnnotationsAndReload(data) {
-    var post_data = {'annotations': data, 'incident': $('#ic-inc-select').val() };
-    $.post('/store_annotations', post_data).done(function(result, status) {
-        printMessage('Successfully saved annotations', 'success');
-        loadIncident();
-    }).fail(function(err) {
-        printMessage('There was an error while saving your annotations', 'warning');
-    });
-}
-
-function storeRoleAnnotationsAndReload(data) {
-    var post_data = {'annotations': data, 'incident': $('#ic-inc-select').val() };
-    $.post('/store_annotations', post_data).done(function(result, status) {
-        printMessage('Successfully saved annotations', 'success');
-        loadIncident();
-    }).fail(function(err) {
-        printMessage('There was an error while saving your annotations', 'warning');
-    });
-}
-
-function storeReferenceAndReload(data) {
-    $.post('/store_reference', data).done(function(result) {
-        printMessage('Successfully saved annotations', 'success');
-        loadIncident();
     });
 }
 
