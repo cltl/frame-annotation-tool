@@ -310,10 +310,14 @@ function readTermLayer(term_layer, token_data) {
 
         // Term is part of multiword
         if (term['attr']['component_of'] != undefined) {
-            term_id = term['attr']['component_of'];
+            var par_term_id = term['attr']['component_of'];
             var target_token_id = term['span']['target']['attr']['id'];
             var target_token = token_data[target_token_id];
-            var term_data = { 'text': target_token['text'], 'tid': term_id, 'type': 'multiword', 'sent': target_token['sent'] };
+            var term_data = { 'text': target_token['text'],
+                              't_select': par_term_id,
+                              'p_select': par_term_id,
+                              'type': 'multiword',
+                              'sent': target_token['sent'] };
 
             if (target_token['sent'] == '1') {
                 result[0].push(term_data);
@@ -334,7 +338,11 @@ function readTermLayer(term_layer, token_data) {
 
                 var target_subtoken_id = sub_term['span']['target']['attr']['id'];
                 var target_sub_token = target_token['sub'][target_subtoken_id];
-                var sub_term_data = { 'text': target_sub_token['text'], 'tid': sub_term_id, 'type': 'compound', 'sent': target_token['sent'] };
+                var sub_term_data = { 'text': target_sub_token['text'],
+                                      't_select': sub_term_id,
+                                      'p_select': term_id,
+                                      'type': 'compound',
+                                      'sent': target_token['sent'] };
 
                 if (target_token['sent'] == '1') {
                     result[0].push(sub_term_data);
@@ -348,7 +356,11 @@ function readTermLayer(term_layer, token_data) {
         else {
             var target_token_id = term['span']['target']['attr']['id'];
             var target_token = token_data[target_token_id];
-            var term_data = { 'text': target_token['text'], 'tid': term_id, 'type': 'singleton', 'sent': target_token['sent'] }
+            var term_data = { 'text': target_token['text'],
+                               't_select': term_id,
+                               'p_select': term_id,
+                               'type': 'singleton',
+                               'sent': target_token['sent'] };
 
             if (target_token['sent'] == '1') {
                 result[0].push(term_data);
@@ -610,7 +622,7 @@ function updateMultiwordTerms(json_data, multiword_id, target_term_ids) {
         var term = term_layer[i];
         var term_id = term['attr']['id'];
 
-        if (term_id in target_term_ids) {
+        if (target_term_ids.indexOf(term_id) >= 0) {
             term_layer[i]['attr']['component_of'] = multiword_id;
         }
     }
@@ -648,7 +660,7 @@ function addCompoundEntry(json_data, compound_data) {
                 var component_entry = { 'attr': { 'id': subterm_id,
                                                   'pos': subterm['pos'],
                                                   'lemma': subterm['lemma'] },
-                                        'span': { 'target': { 'attr': subtoken_id }}};
+                                        'span': { 'target': { 'attr': { 'id': subtoken_id }}}};
                 term_layer[i]['component'].push(component_entry);
             }
 
@@ -724,7 +736,7 @@ function deprecateMultiwordEntry(json_data, target_id) {
 
     json_data["NAF"]["multiwords"]["mw"] = mw_layer;
     json_data['NAF']['terms']['term'] = term_layer;
-    return json_data, multiword_id;
+    return json_data;
 }
 
 function removeCompoundEntry(json_data, target_id) {
@@ -953,16 +965,17 @@ function handleMarkableCorrection(json_data, task_data) {
         if (task_data['mcn_type'] == 1 || task_data['mcn_type'] == 2) {
             json_data, mw_id = addMultiwordEntry(json_data, task_data);
             return updateMultiwordTerms(json_data, mw_id, task_data['selected'])
-        } else if (task_data['mcn_type'] == 1) {
-            return addCompoundEntry(json_data, task_data);
+        } else if (task_data['mcn_type'] == 3) {
+            json_data, t_id = addCompoundEntry(json_data, task_data);
+            return updateCompoundTokens(json_data, t_id, task_data)
         }
     }
     
     // Remove markable corrections
     else if (task_data['mcn_task'] == 2) {
-        if (task_data['mcn_type'] == 1 || task_data['mcn_type'] == 2) {
+        if (task_data['mcn_type'] == 1) {
             return deprecateMultiwordEntry(json_data, task_data['target_id']);
-        } else if (task_data['mcn_type'] == 1) {
+        } else if (task_data['mcn_type'] == 2) {
             return removeCompoundEntry(json_data, task_data['target_id']);
         }
     }
@@ -1228,7 +1241,6 @@ var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
 var saveNAF = function(file_name, json_data, callback){
     var parser = new jsonParser(jsonOptions);
     var xml = parser.parse(json_data);
-    console.log(JSON.stringify(json_data));
 
     fs.writeFile(file_name, xml, function(err, data) {
         if (err) {

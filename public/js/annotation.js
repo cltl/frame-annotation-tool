@@ -26,11 +26,14 @@ $(function() {
     $(document).on('click', 'span.markable', function() {
         // Get all tokens with same term id
         var term_selector = $(this).attr('term-selector');
-        var selector = '[term-selector="' + term_selector + '"]';
+        var parent_selector = $(this).attr('term-selector');
+
+        var t_selector = '[term-selector="' + term_selector + '"]';
+        var p_selector = '[parent-selector="' + parent_selector + '"]';
         
-        var is_refering = $(selector).is('[reference]');
-        var is_frame = $(selector).is('[frame]');
-        var is_role = $(selector).is('[role]');
+        var is_refering = $(t_selector).is('[reference]');
+        var is_frame = $(t_selector).is('[frame]');
+        var is_role = $(t_selector).is('[role]');
         
         // Currently in markable correction
         if (current_task == '1') {
@@ -38,21 +41,21 @@ $(function() {
             if (mcn_task == '1') {
                 if (mcn_type == '3') {
                     clearSelection();
-                    var token = $(selector).html();
+                    var token = $(t_selector).html();
                     $('#mcn-subdivide-input').val(token);
                     updateCPDSubdivide();
                 }
 
-                $(selector).toggleClass('marked');
+                $(t_selector).toggleClass('marked');
             } else if (mcn_task == '2') {
-                $(selector).toggleClass('marked');                
+                $(p_selector).toggleClass('marked');                
             }
         }
 
         // Currently annotating frames
         else if (current_task == '2') {
             if (!is_frame && !is_role) {
-                $(selector).toggleClass('marked');
+                $(t_selector).toggleClass('marked');
             } else if (is_frame) {
                 clearSelection();
                 activatePredicateFromText($(this));
@@ -65,13 +68,13 @@ $(function() {
                 // Add clicked term to marked items
                 if (!is_frame && !is_role) {
                     if (predicate_selected) {
-                        $(selector).toggleClass('marked');
+                        $(t_selector).toggleClass('marked');
                     }
                 } else if (is_frame) {
                     // Force annotation of core roles
                     if (!enforced_role_annotation) {
                         clearSelection();
-                        $(selector).toggleClass('marked');
+                        $(t_selector).toggleClass('marked');
                         predicate_selected = true;
 
                         loadRoles(function(data) {
@@ -83,7 +86,7 @@ $(function() {
             } else {
                 // New predicate to add roles to
                 if (is_frame) {
-                    $(selector).toggleClass('marked');
+                    $(t_selector).toggleClass('marked');
                     predicate_selected = true;
 
                     loadRoles(function(data) {
@@ -97,7 +100,7 @@ $(function() {
         // Currently annotating references
         else if (current_task == '4') {
             if (!is_refering) {
-                $(selector).toggleClass('marked');
+                $(t_selector).toggleClass('marked');
             }
         }
     });
@@ -168,7 +171,7 @@ function getDocId() {
     return $.unique($('.marked').not('.annotated-depends')
         .not('.structured-data').map(function() {
         return $(this).attr('term-selector').split('.')[0].replace(/_/g, ' ');
-    }).get());
+    }).get())[0];
 }
 
 function arraysMatch(arr1, arr2) {
@@ -469,46 +472,12 @@ function saveChanges() {
 function renderToken(term, term_id_pre) {
     if (term.text == '\n') return '<br/>';
     
-    var term_selector = term_id_pre + '.' + term.tid;
-    // // Set term selector to parent term if it is a multiword-subtoken
-    // if (parent_term != 'none' && parent_term != 'undefined') {
-    //     term_selector = doc_and_sent + '.' + parent_term;
-    //     term_selector = term_selector.replace(',', '.');
-    //     term_id = parent_term;
-    // }
-
-    // var annotated_ref = '';
-    // var annotated_fra = '';
-
-    // // Reference annotation for current token
-    // if (references[term_id]) {
-    //     var reference = references[term_id]
-    //     annotated_ref = ' reference="' + reference + '"';
-    // }
-
-    // // Frame annotation for current token
-    // if (annotations['frames'][term_id]) {
-    //     var frame = annotations['frames'][term_id]['premon'];
-    //     annotated_fra = ' frame="' + frame + '"';
-
-    //     var pr_id = annotations['frames'][term_id]['predicate'];
-    //     annotated_fra += ' predicate="' + pr_id + '"';
-    // }
-
-    // // Role annotation for current token
-    // else if (annotations['roles'][term_id]) {
-    //     var role = annotations['roles'][term_id][0]['premon'];
-    //     annotated_fra = ' role="' + role + '"';
-
-    //     var pr_id = annotations['roles'][term_id][0]['predicate'];
-    //     annotated_fra += ' predicate="' + pr_id + '"';
-    // }
-
-    // return '<span class="markable" term-selector="' + term_selector + '" ' + annotated_ref + annotated_fra + '>' + term.text + '</span> ';
-    return '<span class="markable" term-selector="' + term_selector + '" ' + term.type + '>' + term.text + '</span> ';
+    var t_select = term_id_pre + '.' + term.t_select;
+    var p_select = term_id_pre + '.' + term.p_select;
+    return '<span class="markable" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span> ';
 }
 
-function renderTokens(terms, doc_id, annotations, references) {
+function renderTokens(terms, doc_id) {
     var text = '';
 
     for (var i in terms) {
@@ -685,7 +654,6 @@ function loadRoles(callback) {
 // =====================================
 // VALIDATION UTILS ====================
 // =====================================
-// TODO: Handle remove correction correctly
 function validateCorrection() {
     var correction_task = mcn_task;
     var correction_type = mcn_type;
@@ -696,6 +664,11 @@ function validateCorrection() {
     var correction_subdiv_props = [];
     var correction_subdiv_head = -1;
     var correction_subdiv_vali = true;
+
+    var parent_term = $.unique($('.marked').not('.annotated-depends')
+                            .not('.structured-data').map(function() {
+                            return $(this).attr('parent-selector').split('.')[2];
+                        }).get())[0];
 
     if (mcn_type == '3') {
         for (var i in correction_subdivisions) {
@@ -721,7 +694,7 @@ function validateCorrection() {
         return [false, 'Select a correction task'];
     }
 
-    if (correction_type == 'None') {
+    if (correction_task == '1' && correction_type == 'None') {
         return [false, 'Select a correction type']
     }
 
@@ -777,7 +750,7 @@ function validateCorrection() {
             var task_data = { 'mcn_task': correction_task,
                               'mcn_type': correction_type,
                               'lemma': correction_lemma,
-                              'tokens': selected };
+                              'selected': selected };
 
             return[true, task_data];
         } else {
@@ -796,7 +769,12 @@ function validateCorrection() {
 
     // Remove
     else {
-        var task_data = { 'mcn_type': 'A', 'target_id': parent_term };
+        // If parent term starts with 'mw': multiword, compound otherwise
+        correction_type = parent_term.startsWith('mw') ? 1 : 2
+
+        var task_data = { 'mcn_task': correction_task,
+                          'mcn_type': correction_type,
+                          'target_id': parent_term };
 
         return[true, task_data];
     }
@@ -867,8 +845,6 @@ var validateReference = function() {
 
 var validateStructuredData = function() {
     var action = $("#sde-action-select").val();
-
-    var incident = $('#ic-inc-select').val();
 
     if (action == 'None') {
         return [false, 'Select data annotation action'];
