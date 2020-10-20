@@ -1,4 +1,5 @@
 annotation/
+data/lexicons
 data/naf
 data/json
 data/naf-with-annotations

@@ -75,6 +75,8 @@ const proj2inc_file = 'data/json/proj2inc_index.json';
 const likely_frames_file = 'data/frames/dominant_frame_info.json';
 const frame_info_file = 'data/frames/frame_to_info.json';
 
+const lexical_lookup = 'data/lexical_lookup';
+
 const DATA_DIR = 'data/naf/';
 
 const ANNOTATION_DIR = 'annotation/'
@@ -314,6 +316,7 @@ function readTermLayer(term_layer, token_data) {
             var target_token_id = term['span']['target']['attr']['id'];
             var target_token = token_data[target_token_id];
             var term_data = { 'text': target_token['text'],
+                              'lemma': term['attr']['lemma'],
                               't_select': par_term_id,
                               'p_select': par_term_id,
                               'type': 'multiword',
@@ -338,7 +341,8 @@ function readTermLayer(term_layer, token_data) {
 
                 var target_subtoken_id = sub_term['span']['target']['attr']['id'];
                 var target_sub_token = target_token['sub'][target_subtoken_id];
-                var sub_term_data = { 'text': target_sub_token['text'],
+                var sub_term_data = { 'text': target_sub_token['text'], // FIXME: Text based on len & offset
+                                      'lemma': sub_term['attr']['lemma'],
                                       't_select': sub_term_id,
                                       'p_select': term_id,
                                       'type': 'compound',
@@ -357,10 +361,11 @@ function readTermLayer(term_layer, token_data) {
             var target_token_id = term['span']['target']['attr']['id'];
             var target_token = token_data[target_token_id];
             var term_data = { 'text': target_token['text'],
-                               't_select': term_id,
-                               'p_select': term_id,
-                               'type': 'singleton',
-                               'sent': target_token['sent'] };
+                              'lemma': term['attr']['lemma'],
+                              't_select': term_id,
+                              'p_select': term_id,
+                              'type': 'singleton',
+                              'sent': target_token['sent'] };
 
             if (target_token['sent'] == '1') {
                 result[0].push(term_data);
@@ -790,14 +795,26 @@ function addPredicateEntry(json_data, predicate_data, session_id) {
     // Construct span layer
     var target_data = { 'attr': { 'id': predicate_data['target_term'] }};
     predicate_entry['span']['target'].push(target_data);
+
+    var timestamp = new Date().toISOString().replace(/\..+/, '')
     
     // Construct external references layer in predicate
     var reference_data = { 'reference': predicate_data['frame'],
                            'resource': 'http://premon.fbk.eu/premon/fn17',
-                           'timestamp': new Date().toISOString().replace(/\..+/, ''),
+                           'timestamp': timestamp,
                            'source': session_id,
                            'reftype': predicate_data['type'] };
     predicate_entry = addExternalReferences(predicate_entry, reference_data);
+
+    // Add external reference for LU to predicate
+    if (predicate_data['has_lu']) {
+        var lu_data = { 'reference': predicate_data['lu'],
+                        'resource': predicate_data['lu_resource'],
+                        'timestamp': timestamp,
+                        'source': session_id,
+                        'reftype': 'http://www.w3.org/ns/lemon/ontolex#Sense' };
+        predicate_entry = addExternalReferences(predicate_entry, lu_data);
+    }
 
     // Store result in json_data and return
     srl_layer.push(predicate_entry);
@@ -1338,72 +1355,98 @@ app.get('/load_incident', isAuthenticated, function(req, res) {
     // Check if incident is provided
     if (!req.query['incident']) {
         res.sendStatus(400);
-    } else {        
-        // Get naf files using parameters
-        var incident_id = req.query['incident'];
-        var locked = false;
+    }    
 
-        var date = new Date();
-        var now = date.getTime();
+    // Get naf files using parameters
+    var incident_id = req.query['incident'];
+    var locked = false;
 
-        // Check if incident user tries to load is locked
-        if (incident_id in LockedIncidents) {
-            // Not locked for user
-            if (LockedIncidents[incident_id].user != req.user.user) {
-                var lock_time = parseInt(LockedIncidents[incident_id].time);
-                if (now - lock_time < LOCK_TIME * 60000) {
-                    locked = true;
-                }
+    var date = new Date();
+    var now = date.getTime();
+
+    // Check if incident user tries to load is locked
+    if (incident_id in LockedIncidents) {
+        // Not locked for user
+        if (LockedIncidents[incident_id].user != req.user.user) {
+            var lock_time = parseInt(LockedIncidents[incident_id].time);
+            if (now - lock_time < LOCK_TIME * 60000) {
+                locked = true;
             }
         }
+    }
 
-        if (!locked) {
-            // Unclock previously locked incident
-            Object.keys(LockedIncidents).some(function(k) {
-                if (LockedIncidents[k].user === req.user.user) {
-                    delete LockedIncidents[k];
-                }
-            });
+    if (!locked) {
+        // Unclock previously locked incident
+        Object.keys(LockedIncidents).some(function(k) {
+            if (LockedIncidents[k].user === req.user.user) {
+                delete LockedIncidents[k];
+            }
+        });
 
-            // Lock new incident
-            LockedIncidents[incident_id] = { 'user': req.user.user, 'time': now }
-            var naf_files = inc2doc[incident_id];
+        // Lock new incident
+        LockedIncidents[incident_id] = { 'user': req.user.user, 'time': now }
+        var naf_files = inc2doc[incident_id];
 
-            // Load NAF files and return
-            loadMultipleNAFs(naf_files, function(data) {
-                console.log("All nafs loaded. returning the result now");
-                res.send({ "nafs": data });
-            });
-        } else {
-            res.sendStatus(423);
-        }
+        // Load NAF files and return
+        loadMultipleNAFs(naf_files, function(data) {
+            console.log("All nafs loaded. returning the result now");
+            res.send({ "nafs": data });
+        });
+    } else {
+        res.sendStatus(423);
     }
 });
 
 // Endpoint to get all frames
 app.get('/get_frames', isAuthenticated, function(req, res) {
-    // Resulting lists
-    var likely_frames = [];
-    var candidate_frames = [];
-    var pos_candidate_frames = [];
-    var other_frames = [];
+    if (!req.query['incident'] || !req.query['language'] || !req.query['lemma']) {
+        res.sendStatus(400);
+    }
 
-    // Iterate of allFramesInfo
-    Object.keys(allFramesInfo).forEach((cur_frame_premon, index) => {
-        // Extract frame information
-        var cur_frame_label = allFramesInfo[cur_frame_premon]['frame_label'];
-        var cur_frame_def = allFramesInfo[cur_frame_premon]['definition'];
-        var cur_frame_framenet = allFramesInfo[cur_frame_premon]['framenet_url'];
+    var incident_id = req.query['incident'];
+    var language = req.query['language'];
+    var lemma = req.query['lemma'];
+    // var lexical_path = '/' + language + '/' + incident_id + '.json';
+    var lexical_path = '/en/Q40231.json';
 
-        // Push frame information to frame list
-        var cur_frame = { "label": cur_frame_label, 'value': cur_frame_premon, 'definition': cur_frame_def, 'framenet': cur_frame_framenet };
-        other_frames.push(cur_frame);
+    // Load lexical data
+    fs.readFile(lexical_lookup + lexical_path, 'utf8', function(err, data) {
+        data = JSON.parse(data)
+        var result = {};
+        var occupied_frames = [];
+
+        if (data['lexical_lookup'][lemma]) {
+            var lemma_data = data['lexical_lookup'][lemma];
+
+            // Gather data for selected lemma
+            for (key in lemma_data) {
+                if (key != 'all_frames') { 
+                    var lemma_frames = [];
+                    for (frame in lemma_data[key]) {
+                        var cur_frame = lemma_data[key][frame];
+                        var entry = { 'label': cur_frame[1], 'value': cur_frame[2] };
+                        occupied_frames.push(cur_frame[2]);
+                        lemma_frames.push(entry);
+                    }
+
+                    result[key] = lemma_frames;
+                }
+            }
+        }
+
+        // Gather data for other frames
+        result['Other'] = [];
+        var ordered = data['ordered_frames'];
+        for (frame in ordered) {
+            var cur_frame = ordered[frame];
+            if (!occupied_frames.includes(cur_frame[1])) {
+                var entry = { 'label': cur_frame[1], 'value': cur_frame[2] };
+                result['Other'].push(entry)
+            }
+        }
+
+        res.send(result);
     });
-
-    // Sort other frames by their label
-    other_frames = sortObjectsByKey(other_frames, "label");
-
-    res.send({'Likely': likely_frames, 'Candidate': candidate_frames, 'Pos candidate': pos_candidate_frames, 'Other': other_frames});
 });
 
 // Endpoint to get frame elements of a specific frame

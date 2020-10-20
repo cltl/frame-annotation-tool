@@ -14,11 +14,6 @@ var predicate_selected = false;
 noFrameType = 'NO-FRAME';
 
 $(function() {
-    loadFrames(function(data) {
-        renderDropdownWithGroups('#fan-type-select', data,
-            ['definition', 'framenet'], '-Pick frame-');
-    });
-
     $('#annotation-controls').hide();
     $('#content-container').hide();
 
@@ -60,6 +55,11 @@ $(function() {
                 clearSelection();
                 activatePredicateFromText($(this));
             }
+
+            loadFrames(function(data) {
+                renderDropdownWithGroups('#fan-type-select', data,
+                    ['definition', 'framenet'], '-Pick frame-');
+            });
         }
         
         // Currently annotating frame elements
@@ -171,6 +171,13 @@ function getDocId() {
     return $.unique($('.marked').not('.annotated-depends')
         .not('.structured-data').map(function() {
         return $(this).attr('term-selector').split('.')[0].replace(/_/g, ' ');
+    }).get())[0];
+}
+
+function getLemma() {
+    return $.unique($('.marked').not('.annotated-depends')
+        .not('.structured-data').map(function() {
+        return $(this).attr('lemma');
     }).get())[0];
 }
 
@@ -474,7 +481,7 @@ function renderToken(term, term_id_pre) {
     
     var t_select = term_id_pre + '.' + term.t_select;
     var p_select = term_id_pre + '.' + term.p_select;
-    return '<span class="markable" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span> ';
+    return '<span class="markable" lemma="' + term.lemma + '" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span> ';
 }
 
 function renderTokens(terms, doc_id) {
@@ -634,7 +641,11 @@ function loadStructuredData(incident_id, callback) {
 }
 
 function loadFrames(callback) {
-    $.get('/get_frames', function(result, status) {
+    var language = getDocId().split('/')[0];
+    var lemma = getLemma();
+
+    var request_data = { 'incident': $('#ic-inc-select').val(), 'language': language, 'lemma': lemma };
+    $.get('/get_frames', request_data, function(result, status) {
         callback(result);
     });
 }
@@ -784,10 +795,17 @@ function validateFrameAnnotation() {
     var frame_type = $('#fan-type-select').val();
     var frame_relation = $('#fan-relation-select').val();
 
+    var has_lu = $('#fan-type-select').data('lu') != '';
+
     if (frame_type == 'None') {
         return [false, 'Please pick a frame type'];
     } else if (frame_relation == 'None') {
         return [false, 'Please pick a frame relation type'];
+    }
+
+    if (has_lu) {
+        var lu_reference = $('#fan-type-select').data('lu-ref');
+        var lu_resource = $('#fan-type-select').data('lu-res');
     }
 
     // Get all selected markables
@@ -797,7 +815,13 @@ function validateFrameAnnotation() {
         return [false, 'Please select at least one markable'];
     }
 
-    var task_data = { 'frame': frame_type, 'type': frame_relation, 'selected': selected };
+    var task_data = { 'frame': frame_type,
+                      'type': frame_relation,
+                      'selected': selected,
+                      'has_lu': has_lu,
+                      'lu': lu_reference,
+                      'lu_resource': lu_resource };
+
     return [true, task_data];
 }
 
