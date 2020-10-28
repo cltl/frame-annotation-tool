@@ -997,7 +997,7 @@ function handleMarkableCorrection(json_data, task_data) {
         }
     }
 
-    // TODO: Handle incorrect task data
+    // TODO: Handle incorrect task data with error
 }
 
 function handleFrameAnnotation(json_data, task_data, session_id) {
