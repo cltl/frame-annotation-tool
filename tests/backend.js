@@ -99,7 +99,7 @@ describe('Markable correction test', () => {
         tool.loadNAFFile('test/inputs/mcn_rem_cpt', false, function(result) {
             task_data = { 'mcn_type': 2,
                           'mcn_task': 2,
-                          'target_id': 'mw1' };
+                          'target_id': 't2' };
             new_json = tool.handleMarkableCorrection(result, task_data);
 
             tool.saveNAF('data/naf/test/actual/mcn_rem_cpt.naf', new_json, function() {

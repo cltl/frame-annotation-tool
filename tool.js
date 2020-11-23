@@ -764,7 +764,7 @@ function removeCompoundEntry(json_data, target_id) {
             delete term_layer[i]['component'];
             delete term_layer[i]['attr']['compound_type'];
             delete term_layer[i]['attr']['head'];
-            target_id = term_layer[i]['span']['target'][0]['attr']['id'].toString();
+            target_id = term_layer[i]['span']['target']['attr']['id'].toString();
 
             break;
         }
