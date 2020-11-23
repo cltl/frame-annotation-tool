@@ -1,7 +1,6 @@
-annotation/
-data/lexicons
-data/naf
-data/json
+data/Annotation
+data/LexicalData
+data/DFNDataReleases
 data/naf-with-annotations
 allowed.json
 package-lock.json

@@ -70,19 +70,15 @@ const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
 const GUIDELINESVERSION = 'v1'
 const PORT = 8787
 
-const inc2doc_file = 'data/json/inc2doc_index.json';
-const inc2str_file = 'data/json/inc2str_index.json';
-const type2inc_file = 'data/json/type2inc_index.json';
-const proj2inc_file = 'data/json/proj2inc_index.json';
+const inc2doc_file = 'data/DFNDataReleases/structured/inc2doc_index.json';
+const inc2str_file = 'data/DFNDataReleases/structured/inc2str_index.json';
+const type2inc_file = 'data/DFNDataReleases/structured/type2inc_index.json';
+const proj2inc_file = 'data/DFNDataReleases/structured/proj2inc_index.json';
+const frame_info_file = 'data/LexicalData/frame_to_info.json';
 
-const likely_frames_file = 'data/frames/dominant_frame_info.json';
-const frame_info_file = 'data/frames/frame_to_info.json';
-
-const lexical_lookup = 'data/lexical_lookup';
-
-const DATA_DIR = 'data/naf/';
-
-const ANNOTATION_DIR = 'annotation/'
+const LL_DIR = 'data/LexicalData/typicality/lexical_lookup/';
+const DATA_DIR = 'data/DFNDataReleases/unstructured/';
+const ANNOTATION_DIR = 'data/Annotation/'
 
 LockedIncidents = {}
 
@@ -137,11 +133,6 @@ fs.readFile(proj2inc_file, 'utf8', function (err, data) {
 fs.readFile(type2inc_file, 'utf8', function (err, data) {
     if (err) throw err; // we'll not consider error handling for now
     type2inc = JSON.parse(data);
-});
-
-fs.readFile(likely_frames_file, 'utf8', function (err, data){
-    if (err) throw err; // we'll not consider error handling for now
-    allFrames = JSON.parse(data);
 });
 
 fs.readFile(frame_info_file, 'utf8', function (err, data){
@@ -536,6 +527,8 @@ function loadNAFFile(filename, adapt, callback) {
         file_path = DATA_DIR + filename + '.naf';
     }
 
+    console.log(filename);
+
     fs.readFile(file_path, 'utf-8', function(error, data) {
         var json = xmlParser.parse(data, xmlOptions);
 
@@ -802,7 +795,7 @@ function addPredicateEntry(json_data, predicate_data, session_id) {
     var target_data = { 'attr': { 'id': predicate_data['target_term'] }};
     predicate_entry['span']['target'].push(target_data);
 
-    var timestamp = new Date().toISOString().replace(/\..+/, '')
+    var timestamp = new Date().toISOString().replace(/\..+/, '');
     
     // Construct external references layer in predicate
     var reference_data = { 'reference': predicate_data['frame'],
@@ -981,7 +974,6 @@ function deprecateCoreferenceEntry(json_data, target_id) {
 
 // =====================================
 //#region Endpoint handling utilities
-// FIXME: Fix xml parse issue
 function handleMarkableCorrection(json_data, task_data) {
     // Add markable correction
     if (task_data['mcn_task'] == 1) {
@@ -1011,24 +1003,34 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
     var srl_layer = json_data['NAF']['srl']['predicate'];
     if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
+    var timestamp = new Date().toISOString().replace(/\..+/, '');
+
     // Check for span overlap
     for (var i in srl_layer) {
         var predicate = srl_layer[i];
         var predicate_target = predicate['span']['target'];
+        var predicate_target_id = predicate_target['attr']['id'];
+        var target_index = task_data['target_ids'].indexOf(predicate_target_id);
 
-        if (predicate_target['attr']['id'] in task_data['target_ids']) {
-            srl_layer[i]['status'] = 'deprecated';
+        if (target_index > -1) {
+            task_data['target_ids'].splice(target_index, 1);
+            var reference_data = { 'reference': task_data['frame'],
+                                   'resource': 'http://premon.fbk.eu/premon/fn17',
+                                   'timestamp': timestamp,
+                                   'source': session_id,
+                                   'reftype': task_data['type'] };
+            srl_layer[i] = addExternalReferences(predicate, reference_data);
         }
     }
 
-    // Update overlap deprecations
+    // Update overlap
     json_data['NAF']['srl']['predicate'] = srl_layer;
 
     // Create new predicate for each term in selected
     for (var i in task_data['target_ids']) {
         var predicate_data = { 'frame': task_data['frame'],
-                               'type': task_data['type'],
-                               'target_term': task_data['target_ids'][i] };
+                            'type': task_data['type'],
+                            'target_term': task_data['target_ids'][i] };
         json_data = addPredicateEntry(json_data, predicate_data, session_id);
     }
 
@@ -1390,6 +1392,8 @@ app.get('/load_incident', isAuthenticated, function(req, res) {
         }
     }
 
+    console.log(incident_id);
+
     if (!locked) {
         // Unclock previously locked incident
         Object.keys(LockedIncidents).some(function(k) {
@@ -1413,6 +1417,7 @@ app.get('/load_incident', isAuthenticated, function(req, res) {
 });
 
 // Endpoint to get all frames
+// TODO: Fix lexical lookup
 app.get('/get_frames', isAuthenticated, function(req, res) {
     if (!req.query['incident'] || !req.query['language'] || !req.query['lemma']) {
         res.sendStatus(400);
@@ -1422,10 +1427,10 @@ app.get('/get_frames', isAuthenticated, function(req, res) {
     var language = req.query['language'];
     var lemma = req.query['lemma'];
     // var lexical_path = '/' + language + '/' + incident_id + '.json';
-    var lexical_path = '/en/Q40231.json';
+    var lexical_path = '/nl/Q40231.json';
 
     // Load lexical data
-    fs.readFile(lexical_lookup + lexical_path, 'utf8', function(err, data) {
+    fs.readFile(LL_DIR + lexical_path, 'utf8', function(err, data) {
         data = JSON.parse(data)
         var result = {};
         var occupied_frames = [];

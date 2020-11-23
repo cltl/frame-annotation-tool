@@ -1,5 +1,4 @@
 var WDT_PREFIX = 'http://wikidata.org/wiki/';
-var type2Label = {'Q132821': 'murder', 'Q168983': 'conflagration'};
 
 annotations = {};
 referents = [];
@@ -124,8 +123,7 @@ $(function() {
         }
 
         for(var i = 0; i < types.length; i++) {
-            var typeLabel = type2Label[types[i]];
-            $('#ic-typ-select').append($('<option></option>').val(types[i]).html(typeLabel));
+            $('#ic-typ-select').append($('<option></option>').val(types[i]).html(types[i]));
         }
     });
 });
