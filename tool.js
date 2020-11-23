@@ -12,12 +12,15 @@ var expressSession = require('express-session');
 var fs = require('fs');
 var xmlParser = require('fast-xml-parser');
 var jsonParser = require("fast-xml-parser").j2xParser;
+var Libxml = require('node-libxml');
 var morgan = require('morgan');
 // var glob = require('glob');
 var mkdirp = require('mkdirp');
 var _ = require('underscore');
 
 var app = express();
+var libxml = new Libxml();
+libxml.loadDtds(['data/naf/naf.dtd']);
 
 //#endregion
 
@@ -1262,6 +1265,15 @@ var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
 var saveNAF = function(file_name, json_data, callback) {
     var parser = new jsonParser(jsonOptions);
     var xml = parser.parse(json_data);
+
+    libxml.loadXmlFromString(xml);
+    libxml.validateAgainstDtds();
+
+    if (libxml.hasOwnProperty('validationDtdErrors')) {
+        callback(libxml.validationDtdErrors);
+    }
+
+    libxml.freeXml();
 
     fs.writeFile(file_name, xml, function(err, data) {
         if (err) {
