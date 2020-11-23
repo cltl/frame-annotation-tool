@@ -593,7 +593,7 @@ function addMultiwordEntry(json_data, multiword_data) {
     if (!Array.isArray(mw_layer)) mw_layer = [mw_layer];
 
     multiword_data['mcn_type'] = multiword_data['mcn_type'] == 1 ? 'phrasal' : 'idiom';
-    var pos = multiword_data['mcn_type'] == 1 ? 'VERB' : '';
+    var pos = multiword_data['mcn_type'] == 'phrasal' ? 'VERB' : '';
 
     // Prepare multiword entry creation
     var multiword_id = 'mw' + (mw_layer.length + 1).toString();
@@ -602,12 +602,15 @@ function addMultiwordEntry(json_data, multiword_data) {
                                       'lemma': multiword_data['lemma'],
                                       'pos': pos },
                             'component': []};
+    
+    if (pos == '') { delete multiword_entry['attr']['pos'] }
 
     // Add each target term to component layer of multiword entry
     var target_ids = multiword_data['target_ids'];
     for (var i in target_ids) {
-        var component_id = multiword_id + '.c' + i.toString();
-        var target_term_id = target_ids[i].split('.')[2];
+        var c_id = parseInt(i) + 1;
+        var component_id = multiword_id + '.c' + c_id.toString();
+        var target_term_id = target_ids[i];
         var component_entry = { 'attr': { 'id': component_id },
                                 'span': { 'target': { 'attr': { 'id': target_term_id }}}};
         multiword_entry['component'].push(component_entry);
@@ -773,7 +776,7 @@ function removeCompoundEntry(json_data, target_id) {
         }
     }
 
-    json_data['NAF']['text']['wf'] = text_layer;
+    json_data['NAF']['text']['wf'] = token_layer;
     json_data['NAF']['terms']['term'] = term_layer;
     return json_data;
 }
@@ -981,7 +984,7 @@ function handleMarkableCorrection(json_data, task_data) {
     if (task_data['mcn_task'] == 1) {
         if (task_data['mcn_type'] == 1 || task_data['mcn_type'] == 2) {
             json_data, mw_id = addMultiwordEntry(json_data, task_data);
-            return updateMultiwordTerms(json_data, mw_id, task_data['selected'])
+            return updateMultiwordTerms(json_data, mw_id, task_data['target_ids'])
         } else if (task_data['mcn_type'] == 3) {
             json_data, t_id = addCompoundEntry(json_data, task_data);
             return updateCompoundTokens(json_data, t_id, task_data)
@@ -1001,6 +1004,7 @@ function handleMarkableCorrection(json_data, task_data) {
 }
 
 function handleFrameAnnotation(json_data, task_data, session_id) {
+    json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'srl', 'predicate');
     var srl_layer = json_data['NAF']['srl']['predicate'];
     if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
@@ -1009,7 +1013,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
         var predicate = srl_layer[i];
         var predicate_target = predicate['span']['target'];
 
-        if (predicate_target['attr']['id'] in task_data['selected']) {
+        if (predicate_target['attr']['id'] in task_data['target_ids']) {
             srl_layer[i]['status'] = 'deprecated';
         }
     }
@@ -1018,10 +1022,10 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
     json_data['NAF']['srl']['predicate'] = srl_layer;
 
     // Create new predicate for each term in selected
-    for (var i in task_data['selected']) {
+    for (var i in task_data['target_ids']) {
         var predicate_data = { 'frame': task_data['frame'],
                                'type': task_data['type'],
-                               'target_term': task_data['selected'][i] };
+                               'target_term': task_data['target_ids'][i] };
         json_data = addPredicateEntry(json_data, predicate_data, session_id);
     }
 
@@ -1030,14 +1034,14 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
 
 // TODO: Handle frame element update
 function handleFrameElementAnnotation(json_data, task_data, session_id) {
-    if (task_data['selected'] == []) {
-        task_data['selected'] = ['unexpressed'];
+    if (task_data['target_ids'] == []) {
+        task_data['target_ids'] = ['unexpressed'];
     }
 
     // Create new predicate for each term in span
-    for (var i in task_data['selected']) {
+    for (var i in task_data['target_ids']) {
         var role_data = { 'role': task_data['role'],
-                          'target_term': task_data['selected'][i] };
+                          'target_term': task_data['target_ids'][i] };
         json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
     }
 
@@ -1054,7 +1058,7 @@ function handleCoreferenceAnnotation(json_data, task_data, session_id) {
         var coref = coref_layer[i];
         var coref_target = coref['span']['target'];
 
-        if (coref_target['attr']['id'] in task_data['selected']) {
+        if (coref_target['attr']['id'] in task_data['target_ids']) {
             coref_layer[i]['status'] = 'deprecated';
             break;
         }
@@ -1063,10 +1067,10 @@ function handleCoreferenceAnnotation(json_data, task_data, session_id) {
     json_data['NAF']['coreferences']['coref'] = coref_layer;
 
     // Create new coreference entry for each term in selected
-    for (var i in task_data['selected']) {
+    for (var i in task_data['target_ids']) {
         var coreference_data = { 'reference': task_data['reference'],
                                  'type': task_data['type'],
-                                 'target_term': task_data['selected'][i] };
+                                 'target_term': task_data['target_ids'][i] };
         json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
     }
 
@@ -1255,7 +1259,7 @@ var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
     }
 }
 
-var saveNAF = function(file_name, json_data, callback){
+var saveNAF = function(file_name, json_data, callback) {
     var parser = new jsonParser(jsonOptions);
     var xml = parser.parse(json_data);
 
@@ -1264,7 +1268,6 @@ var saveNAF = function(file_name, json_data, callback){
             console.log(err);
             callback(err);
         } else {
-            console.log('updated!');
             callback(false);
         }
   });
@@ -1553,4 +1556,4 @@ app.listen(PORT, function() {
     console.log('started annotation tool nodejs backend on port ' + PORT);
 });
 
-module.exports = app;
+module.exports = { app, loadNAFFile, loadMultipleNAFs, saveNAF, handleMarkableCorrection, handleFrameAnnotation, handleFrameElementAnnotation, handleCoreferenceAnnotation };

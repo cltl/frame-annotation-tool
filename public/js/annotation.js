@@ -761,7 +761,7 @@ function validateCorrection() {
             var task_data = { 'mcn_task': correction_task,
                               'mcn_type': correction_type,
                               'lemma': correction_lemma,
-                              'selected': selected };
+                              'target_ids': selected };
 
             return[true, task_data];
         } else {
@@ -817,7 +817,7 @@ function validateFrameAnnotation() {
 
     var task_data = { 'frame': frame_type,
                       'type': frame_relation,
-                      'selected': selected,
+                      'target_ids': selected,
                       'has_lu': has_lu,
                       'lu': lu_reference,
                       'lu_resource': lu_resource };
@@ -842,7 +842,7 @@ function validateRoleAnnotation() {
 
     var pr_id = $('.annotated-depends.marked').attr('predicate');
     
-    var task_data = { 'pr_id': pr_id, 'role': role, 'selected': selected };
+    var task_data = { 'pr_id': pr_id, 'role': role, 'target_ids': selected };
     return [true, task_data];
 }
 
@@ -863,7 +863,7 @@ var validateReference = function() {
         return [false, 'Select a referent'];
     }
 
-    var task_data = { 'selected': selected, 'reference': referent_uri, 'type': referent_type };
+    var task_data = { 'target_ids': selected, 'reference': referent_uri, 'type': referent_type };
     return[true, task_data];
 }
 
