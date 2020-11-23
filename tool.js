@@ -74,7 +74,7 @@ const inc2doc_file = 'data/DFNDataReleases/structured/inc2doc_index.json';
 const inc2str_file = 'data/DFNDataReleases/structured/inc2str_index.json';
 const type2inc_file = 'data/DFNDataReleases/structured/type2inc_index.json';
 const proj2inc_file = 'data/DFNDataReleases/structured/proj2inc_index.json';
-const frame_info_file = 'data/LexicalData/frame_to_info.json';
+const frame_info_file = 'data/LexicalData/lexicons/frame_to_info.json';
 
 const LL_DIR = 'data/LexicalData/typicality/lexical_lookup/';
 const DATA_DIR = 'data/DFNDataReleases/unstructured/';
