@@ -1,7 +1,7 @@
 data/Annotation
 data/LexicalData
 data/DFNDataReleases
-data/naf-with-annotations
+data/TestData
 allowed.json
 package-lock.json
 node_modules/

@@ -1,6 +1,7 @@
 const assert = require('assert');
 const tool = require('../tool');
 
+const TEST_FILE_DIR = 'data/TestData/' 
 const VARIABLE_KEYS = ['nafHeader', 'timestamp', 'source']
 
 // From: https://gist.github.com/aurbano/383e691368780e7f5c98#gistcomment-3072240
@@ -27,8 +28,8 @@ function removeKeys(obj, keys) {
 }
 
 function assertNAFsEqual(input_file, expected_file, done) {
-    tool.loadNAFFile(input_file, false, function(input) {
-        tool.loadNAFFile(expected_file, false, function(expected) {
+    tool.loadNAFFile(input_file, false, false, function(input) {
+        tool.loadNAFFile(expected_file, false, false, function(expected) {
             removeKeys(input, VARIABLE_KEYS);
             removeKeys(expected, VARIABLE_KEYS);
             assert.deepStrictEqual(input, expected);
@@ -37,46 +38,46 @@ function assertNAFsEqual(input_file, expected_file, done) {
     });
 }
 
-describe('NAF document load test', () => {
+describe('Document loading test', () => {
     it('Should load NAF document in JSON format', (done) => {
-        tool.loadNAFFile('test/inputs/mcn_cre_phv', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/mcn_cre_phv', false, false, function(result) {
             assert.notStrictEqual(result, undefined)
             done();
         });
     });
 });
 
-describe('Markable correction test', () => {
+describe('Markable correction tests', () => {
     it('Should create wellformed phrasal verb', (done) => {
-        tool.loadNAFFile('test/inputs/mcn_cre_phv', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/mcn_cre_phv', false, false, function(result) {
             task_data = { 'mcn_type': 1,
                           'mcn_task': 1,
                           'lemma': 'aandoen',
                           'target_ids': ['t3', 't5'] };
             new_json = tool.handleMarkableCorrection(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/mcn_cre_phv.naf', new_json, function() {
-                assertNAFsEqual('test/actual/mcn_cre_phv', 'test/expected/mcn_cre_phv', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/mcn_cre_phv.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/mcn_cre_phv', TEST_FILE_DIR + 'expected/mcn_cre_phv', done);
             });
         });
     });
 
     it('Should create wellformed idiom', (done) => {
-        tool.loadNAFFile('test/inputs/mcn_cre_idi', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/mcn_cre_idi', false, false, function(result) {
             task_data = { 'mcn_type': 2,
                           'mcn_task': 1,
                           'lemma': 'a blessing in disguise',
                           'target_ids': ['t3', 't4', 't5', 't6'] };
             new_json = tool.handleMarkableCorrection(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/mcn_cre_idi.naf', new_json, function() {
-                assertNAFsEqual('test/actual/mcn_cre_idi', 'test/expected/mcn_cre_idi', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/mcn_cre_idi.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/mcn_cre_idi', TEST_FILE_DIR + 'expected/mcn_cre_idi', done);
             });
         });
     });
 
     it('Should create wellformed compound term', (done) => {
-        tool.loadNAFFile('test/inputs/mcn_cre_cpt', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/mcn_cre_cpt', false, false, function(result) {
             task_data = { 'mcn_type': 3,
                           'mcn_task': 1,
                           'head': 2,
@@ -88,47 +89,47 @@ describe('Markable correction test', () => {
                         };
             new_json = tool.handleMarkableCorrection(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/mcn_cre_cpt.naf', new_json, function() {
-                assertNAFsEqual('test/actual/mcn_cre_cpt', 'test/expected/mcn_cre_cpt', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/mcn_cre_cpt.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/mcn_cre_cpt', TEST_FILE_DIR + 'expected/mcn_cre_cpt', done);
             });
         });
     });
 
     it('Should deprecate phrasal verb', (done) => {
-        tool.loadNAFFile('test/inputs/mcn_rem_phv', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/mcn_rem_phv', false, false, function(result) {
             task_data = { 'mcn_type': 1,
                           'mcn_task': 2,
                           'target_id': 'mw1' };
             new_json = tool.handleMarkableCorrection(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/mcn_rem_phv.naf', new_json, function() {
-                assertNAFsEqual('test/actual/mcn_rem_phv', 'test/expected/mcn_rem_phv', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/mcn_rem_phv.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/mcn_rem_phv', TEST_FILE_DIR + 'expected/mcn_rem_phv', done);
             });
         });
     });
 
     it('Should deprecate idiom', (done) => {
-        tool.loadNAFFile('test/inputs/mcn_rem_idi', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/mcn_rem_idi', false, false, function(result) {
             task_data = { 'mcn_type': 1,
                           'mcn_task': 2,
                           'target_id': 'mw1' };
             new_json = tool.handleMarkableCorrection(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/mcn_rem_idi.naf', new_json, function() {
-                assertNAFsEqual('test/actual/mcn_rem_idi', 'test/expected/mcn_rem_idi', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/mcn_rem_idi.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/mcn_rem_idi', TEST_FILE_DIR + 'expected/mcn_rem_idi', done);
             });
         });
     });
 
     it('Should remove compound', (done) => {
-        tool.loadNAFFile('test/inputs/mcn_rem_cpt', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/mcn_rem_cpt', false, false, function(result) {
             task_data = { 'mcn_type': 2,
                           'mcn_task': 2,
                           'target_id': 't2' };
             new_json = tool.handleMarkableCorrection(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/mcn_rem_cpt.naf', new_json, function() {
-                assertNAFsEqual('test/actual/mcn_rem_cpt', 'test/expected/mcn_rem_cpt', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/mcn_rem_cpt.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/mcn_rem_cpt', TEST_FILE_DIR + 'expected/mcn_rem_cpt', done);
             });
         });
     });
@@ -136,7 +137,7 @@ describe('Markable correction test', () => {
 
 describe('Frame annotation test', () => {
     it('Should create wellformed predicate', (done) => {
-        tool.loadNAFFile('test/inputs/fra_cre', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/fra_cre', false, false, function(result) {
             task_data = { 'frame': 'http://premon.fbk.eu/resource/fn17-killing',
                           'type': 'type',
                           'target_ids': ['t3'],
@@ -145,14 +146,14 @@ describe('Frame annotation test', () => {
                           'lu_resource': undefined };
             new_json = tool.handleFrameAnnotation(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/fra_cre.naf', new_json, function() {
-                assertNAFsEqual('test/actual/fra_cre', 'test/expected/fra_cre', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/fra_cre.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/fra_cre', TEST_FILE_DIR + 'expected/fra_cre', done);
             });
         });
     });
 
     it('Should update predicate', (done) => {
-        tool.loadNAFFile('test/inputs/fra_upd', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/fra_upd', false, false, function(result) {
             task_data = { 'frame': 'http://premon.fbk.eu/resource/fn17-erasing',
                           'type': 'type',
                           'target_ids': ['t3'],
@@ -161,19 +162,19 @@ describe('Frame annotation test', () => {
                           'lu_resource': undefined };
             new_json = tool.handleFrameAnnotation(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/fra_upd.naf', new_json, function() {
-                assertNAFsEqual('test/actual/fra_upd', 'test/expected/fra_upd', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/fra_upd.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/fra_upd', TEST_FILE_DIR + 'expected/fra_upd', done);
             });
         });
     });
 
     it('Should deprecate predicate', (done) => {
-        tool.loadNAFFile('test/inputs/8', false, function(result) {
+        tool.loadNAFFile(TEST_FILE_DIR + 'input/fra_rem', false, false, function(result) {
             task_data = { };
             new_json = tool.handleFrameAnnotation(result, task_data);
 
-            tool.saveNAF('data/naf/test/actual/7.naf', new_json, function() {
-                assertNAFsEqual('test/actual/7', 'test/expected/7', done);
+            tool.saveNAF(TEST_FILE_DIR + 'actual/fra_rem.naf', new_json, function() {
+                assertNAFsEqual(TEST_FILE_DIR + 'actual/fra_rem', TEST_FILE_DIR + 'expected/fra_rem', done);
             });
         });
     });

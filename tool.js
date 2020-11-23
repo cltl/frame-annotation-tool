@@ -519,15 +519,18 @@ function readNAFFile(json_data, doc_name) {
  * @param {boolean}     adapt       Set to true if output format should be info
  * @param {callback}    callback    Function to call when done loading file
  */
-function loadNAFFile(filename, adapt, callback) {
+function loadNAFFile(filename, adapt, data_dir, callback) {
+    if (data_dir == false) {
+        data_dir = '';
+    } else {
+        data_dir = DATA_DIR;
+    }
 
     // Check annotated version first
     var file_path = ANNOTATION_DIR + filename + '.naf';
     if (!(fs.existsSync(file_path))) {
-        file_path = DATA_DIR + filename + '.naf';
+        file_path = data_dir + filename + '.naf';
     }
-
-    console.log(filename);
 
     fs.readFile(file_path, 'utf-8', function(error, data) {
         var json = xmlParser.parse(data, xmlOptions);
