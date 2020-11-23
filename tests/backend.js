@@ -1,11 +1,36 @@
 const assert = require('assert');
 const tool = require('../tool');
 
+const VARIABLE_KEYS = ['nafHeader', 'timestamp', 'source']
+
+// From: https://gist.github.com/aurbano/383e691368780e7f5c98#gistcomment-3072240
+// Removes specified keys nested at some level in obj from obj
+function removeKeys(obj, keys) {
+    for (var prop in obj) {
+        if(obj.hasOwnProperty(prop)) {
+            switch(typeof(obj[prop])) {
+                case 'object':
+                    if(keys.indexOf(prop) > -1) {
+                        delete obj[prop];
+                    } else {
+                        removeKeys(obj[prop], keys);
+                    }
+                    break;
+              default:
+                    if(keys.indexOf(prop) > -1) {
+                        delete obj[prop];
+                    }
+                    break;
+            }
+        }
+    }
+}
+
 function assertNAFsEqual(input_file, expected_file, done) {
     tool.loadNAFFile(input_file, false, function(input) {
         tool.loadNAFFile(expected_file, false, function(expected) {
-            delete input['NAF']['nafHeader'];
-            delete expected['NAF']['nafHeader'];
+            removeKeys(input, VARIABLE_KEYS);
+            removeKeys(expected, VARIABLE_KEYS);
             assert.deepStrictEqual(input, expected);
             done();
         });
@@ -22,7 +47,7 @@ describe('NAF document load test', () => {
 });
 
 describe('Markable correction test', () => {
-    it('Should create phrasal verb', (done) => {
+    it('Should create wellformed phrasal verb', (done) => {
         tool.loadNAFFile('test/inputs/mcn_cre_phv', false, function(result) {
             task_data = { 'mcn_type': 1,
                           'mcn_task': 1,
@@ -36,7 +61,7 @@ describe('Markable correction test', () => {
         });
     });
 
-    it('Should create idiom', (done) => {
+    it('Should create wellformed idiom', (done) => {
         tool.loadNAFFile('test/inputs/mcn_cre_idi', false, function(result) {
             task_data = { 'mcn_type': 2,
                           'mcn_task': 1,
@@ -50,7 +75,7 @@ describe('Markable correction test', () => {
         });
     });
 
-    it('Should create compound term', (done) => {
+    it('Should create wellformed compound term', (done) => {
         tool.loadNAFFile('test/inputs/mcn_cre_cpt', false, function(result) {
             task_data = { 'mcn_type': 3,
                           'mcn_task': 1,
@@ -109,47 +134,47 @@ describe('Markable correction test', () => {
     });
 });
 
-// describe('Frame annotation test', () => {
-//     it('Should create predicate', (done) => {
-//         tool.loadNAFFile('test/inputs/fra_cre', false, function(result) {
-//             task_data = { 'frame': 'http://premon.fbk.eu/resource/fn17-killing',
-//                           'type': 'type',
-//                           'target_ids': ['t3'],
-//                           'has_lu': false,
-//                           'lu': undefined,
-//                           'lu_resource': undefined };
-//             new_json = tool.handleFrameAnnotation(result, task_data);
+describe('Frame annotation test', () => {
+    it('Should create wellformed predicate', (done) => {
+        tool.loadNAFFile('test/inputs/fra_cre', false, function(result) {
+            task_data = { 'frame': 'http://premon.fbk.eu/resource/fn17-killing',
+                          'type': 'type',
+                          'target_ids': ['t3'],
+                          'has_lu': false,
+                          'lu': undefined,
+                          'lu_resource': undefined };
+            new_json = tool.handleFrameAnnotation(result, task_data);
 
-//             tool.saveNAF('data/naf/test/actual/fra_cre.naf', new_json, function() {
-//                 assertNAFsEqual('test/actual/fra_cre', 'test/expected/fra_cre', done);
-//             });
-//         });
-//     });
+            tool.saveNAF('data/naf/test/actual/fra_cre.naf', new_json, function() {
+                assertNAFsEqual('test/actual/fra_cre', 'test/expected/fra_cre', done);
+            });
+        });
+    });
 
-//     it('Should update predicate', (done) => {
-//         tool.loadNAFFile('test/inputs/fra_upd', false, function(result) {
-//             task_data = { 'frame': 'http://premon.fbk.eu/resource/fn17-erasing',
-//                           'type': 'type',
-//                           'target_ids': ['t3'],
-//                           'has_lu': false,
-//                           'lu': undefined,
-//                           'lu_resource': undefined };
-//             new_json = tool.handleFrameAnnotation(result, task_data);
+    it('Should update predicate', (done) => {
+        tool.loadNAFFile('test/inputs/fra_upd', false, function(result) {
+            task_data = { 'frame': 'http://premon.fbk.eu/resource/fn17-erasing',
+                          'type': 'type',
+                          'target_ids': ['t3'],
+                          'has_lu': false,
+                          'lu': undefined,
+                          'lu_resource': undefined };
+            new_json = tool.handleFrameAnnotation(result, task_data);
 
-//             tool.saveNAF('data/naf/test/actual/fra_upd.naf', new_json, function() {
-//                 assertNAFsEqual('test/actual/fra_upd', 'test/expected/fra_upd', done);
-//             });
-//         });
-//     });
+            tool.saveNAF('data/naf/test/actual/fra_upd.naf', new_json, function() {
+                assertNAFsEqual('test/actual/fra_upd', 'test/expected/fra_upd', done);
+            });
+        });
+    });
 
-//     it('Should deprecate predicate', (done) => {
-//         tool.loadNAFFile('test/inputs/8', false, function(result) {
-//             task_data = { };
-//             new_json = tool.handleFrameAnnotation(result, task_data);
+    it('Should deprecate predicate', (done) => {
+        tool.loadNAFFile('test/inputs/8', false, function(result) {
+            task_data = { };
+            new_json = tool.handleFrameAnnotation(result, task_data);
 
-//             tool.saveNAF('data/naf/test/actual/7.naf', new_json, function() {
-//                 assertNAFsEqual('test/actual/7', 'test/expected/7', done);
-//             });
-//         });
-//     });
-// });
+            tool.saveNAF('data/naf/test/actual/7.naf', new_json, function() {
+                assertNAFsEqual('test/actual/7', 'test/expected/7', done);
+            });
+        });
+    });
+});

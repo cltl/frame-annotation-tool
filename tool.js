@@ -796,7 +796,7 @@ function addPredicateEntry(json_data, predicate_data, session_id) {
     var predicate_entry = { 'attr': { 'id': predicate_id,
                                       'status': 'manual' },
                             'span': { 'target': [] },
-                            'externalReferences:': { 'externalRef': [] }};
+                            'externalReferences': { 'externalRef': [] }};
     
     // Construct span layer
     var target_data = { 'attr': { 'id': predicate_data['target_term'] }};
@@ -866,7 +866,7 @@ function addRoleEntry(json_data, target_id, role_data, session_id) {
             var role_entry = { 'attr': { 'id': role_id,
                                          'status': 'manual' },
                                'span': { 'target': [] },
-                               'externalReferences:': { 'externalRef': [] }};
+                               'externalReferences': { 'externalRef': [] }};
             
             // Construct span layer
             if (role_data['target_term'] != 'unexpressed') {
