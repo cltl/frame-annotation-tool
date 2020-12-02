@@ -1351,12 +1351,14 @@ app.get("/projects", isAuthenticated, function(req, res) {
 app.get("/project_incidents", isAuthenticated, function(req, res) {
     // Get parameters
     var proj = req.query["proj"];
+    var type = req.query['type'];
 
     // Get all incidents
-    var incidents = Array.from(proj2inc[proj]);
+    var p2i = Array.from(proj2inc[proj]);
+    var t2i = Array.from(type2inc[type]);
 
     // Return result
-    res.send({ "inc": incidents });
+    res.send({ "inc": _.intersection(p2i, t2i) });
 });
 
 // Endpoint to get all languages in a specific incident

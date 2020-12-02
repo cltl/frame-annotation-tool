@@ -354,21 +354,23 @@ function updateIncidentSelection(changed) {
     var selected_lan = $('#ic-lan-select').val();
 
     if (changed == 0 || changed == 1) {
+        reloadDropdown('#ic-lan-select', [], '-Select a language-');
+        reloadDropdown('#ic-doc-select', [], '-Select a document-');
+        
         if (selected_pro == 'None' || selected_typ == 'None') {
             reloadDropdown('#ic-inc-select', [], '-Select an incident-');
-            reloadDropdown('#ic-lan-select', [], '-Select a language-');
-            reloadDropdown('#ic-doc-select', [], '-Select a document-');
         } else {
-            var get_data = { 'proj': selected_pro  };
+            var get_data = { 'proj': selected_pro, 'type': selected_typ  };
             $.get('/project_incidents', get_data, function(result, status) {
                 var inc = result['inc'].sort();
                 reloadDropdown('#ic-inc-select', inc, '-Select an incident-')
             });
         }
     } else if (changed == 2) {
+        reloadDropdown('#ic-doc-select', [], '-Select a document-');
+
         if (selected_inc == 'None') {
             reloadDropdown('#ic-lan-select', [], '-Select a language-');
-            reloadDropdown('#ic-doc-select', [], '-Select a document-');
         } else {
             var get_data = { 'inc': selected_inc };
             $.get('/incident_languages', get_data, function(result, status) {
