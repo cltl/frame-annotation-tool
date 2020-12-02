@@ -114,16 +114,17 @@ $(function() {
         }
     });
     
+    // Fill project & type selectors
     $.get('/projects', {}, function(data, status) { 
-        var projects = data['projects'];
-        var types = data['types'];
+        var proj = data['proj'];
+        var type = data['type'];
 
-        for(var i = 0; i < projects.length; i++) {
-            $('#ic-pro-select').append($('<option></option>').val(projects[i]).html(projects[i]));
+        for(var i = 0; i < proj.length; i++) {
+            $('#ic-pro-select').append($('<option></option>').val(proj[i]).html(proj[i]));
         }
 
-        for(var i = 0; i < types.length; i++) {
-            $('#ic-typ-select').append($('<option></option>').val(types[i]).html(types[i]));
+        for(var i = 0; i < type.length; i++) {
+            $('#ic-typ-select').append($('<option></option>').val(type[i]).html(type[i]));
         }
     });
 });
@@ -346,41 +347,64 @@ function updateCPDSubdivide() {
 // UI CONTROLLED =======================
 // =====================================
 
-function updateIncidentList() {
+function updateIncidentSelection(changed) {
     var selected_pro = $('#ic-pro-select').val();
     var selected_typ = $('#ic-typ-select').val();
+    var selected_inc = $('#ic-inc-select').val();
+    var selected_lan = $('#ic-lan-select').val();
 
-    if (selected_pro != 'None' && selected_typ != 'None') {
-        var get_data = { 'project': selected_pro, 'type': selected_typ }
-        $.get('/get_project_incidents', get_data, function(result, status) {
-            var old_inc = result['old'].sort();
-            var new_inc = result['new'].sort();
-            
-            reloadDropdown('#ic-inc-select', new_inc, '-Select an incident-');
-        });
-    } else{
-        reloadDropdown('#ic-inc-select', [], '-Select an incident-');
+    if (changed == 0 || changed == 1) {
+        if (selected_pro == 'None' || selected_typ == 'None') {
+            reloadDropdown('#ic-inc-select', [], '-Select an incident-');
+            reloadDropdown('#ic-lan-select', [], '-Select a language-');
+            reloadDropdown('#ic-doc-select', [], '-Select a document-');
+        } else {
+            var get_data = { 'proj': selected_pro  };
+            $.get('/project_incidents', get_data, function(result, status) {
+                var inc = result['inc'].sort();
+                reloadDropdown('#ic-inc-select', inc, '-Select an incident-')
+            });
+        }
+    } else if (changed == 2) {
+        if (selected_inc == 'None') {
+            reloadDropdown('#ic-lan-select', [], '-Select a language-');
+            reloadDropdown('#ic-doc-select', [], '-Select a document-');
+        } else {
+            var get_data = { 'inc': selected_inc };
+            $.get('/incident_languages', get_data, function(result, status) {
+                var lang = result['lang'].sort();
+                reloadDropdown('#ic-lan-select', lang, '-Select a language-')
+            });
+        }
+    } else if (changed == 3) {
+        if (selected_lan == 'None') {
+            reloadDropdown('#ic-doc-select', [], '-Select a document-');
+        } else {
+            var get_data = { 'inc': selected_inc, 'lan': selected_lan };
+            $.get('/incident_documents', get_data, function(result, status) {
+                var doc = result['doc'].sort();
+                reloadDropdown('#ic-doc-select', doc, '-Select a document-')
+            });
+        }
     }
 }
 
 function loadIncident() {
-    var incident_id = $('#ic-inc-select').val();
+    var inc = $('#ic-inc-select').val();
+    var lan = $('#ic-lan-select').val();
+    var doc = $('#ic-doc-select').val();
 
-    if (incident_id != 'None') {
+    if (lan != 'None' && doc != 'None') {
         annotations = {};
         restoreDefaults();
         clearSelection();
 
-        loadNAFFiles(incident_id, function(documents) {
-            // Check document not locked
-            if (documents != 0) {
-                for (var i in documents) {
-                    renderDocument(documents[i]);
-                }
+        loadNAFFile(lan + '/' + doc, function(result) {
+            if (result != 0) {
+                renderDocument(result);
 
-                // Load and render structured data
-                loadStructuredData(incident_id, function(data) {
-                    renderStructuredData(incident_id, data);
+                loadStructuredData(inc, function(data) {
+                    renderStructuredData(inc, data);
 
                     var dropdown_data = { 'sem:hasPlace': [],
                                           'sem:hasActor': [],
@@ -395,7 +419,7 @@ function loadIncident() {
                         }
                     }
 
-                    renderDropdownWithGroups('#sde-remove-select', dropdown_data, [], '-Pick item-');
+                    renderDropdownWithGroups('#sde-remove-select', dropdown_data, [], '-Pick item-')
                 });
 
                 // Show controls
@@ -404,7 +428,7 @@ function loadIncident() {
             }
         });
     } else{
-        printMessage('Select an incident', 'error');
+        printMessage('Select a document', 'error');
     }
 }
 
@@ -528,7 +552,7 @@ function renderDocument(doc_data) {
 function renderStructuredData(incident_id, data) {
     var incident_type_uri = $('#ic-typ-select').val();
     var incident_type_url = WDT_PREFIX + incident_type_uri;
-    var incident_type_label = type2Label[incident_type_uri] || incident_type_uri;
+    var incident_type_label = incident_type_uri;
 
     var incident_url = WDT_PREFIX + incident_id;
 
@@ -618,6 +642,22 @@ function printMessage(message, type) {
 // RETRIEVE UTILS ======================
 // =====================================
 
+function loadNAFFile(document, callback) {
+    var get_data = { 'doc': document };
+    
+    $.get('/load_document', get_data, function(result, status) {
+        callback(result['naf']);
+    }).fail(function(e) {
+        // Incident locked
+        if (e.status == 423) {
+            printMessage('The document is locked by another user.', 'error');
+            callback(0);
+        } else {
+            printMessage('Something went wrong while loading the requested document.', 'error');
+        }
+    });
+}
+
 function loadNAFFiles(incident_id, callback) {
     var get_data = { 'incident': incident_id };
     $.get('/load_incident', get_data, function(result, status) {
@@ -632,8 +672,8 @@ function loadNAFFiles(incident_id, callback) {
 }
 
 function loadStructuredData(incident_id, callback) {
-    var get_data = { 'incident': incident_id };
-    $.get('/get_structured_data', get_data, function(result, status) {
+    var get_data = { 'inc': incident_id };
+    $.get('/load_incident_data', get_data, function(result, status) {
         callback(result);
     });
 }

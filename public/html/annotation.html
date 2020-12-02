@@ -27,19 +27,25 @@
 
             <!-- Incidident Pick row -->
             <div class="row mt-4" id="incident-controls">
-                <div class="col-sm-8">
-                    <select class="w-25 mr-4" id="ic-pro-select" onchange="updateIncidentList()">
+                <div class="col-sm-10">
+                    <select class="col-md-2 mr-4" id="ic-pro-select" onchange="updateIncidentSelection(0)">
                         <option value="None">-Select a project-</option>
                     </select>
-                    <select class="w-25 mr-4" id="ic-typ-select" onchange="updateIncidentList()">
+                    <select class="col-md-2 mr-4" id="ic-typ-select" onchange="updateIncidentSelection(1)">
                         <option value="None">-Select incident type-</option>
                     </select>
-                    <select class="w-25 mr-4" id="ic-inc-select">
+                    <select class="col-md-2 mr-4" id="ic-inc-select" onchange="updateIncidentSelection(2)">
                         <option value="None">-Select an incident-</option>
+                    </select>
+                    <select class="col-md-2 mr-4" id="ic-lan-select" onchange="updateIncidentSelection(3)">
+                        <option value="None">-Select a language-</option>
+                    </select>
+                    <select class="col-md-2 mr-4" id="ic-doc-select">
+                        <option value="None">-Select a document-</option>
                     </select>
                     <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
                 </div>
-                <div class="col-sm-4"><label id="message"></label></div>
+                <div class="col-sm-2"><label id="message"></label></div>
             </div>
 
             <!-- Task, Task Details and Structured Data row -->

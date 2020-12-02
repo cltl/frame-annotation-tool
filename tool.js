@@ -70,19 +70,17 @@ const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
 const GUIDELINESVERSION = 'v1'
 const PORT = 8787
 
-const inc2doc_file = 'data/DFNDataReleases/structured/inc2doc_index.json';
+const inc2lang2doc_file = 'data/DFNDataReleases/structured/inc2lang2doc_index.json';
 const inc2str_file = 'data/DFNDataReleases/structured/inc2str_index.json';
 const type2inc_file = 'data/DFNDataReleases/structured/type2inc_index.json';
 const proj2inc_file = 'data/DFNDataReleases/structured/proj2inc_index.json';
-const frame_info_file = 'data/LexicalData/lexicons/frame_to_info.json';
 
-const LL_DIR = 'data/LexicalData/typicality/lexical_lookup/';
-const DATA_DIR = 'data/DFNDataReleases/unstructured/';
-const ANNOTATION_DIR = 'data/Annotation/'
+const frame_info_file = 'data/DFNDataReleases/lexical_data/lexicons/frame_to_info.json';
+const LL_DIR = 'data/DFNDataReleases/lexical_data/typicality/lexical_lookup/';
+
+const NAF_DIR = 'data/DFNDataReleases/unstructured/';
 
 LockedIncidents = {}
-
-customRefs={};
 
 var xmlOptions = {
     attributeNamePrefix : "",
@@ -115,9 +113,9 @@ var jsonOptions = {
 
 // =====================================
 //#region Load data files
-fs.readFile(inc2doc_file, 'utf8', function (err, data) {
+fs.readFile(inc2lang2doc_file, 'utf8', function (err, data) {
     if (err) throw err; // we'll not consider error handling for now
-    inc2doc = JSON.parse(data);
+    inc2lang2doc = JSON.parse(data);
 });
 
 fs.readFile(inc2str_file, 'utf8', function (err, data) {
@@ -523,14 +521,11 @@ function loadNAFFile(filename, adapt, data_dir, callback) {
     if (data_dir == false) {
         data_dir = '';
     } else {
-        data_dir = DATA_DIR;
+        data_dir = NAF_DIR;
     }
 
     // Check annotated version first
-    var file_path = ANNOTATION_DIR + filename + '.naf';
-    if (!(fs.existsSync(file_path))) {
-        file_path = data_dir + filename + '.naf';
-    }
+    file_path = data_dir + filename + '.naf';
 
     fs.readFile(file_path, 'utf-8', function(error, data) {
         var json = xmlParser.parse(data, xmlOptions);
@@ -1307,7 +1302,7 @@ app.post('/store_annotation', isAuthenticated, function(req, res) {
     loadNAFFile(document_id, false, function(json_data) {
         var language = document_id.split('/')[0];
         var title = document_id.split('/')[1];
-        var annotation_dir = ANNOTATION_DIR + language + '/';
+        var annotation_dir = NAF_DIR + language + '/';
         var annotated_file_path = annotation_dir + title + ".naf";
 
         if (task_id == 1) {
@@ -1345,60 +1340,78 @@ app.post('/store_annotation', isAuthenticated, function(req, res) {
 // Endpoint to get all projects and incident types
 app.get("/projects", isAuthenticated, function(req, res) {
     // Get projects and types
-    var projects = Object.keys(proj2inc);
-    var types = Object.keys(type2inc);
+    var proj = Object.keys(proj2inc);
+    var type = Object.keys(type2inc);
 
     // Return projects and types
-    res.send({ "projects": Array.from(projects), "types": Array.from(types) });
+    res.send({ "proj": Array.from(proj), "type": Array.from(type) });
 });
 
 // Endpoint to get all incidents of a certain type in a project
-app.get("/get_project_incidents", isAuthenticated, function(req, res) {
+app.get("/project_incidents", isAuthenticated, function(req, res) {
     // Get parameters
-    var type = req.query["type"];
-    var project = req.query["project"];
+    var proj = req.query["proj"];
 
     // Get all incidents
-    var incident_documents = Object.keys(inc2doc);
-    var incidents_of_type = Array.from(type2inc[type]);
-    var incidents_of_project = Array.from(proj2inc[project]);
-
-    // Find incidents in project and of type
-    var result = _.intersection(incident_documents, incidents_of_type, incidents_of_project);
+    var incidents = Array.from(proj2inc[proj]);
 
     // Return result
-    res.send({ "new": Array.from(result), "old": [] });
+    res.send({ "inc": incidents });
+});
+
+// Endpoint to get all languages in a specific incident
+app.get('/incident_languages', isAuthenticated, function(req, res) {
+    // Get parameters
+    var inc = req.query['inc'];
+
+    // Get all languages
+    var languages = Object.keys(inc2lang2doc[inc]);
+
+    // Return result
+    res.send({ 'lang': languages });
+});
+
+// Endpoint te get all documents in a specific language for an incident
+app.get('/incident_documents', isAuthenticated, function(req, res) {
+    // Get parameters
+    var inc = req.query['inc'];
+    var lan = req.query['lan'];
+
+    // Get all languages
+    var doc = Array.from(inc2lang2doc[inc][lan]);
+
+    // Return result
+    res.send({ 'doc': doc });
 });
 
 // Endpoint to load an incident
-app.get('/load_incident', isAuthenticated, function(req, res) {
+app.get('/load_document', isAuthenticated, function(req, res) {
     // Check if incident is provided
-    if (!req.query['incident']) {
+    if (!req.query['doc']) {
         res.sendStatus(400);
-    }    
+    }
 
     // Get naf files using parameters
-    var incident_id = req.query['incident'];
-    var locked = false;
+    var doc = req.query['doc'];
 
+    var locked = false;
     var date = new Date();
     var now = date.getTime();
 
-    // Check if incident user tries to load is locked
-    if (incident_id in LockedIncidents) {
-        // Not locked for user
-        if (LockedIncidents[incident_id].user != req.user.user) {
-            var lock_time = parseInt(LockedIncidents[incident_id].time);
+    // Check if incident user tries to load locked document
+    if (doc in LockedIncidents) {
+        // Check if doc is locked by user
+        if (LockedIncidents[doc].user != req.user.user) {
+            // Check if lock time already expired
+            var lock_time = parseInt(LockedIncidents[doc].time);
             if (now - lock_time < LOCK_TIME * 60000) {
                 locked = true;
             }
         }
     }
 
-    console.log(incident_id);
-
     if (!locked) {
-        // Unclock previously locked incident
+        // Unclock any previously locked incident by user
         Object.keys(LockedIncidents).some(function(k) {
             if (LockedIncidents[k].user === req.user.user) {
                 delete LockedIncidents[k];
@@ -1406,16 +1419,26 @@ app.get('/load_incident', isAuthenticated, function(req, res) {
         });
 
         // Lock new incident
-        LockedIncidents[incident_id] = { 'user': req.user.user, 'time': now }
-        var naf_files = inc2doc[incident_id];
+        LockedIncidents[doc] = { 'user': req.user.user, 'time': now }
+        var naf_files = inc2lang2doc[doc];
 
         // Load NAF files and return
-        loadMultipleNAFs(naf_files, function(data) {
-            console.log("All nafs loaded. returning the result now");
-            res.send({ "nafs": data });
+        loadNAFFile(doc, true, true, function(data) {
+            res.send({ 'naf': data })
         });
     } else {
         res.sendStatus(423);
+    }
+});
+
+// Endpoint to get structured data for an incident (with user annotations)
+app.get("/load_incident_data", isAuthenticated, function(req, res) {
+    if (!req.query["inc"]) {
+        res.sendStatus(400);
+    } else {
+        // Get query parameters
+        var inc = req.query["inc"];
+        res.send(inc2str[inc]);
     }
 });
 
@@ -1500,37 +1523,6 @@ app.get('/get_roles', isAuthenticated, function(req, res) {
                 res.send(roleData);
             });
         });
-    }
-});
-
-// Endpoint to get structured data for an incident (with user annotations)
-app.get("/get_structured_data", isAuthenticated, function(req, res) {
-    if (!req.query["incident"]) {
-        res.sendStatus(400);
-    } else {
-        // Get query parameters
-        var incident_id = req.query["incident"];
-        var user = req.user.user
-
-        var json_data = inc2str[incident_id];
-        res.send(json_data);
-
-        // Load custom referents data
-        // fs.readFile(file_path, "utf-8", function(error, data) {
-        //     if (error) {
-        //         console.log(error);
-        //         res.sendStatus(500);
-        //     } else {
-        //         data = data.trim();
-
-        //         // Check if data in file
-        //         if (data && data != "") {
-        //             customRefs = JSON.parse(data);
-        //             if (customRefs[incident_id]) json_data['user:custom'] = customRefs[incident_id];
-        //         }
-
-        //     }
-        // });
     }
 });
 
