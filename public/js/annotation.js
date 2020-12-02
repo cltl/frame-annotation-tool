@@ -356,7 +356,7 @@ function updateIncidentSelection(changed) {
     if (changed == 0 || changed == 1) {
         reloadDropdown('#ic-lan-select', [], '-Select a language-');
         reloadDropdown('#ic-doc-select', [], '-Select a document-');
-        
+
         if (selected_pro == 'None' || selected_typ == 'None') {
             reloadDropdown('#ic-inc-select', [], '-Select an incident-');
         } else {
@@ -681,11 +681,10 @@ function loadStructuredData(incident_id, callback) {
 }
 
 function loadFrames(callback) {
-    var language = getDocId().split('/')[0];
     var lemma = getLemma();
 
-    var request_data = { 'incident': $('#ic-inc-select').val(), 'language': language, 'lemma': lemma };
-    $.get('/get_frames', request_data, function(result, status) {
+    var request_data = { 'typ': $('#ic-typ-select').val(), 'lan': $('#ic-lan-select').val(), 'lem': lemma };
+    $.get('/frames', request_data, function(result, status) {
         callback(result);
     });
 }

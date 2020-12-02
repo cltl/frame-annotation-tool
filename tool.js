@@ -1446,16 +1446,16 @@ app.get("/load_incident_data", isAuthenticated, function(req, res) {
 
 // Endpoint to get all frames
 // TODO: Fix lexical lookup
-app.get('/get_frames', isAuthenticated, function(req, res) {
-    if (!req.query['incident'] || !req.query['language'] || !req.query['lemma']) {
+app.get('/frames', isAuthenticated, function(req, res) {
+    if (!req.query['typ'] || !req.query['lan'] || !req.query['lem']) {
         res.sendStatus(400);
+        return
     }
 
-    var incident_id = req.query['incident'];
-    var language = req.query['language'];
-    var lemma = req.query['lemma'];
-    // var lexical_path = '/' + language + '/' + incident_id + '.json';
-    var lexical_path = '/nl/Q40231.json';
+    var typ = req.query['typ'];
+    var lan = req.query['lan'];
+    var lem = req.query['lem'];
+    var lexical_path = lan + '/' + typ + '.json';
 
     // Load lexical data
     fs.readFile(LL_DIR + lexical_path, 'utf8', function(err, data) {
@@ -1463,8 +1463,8 @@ app.get('/get_frames', isAuthenticated, function(req, res) {
         var result = {};
         var occupied_frames = [];
 
-        if (data['lexical_lookup'][lemma]) {
-            var lemma_data = data['lexical_lookup'][lemma];
+        if (data['lexical_lookup'][lem]) {
+            var lemma_data = data['lexical_lookup'][lem];
 
             // Gather data for selected lemma
             for (key in lemma_data) {
