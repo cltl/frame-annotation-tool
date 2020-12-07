@@ -27,7 +27,7 @@ $(function() {
     $(document).on('click', 'span.markable', function() {
         // Get all tokens with same term id
         var term_selector = $(this).attr('term-selector');
-        var parent_selector = $(this).attr('term-selector');
+        var parent_selector = $(this).attr('parent-selector');
 
         var t_selector = '[term-selector="' + term_selector + '"]';
         var p_selector = '[parent-selector="' + parent_selector + '"]';
@@ -715,10 +715,9 @@ function validateCorrection() {
     var correction_subdiv_head = -1;
     var correction_subdiv_vali = true;
 
-    var parent_term = $.unique($('.marked').not('.annotated-depends')
-                            .not('.structured-data').map(function() {
-                            return $(this).attr('parent-selector').split('.')[2];
-                        }).get())[0];
+    var parent_term = $.unique($('.marked').not('.annotated-depends').not('.structured-data').map(function() {
+                            return $(this).attr('parent-selector');
+                       }).get())[0];
 
     if (mcn_type == '3') {
         for (var i in correction_subdivisions) {
@@ -983,7 +982,6 @@ var activatePredicateRightPanel = function(theId) {
 var activateReferent = function(elem) {
     var ref_uri = elem.data('ref');
     $('.structured-data').removeClass('marked');
-    console.log($('[data-uri="' + ref_uri + '"]'));
     $('[data-uri="' + ref_uri + '"]').addClass('marked');
 }
 
