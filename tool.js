@@ -1389,11 +1389,12 @@ app.get('/incident_documents', isAuthenticated, function(req, res) {
 // Endpoint to load an incident
 app.get('/load_document', isAuthenticated, function(req, res) {
     // Check if incident is provided
-    if (!req.query['doc']) {
+    if (!req.query['inc'] || !req.query['doc']) {
         res.sendStatus(400);
     }
 
     // Get naf files using parameters
+    var inc = req.query['inc'];
     var doc = req.query['doc'];
 
     var locked = false;
@@ -1401,11 +1402,11 @@ app.get('/load_document', isAuthenticated, function(req, res) {
     var now = date.getTime();
 
     // Check if incident user tries to load locked document
-    if (doc in LockedIncidents) {
-        // Check if doc is locked by user
-        if (LockedIncidents[doc].user != req.user.user) {
+    if (inc in LockedIncidents) {
+        // Check if doc is locked by this user
+        if (LockedIncidents[inc].user != req.user.user) {
             // Check if lock time already expired
-            var lock_time = parseInt(LockedIncidents[doc].time);
+            var lock_time = parseInt(LockedIncidents[inc].time);
             if (now - lock_time < LOCK_TIME * 60000) {
                 locked = true;
             }
@@ -1421,8 +1422,7 @@ app.get('/load_document', isAuthenticated, function(req, res) {
         });
 
         // Lock new incident
-        LockedIncidents[doc] = { 'user': req.user.user, 'time': now }
-        var naf_files = inc2lang2doc[doc];
+        LockedIncidents[inc] = { 'user': req.user.user, 'time': now };
 
         // Load NAF files and return
         loadNAFFile(doc, true, true, function(data) {
