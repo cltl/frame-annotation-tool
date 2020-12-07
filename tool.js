@@ -485,6 +485,8 @@ function readCoreferencesLayer(coref_layer) {
  * @param {string}      doc_name    The name of the NAF document
  */
 function readNAFFile(json_data, doc_name) {
+    var source = json_data['NAF']['nafHeader']['public']['attr']['uri'];
+
     // Get token layer and convert to formatted data
     var token_layer = json_data['NAF']['text']['wf'];
     var token_data = readTokenLayer(token_layer);
@@ -506,9 +508,9 @@ function readNAFFile(json_data, doc_name) {
     var predicates = readSRLLayer(srl_layer);
     var coreferences = readCoreferencesLayer(coref_layer);
 
-    return { 'name': doc_name, 'title': term_info[0], 'body': term_info[1],
-             'frames': predicates[0], 'frame_elements': predicates[1],
-             'coreferences': coreferences }
+    return { 'name': doc_name, 'source': source, 'title': term_info[0],
+             'body': term_info[1], 'frames': predicates[0],
+             'frame_elements': predicates[1], 'coreferences': coreferences }
 }
 
 /**
@@ -1391,6 +1393,7 @@ app.get('/load_document', isAuthenticated, function(req, res) {
     // Check if incident is provided
     if (!req.query['inc'] || !req.query['doc']) {
         res.sendStatus(400);
+        return
     }
 
     // Get naf files using parameters

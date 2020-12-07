@@ -401,7 +401,7 @@ function loadIncident() {
         restoreDefaults();
         clearSelection();
 
-        loadNAFFile(lan + '/' + doc, function(result) {
+        loadNAFFile(inc, lan + '/' + doc, function(result) {
             if (result != 0) {
                 renderDocument(result);
 
@@ -524,7 +524,6 @@ function renderDocument(doc_data) {
     // Extract necessary data
     var doc_id = doc_data['name']
     var source = doc_data['source'];
-    var source_type = doc_data['sourcetype'];
     var doc_annotations = doc_data['annotations'];
     var doc_references = doc_data['references'];
 
@@ -540,7 +539,7 @@ function renderDocument(doc_data) {
 
     var result = '<div class="panel panel-default" id="' + doc_id + '">';
     result += '<div class="panel-heading"><h4 class="document-title">' + title_render; 
-    result += '(' + source_type + ' RT; <a href="' + source + '">' + source + '</a>)';
+    result += '(<a href="' + source + '">source</a>)';
     result += '</h4></div>';
 
     // Render body
@@ -644,8 +643,8 @@ function printMessage(message, type) {
 // RETRIEVE UTILS ======================
 // =====================================
 
-function loadNAFFile(document, callback) {
-    var get_data = { 'doc': document };
+function loadNAFFile(incident, document, callback) {
+    var get_data = { 'inc': incident, 'doc': document };
     
     $.get('/load_document', get_data, function(result, status) {
         callback(result['naf']);
