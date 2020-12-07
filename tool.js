@@ -75,6 +75,7 @@ const inc2str_file = 'data/DFNDataReleases/structured/inc2str_index.json';
 const type2inc_file = 'data/DFNDataReleases/structured/type2inc_index.json';
 const proj2inc_file = 'data/DFNDataReleases/structured/proj2inc_index.json';
 
+const pos_info_file = 'data/DFNDataReleases/lexical_data/part_of_speech/ud_pos_to_fn_pos.json'
 const frame_info_file = 'data/DFNDataReleases/lexical_data/lexicons/frame_to_info.json';
 const LL_DIR = 'data/DFNDataReleases/lexical_data/typicality/lexical_lookup/';
 
@@ -137,6 +138,12 @@ fs.readFile(frame_info_file, 'utf8', function (err, data){
     if (err) throw err; // we'll not consider error handling for now
     allFramesInfo = JSON.parse(data);
 });
+
+fs.readFile(pos_info_file, 'utf8', function (err, data){
+    if (err) throw err; // we'll not consider error handling for now
+    posInfo = JSON.parse(data);
+});
+
 //#endregion
 
 // =====================================
@@ -660,6 +667,7 @@ function addCompoundEntry(json_data, compound_data) {
                 var subterm = compound_data['subterms'][j];
                 var subterm_id = compound_data['target_id'] + '.c' + j;
                 var subtoken_id = token_id + '.sub' + j;
+                
 
                 var component_entry = { 'attr': { 'id': subterm_id,
                                                   'pos': subterm['pos'],
@@ -685,12 +693,12 @@ function updateCompoundTokens(json_data, target_token_id, compound_data) {
         var token_id = token['attr']['id'];
 
         if (token_id == target_token_id) {
-            var offset = token['attr']['offset'];
+            var offset = parseInt(token['attr']['offset']);
 
             token_layer[i]['subtoken'] = [];
 
             for (var j in compound_data['subterms']) {
-                var subterm = compound_data['subterms'];
+                var subterm = compound_data['subterms'][j];
                 var subterm_length = subterm['length'];
                 var subterm_cdata = subterm['cdata'];
                 var subtoken_id = token_id + '.sub' + j;
@@ -1290,52 +1298,47 @@ var saveNAF = function(file_name, json_data, callback) {
 // =====================================
 // QUERY ENDPOINTS =====================
 // =====================================
+// TODO: Validate all data is provided in request
 app.post('/store_annotation', isAuthenticated, function(req, res) {
     var user = req.user.user;
     var login_time = req.session.visited;
 
-    console.log('Storing annotation from: ' + user);
+    if (req.body['lan'] == 'None' || req.body['doc'] == 'None' ||
+        req.body['tid'] == 'None' || req.body['tda'] == 'None') {
+        res.sendStatus(400);
+        return
+    }
 
-    var document_id = req.body.doc_id;
-    var task_id = parseInt(req.body.task_id);
-    var task_data = req.body.task_data;
+    var lan = req.body['lan'];
+    var doc = req.body['doc'];
+    var tid = parseInt(req.body['tid']);
+    var tda = req.body['tda'];
 
     // Load NAF file for editing
-    loadNAFFile(document_id, false, function(json_data) {
-        var language = document_id.split('/')[0];
-        var title = document_id.split('/')[1];
-        var annotation_dir = NAF_DIR + language + '/';
-        var annotated_file_path = annotation_dir + title + ".naf";
-
-        if (task_id == 1) {
-            json_data = handleMarkableCorrection(json_data, task_data);
-        } else if (task_id == 2) {
-            json_data = handleFrameAnnotation(json_data, task_data, req.sessionID);
+    loadNAFFile(lan + '/' + doc, false, true, function(json_data) {
+        if (tid == 1) {
+            json_data = handleMarkableCorrection(json_data, tda);
+        } else if (tid == 2) {
+            json_data = handleFrameAnnotation(json_data, tda, req.sessionID);
             json_data = saveSessionInfo(json_data, req.sessionID, user, login_time);
-        } else if (task_id == 3) {
-            json_data = handleFrameElementAnnotation(json_data, task_data, req.sessionID);
+        } else if (tid == 3) {
+            json_data = handleFrameElementAnnotation(json_data, tda, req.sessionID);
             json_data = saveSessionInfo(json_data, req.sessionID, user, login_time);
-        } else if (task_id == 4) {
-            json_data = handleCoreferenceAnnotation(json_data, task_data);
+        } else if (tid == 4) {
+            json_data = handleCoreferenceAnnotation(json_data, tda);
         } else {
             // TODO: Handle invalid task
         }
 
-        mkdirp(annotation_dir, function(error) {
+        saveNAF(NAF_DIR + lan + '/' + doc + '.naf', json_data, function(error) {
             if (error) {
-                console.error('Error while creating annotation directory:\n' + error);
+                console.error('Error while saving NAF: ' + error);
+                res.sendStatus(400).json({ "error": error });
             } else {
-                saveNAF(annotated_file_path, json_data, function(error) {
-                    if (error) {
-                        console.error('Error while saving NAF: ' + error);
-                        res.sendStatus(400).json({ "error": error });
-                    } else {
-                        console.log("Successfully saved annotation");
-                        res.sendStatus(200);
-                    }
-                });
+                console.log("Successfully saved annotation");
+                res.sendStatus(200);
             }
-        })
+        });
     });
 });
 
@@ -1511,6 +1514,10 @@ app.get('/get_frame_elements', isAuthenticated, function(req, res) {
             res.send(result);
         });
     }
+});
+
+app.get('/pos_info', isAuthenticated, function(req, res) {
+    res.send(Object.keys(posInfo))
 });
 
 // TODO: move to prepare annotations

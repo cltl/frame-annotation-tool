@@ -1,5 +1,6 @@
 var WDT_PREFIX = 'http://wikidata.org/wiki/';
 
+pos_options = ''
 annotations = {};
 referents = [];
 
@@ -15,6 +16,12 @@ noFrameType = 'NO-FRAME';
 $(function() {
     $('#annotation-controls').hide();
     $('#content-container').hide();
+
+    $.get('/pos_info', function(result) {
+        for (var i in result) {
+            pos_options += '<option value="' + result[i] + '">' + result[i] + '</option>';
+        }
+    });
 
     // On click markable
     $(document).on('click', 'span.markable', function() {
@@ -162,15 +169,8 @@ function hexToRGB(color) {
 function getSelected() {
     return $.unique($('.marked').not('.annotated-depends')
         .not('.structured-data').map(function() {
-        return $(this).attr('term-selector').split('.')[2];
+        return $(this).attr('term-selector');
     }).get());
-}
-
-function getDocId() {
-    return $.unique($('.marked').not('.annotated-depends')
-        .not('.structured-data').map(function() {
-        return $(this).attr('term-selector').split('.')[0].replace(/_/g, ' ');
-    }).get())[0];
 }
 
 function getLemma() {
@@ -333,8 +333,9 @@ function updateCPDSubdivide() {
 
             token = '<span id=' + id + '_t>' + token + '</span>';
             var lem_input = '<input id=' + id + '_l type="text" class="w-100">';
-            var pos_input = '<input id=' + id + '_p type="text" class="w-100">';
+            var pos_input = '<select id=' + id + '_p type="text" class="w-100">' + pos_options + '</select>';
             var hea_input = '<input id=' + id + '_h type="radio" name="head">';
+
             $('#cpd-subdivisions').append('<tr><td>' + token + '</td>' +
                                               '<td>' + lem_input + '</td>' +
                                               '<td>' + pos_input + '</td>' +
@@ -503,8 +504,8 @@ function saveChanges() {
 function renderToken(term, term_id_pre) {
     if (term.text == '\n') return '<br/>';
     
-    var t_select = term_id_pre + '.' + term.t_select;
-    var p_select = term_id_pre + '.' + term.p_select;
+    var t_select = term.t_select;
+    var p_select = term.p_select;
     return '<span class="markable" lemma="' + term.lemma + '" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span> ';
 }
 
@@ -803,12 +804,9 @@ function validateCorrection() {
 
             return[true, task_data];
         } else {
-            var term_id_split = selected[0].split('');
-            var term_id = 't' + term_id_split[term_id_split.length - 1];
-
             var task_data = { 'mcn_task': correction_task,
                               'mcn_type': correction_type,
-                              'target_id': term_id,
+                              'target_id': selected[0],
                               'head': correction_subdiv_head,
                               'subterms': correction_subdiv_props };
 
@@ -948,8 +946,9 @@ var validateStructuredData = function() {
 // =====================================
 
 function storeAndReload(task_data) {
-    var doc_id = getDocId();
-    var request_data = { 'doc_id': doc_id, 'task_id': current_task, 'task_data': task_data };
+    var lan = $('#ic-lan-select').val();
+    var doc = $('#ic-doc-select').val();
+    var request_data = { 'lan': lan, 'doc': doc, 'tid': current_task, 'tda': task_data };
 
     $.post('/store_annotation', request_data).done(function(result) {
         printMessage('Successfully saved annotations', 'success');
