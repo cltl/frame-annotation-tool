@@ -1478,7 +1478,8 @@ app.get('/frames', isAuthenticated, function(req, res) {
                     var lemma_frames = [];
                     for (frame in lemma_data[key]) {
                         var cur_frame = lemma_data[key][frame];
-                        var entry = { 'label': cur_frame[1], 'value': cur_frame[2] };
+                        var frame_info = allFramesInfo[cur_frame[2]];
+                        var entry = { 'label': cur_frame[1], 'value': cur_frame[2], 'framenet': frame_info['framenet_url'], 'definition': frame_info['definition'] };
                         occupied_frames.push(cur_frame[2]);
                         lemma_frames.push(entry);
                     }
@@ -1494,7 +1495,8 @@ app.get('/frames', isAuthenticated, function(req, res) {
         for (frame in ordered) {
             var cur_frame = ordered[frame];
             if (!occupied_frames.includes(cur_frame[1])) {
-                var entry = { 'label': cur_frame[1], 'value': cur_frame[2] };
+                var frame_info = allFramesInfo[cur_frame[2]];
+                var entry = { 'label': cur_frame[1], 'value': cur_frame[2], 'framenet': frame_info['framenet_url'], 'definition': frame_info['definition'] };
                 result['Other'].push(entry)
             }
         }

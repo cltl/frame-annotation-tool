@@ -60,25 +60,9 @@ span.info-marked {
 }
 
 /* Info panels */
-.info-panel-0 {
+.info-panel {
     margin-bottom: 10px;
     background: #EBF5FB;
-}
-
-.info-panel-1 {
-    background: #EBFBEC;
-}
-
-.info-panel-2 {
-    background: #fbf7eb;
-}
-
-.info-panel-3 {
-    background: #EBF5FB;
-}
-
-.info-panel-4 {
-    background: #F4ECF7;
 }
 
 select {

@@ -178,11 +178,17 @@
                 <!-- Text Panel -->
                 <div id="doc-container" style='padding: 0' class="col-sm-9 pr-3"></div>
 
-                <!-- Information Panel -->
+                <!-- Information Panels -->
                 <div id="inf-container" style='padding: 0' class="col-sm-3">
-
+                    
                     <!-- Structured Data -->
-                    <div id="mcn-cpd-create" class="info-panel-0">
+                    <div id="ip-sde" class='info-panel'>
+                        <h4>Structured Data</h4>
+                        <div id="ip-sdi"></div>
+                    </div>
+
+                    <!-- Compound Creation -->
+                    <div id="ip-mcn" class='info-panel'>
                         <h4>Create Compound</h4>
                         <table id="cpd-subdivisions" class="table-condensed">
                             <tr>
@@ -193,23 +199,18 @@
                             </tr>
                         </table>
                     </div>
-                    
-                    <div class="info-panel-0">
-                        <h4>Structured Data</h4>
-                        <div id="ip-sdi"></div>
-                    </div>
 
                     <!-- Chosen Frame Information -->
-                    <div class="info-panel-1">
-                        <h4>Chosen Frame Element</h4>
+                    <div id="ip-fan" class='info-panel'>
+                        <h4>Chosen Frame</h4>
                         <label>Label: </label> <span id="chosenFrameLabel"></span><br />
                         <label>Definition: </label> <span id="chosenFrameDef"></span><br />
                         <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenFramePrem"></a><br />
                         <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenFrameFM"></a><br />
                     </div>
 
-                    <!-- Chooen Frame Element Information -->
-                    <div class="info-panel-2">
+                    <!-- Chosen Frame Element Information -->
+                    <div id="ip-fea" class='info-panel'>
                         <h4>Chosen Frame Element</h4>
                         <label>Label: </label> <span id="chosenRoleLabel"></span><br />
                         <label>Definition: </label> <span id="chosenRoleDef"></span><br />
@@ -218,7 +219,7 @@
                     </div>
 
                     <!-- Selected Predicates Information -->
-                    <div class="info-panel-3">
+                    <div id="ip-pre" class='info-panel'>
                         <h4>Selected predicate</h4>
                         <label>Frame type:</label> <span id="activeFrame"></span><br/>
                         <label>Predicate ID:</label> <span id="activePredicate">/</span><br/>
@@ -234,11 +235,6 @@
                         </table>
                     </div>
 
-                    <!-- Annotations Information -->
-                    <div class="info-panel-4">
-                        <h4>SRL annotations</h4>
-                        <div id="trails"></div>
-                    </div>
                 </div>
             </div>
         </div>
