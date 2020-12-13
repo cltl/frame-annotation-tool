@@ -75,7 +75,7 @@ const inc2str_file = 'data/DFNDataReleases/structured/inc2str_index.json';
 const type2inc_file = 'data/DFNDataReleases/structured/type2inc_index.json';
 const proj2inc_file = 'data/DFNDataReleases/structured/proj2inc_index.json';
 
-const pos_info_file = 'data/DFNDataReleases/lexical_data/part_of_speech/ud_pos_to_fn_pos.json'
+const pos_info_file = 'data/DFNDataReleases/lexical_data/part_of_speech/part_of_speech_ud_info.json'
 const frame_info_file = 'data/DFNDataReleases/lexical_data/lexicons/frame_to_info.json';
 const LL_DIR = 'data/DFNDataReleases/lexical_data/typicality/lexical_lookup/';
 
