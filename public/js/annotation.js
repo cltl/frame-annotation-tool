@@ -92,6 +92,8 @@ $(function() {
                         $(t_selector).toggleClass('marked');
                         predicate_selected = true;
 
+                        activatePredicate(term_selector);
+
                         var frame = annotations['fan'][term_selector]['premon'];
 
                         loadRoles(frame, function(data) {
@@ -105,6 +107,8 @@ $(function() {
                 if (is_frame) {
                     $(t_selector).toggleClass('marked');
                     predicate_selected = true;
+
+                    activatePredicate(term_selector);
 
                     var frame = annotations['fan'][term_selector]['premon'];
 
@@ -432,6 +436,10 @@ function loadIncident() {
 
         loadNAFFile(inc, lan + '/' + doc, function(result) {
             if (result != 0) {
+                annotations['fan'] = result['frames'];
+                annotations['fea'] = result['frame_elements'];
+                annotations['sdr'] = result['coreferences'];
+
                 renderDocument(result);
 
                 loadStructuredData(inc, function(data) {
@@ -561,10 +569,6 @@ function renderDocument(doc_data) {
     // Extract necessary data
     var doc_id = doc_data['name']
     var source = doc_data['source'];
-
-    annotations['fan'] = doc_data['frames'];
-    annotations['fea'] = doc_data['frame_elements'];
-    annotations['sdr'] = doc_data['coreferences'];
 
     // Render title
     var title_tokens = doc_data['title'];
@@ -1002,6 +1006,8 @@ var storeStructuredData = function(data) {
 // =====================================
 
 function activatePredicate(token_id) {
+    clearActiveRoleTable();
+
     // Get information from annotation
     var frame = annotations['fan'][token_id]['premon'] || noFrameType;
     var predicate_id = annotations['fan'][token_id]['predicate'];
@@ -1010,52 +1016,62 @@ function activatePredicate(token_id) {
     $('#activeFrame').text(frame);
     $('#activePredicate').text(predicate_id);
 
+    var an_un = [];
     for (var i in annotations['fea']['unexpressed']) {
         var frame_element = annotations['fea']['unexpressed'][i];
 
         if (frame_element['predicate'] == predicate_id) {
-            // Show in info panel
+            an_un.push(frame_element['premon']);
         }
     }
-
+    
+    var an_ex = {};
     for (var i in annotations['fea']) {
         if (i != 'unexpressed') {
             var frame_element = annotations['fea'][i];
 
+
             if (frame_element['predicate'] == predicate_id) {
-                // Show in info panel
+                an_ex[frame_element['premon']] = i;
             }
         }
     }
 
-    // $.get('/get_roles', { 'docid': document_id, 'prid': predicate_id }, function(data, status) {
-    //     for (var element in data) {
-    //         var bg_color = data[element]['color'];
-    //         var fg_color = '#000000';
+    loadRoles(frame, function(result) {
+        activateRoles(result, 'Core', an_ex, an_un, true);
+        activateRoles(result, 'Peripheral', an_ex, an_un, false);
+        activateRoles(result, 'Extra-thematic', an_ex, an_un, false);
+        activateRoles(result, 'Core-unexpressed', an_ex, an_un, false);
+    });
+}
 
-    //         if (contrastRatio(hexToRGB(fg_color), hexToRGB(bg_color)) < 4.5) {
-    //             fg_color = '#FFFFFF';
-    //         }
+function activateRoles(datasource, type, an_ex, an_un, show) {
+    data = datasource[type];
+    for (var i in data) {
+        var annotated = false;
+        var expressed = false;
 
-    //         var new_row = $('<tr style="color: ' + fg_color + '; background: ' + bg_color + '"></tr>');
+        if (an_un.indexOf(data[i]['value']) > -1) {
+            annotated = true;
+        } else if (data[i]['value'] in an_ex) {
+            annotated = true;
+            expressed = true;
 
-    //         if (data[element]['annotated']) {
-    //             for (var index in data[element]['target_ids']) {
-    //                 var token = data[element]['target_ids'][index];
-    //                 var token_span = selectSpanUniqueID(display_document_id, token);
+            var t_select = an_ex[data[i]['value']];
 
-    //                 token_span.attr('style', 'color: ' + fg_color + '; background: ' + bg_color);
-    //             }
-    //         }
+            $('[term-selector=' + t_select + ']').addClass('marked');
+        }
+        
+        if (annotated || show) {
+            var new_row = $('<tr></tr>');
+            new_row.append('<td>' + data[i]['label'] + '</td>');
+            new_row.append('<td>' + type + '</td>');
+            new_row.append('<td>' + annotated + '</td>');
+            new_row.append('<td>' + expressed + '</td>');
 
-    //         new_row.append('<td>' + data[element]['label'] + '</td>');
-    //         new_row.append('<td>' + data[element]['fe_type'] + '</td>');
-    //         new_row.append('<td>' + data[element]['annotated'] + '</td>');
-    //         new_row.append('<td>' + data[element]['expressed'] + '</td>');
-
-    //         $('#selectedPredicateRoleInfo').append(new_row);
-    //     }
-    // });
+            $('#selectedPredicateRoleInfo').append(new_row);
+        }
+    }
 }
 
 var updateChosenFrameInfo = function() {
