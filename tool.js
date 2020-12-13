@@ -14,8 +14,6 @@ var xmlParser = require('fast-xml-parser');
 var jsonParser = require("fast-xml-parser").j2xParser;
 var Libxml = require('node-libxml');
 var morgan = require('morgan');
-// var glob = require('glob');
-var mkdirp = require('mkdirp');
 var _ = require('underscore');
 
 var app = express();
@@ -57,14 +55,14 @@ app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
 
 const LOCK_TIME = 20 // Time in minutes
-const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
-                            '#402310', '#7f4400', '#e5b073', '#8c7000',
-                            '#ffd940', '#eeff00', '#64664d', '#2a4000',
-                            '#86b32d', '#d6f2b6', '#20f200', '#00660e',
-                            '#7ca692', '#00cc88', '#00e2f2', '#00474d',
-                            '#36a3d9', '#397ee6', '#26364d', '#acc3e6',
-                            '#2d3eb3', '#1f00e6', '#311659', '#b836d9',
-                            '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
+// const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
+//                             '#402310', '#7f4400', '#e5b073', '#8c7000',
+//                             '#ffd940', '#eeff00', '#64664d', '#2a4000',
+//                             '#86b32d', '#d6f2b6', '#20f200', '#00660e',
+//                             '#7ca692', '#00cc88', '#00e2f2', '#00474d',
+//                             '#36a3d9', '#397ee6', '#26364d', '#acc3e6',
+//                             '#2d3eb3', '#1f00e6', '#311659', '#b836d9',
+//                             '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
 
 // Settings
 const GUIDELINESVERSION = 'v1'
@@ -213,19 +211,6 @@ function isAuthenticated(req, res, next) {
 // =====================================
 //#region Helper utilities
 /**
- * Returns a sorted array of objects based on the sorting key
- * @param {array}       objects     Array of objects to be sorted
- * @param {string}      key         Key of objects to sort on
- */
-function sortObjectsByKey(objects, key) {
-    return objects.sort(function(a, b) {
-        var a_key = a[key];
-        var b_key = b[key];
-        return ((a_key < b_key) ? -1 : ((a_key > b_key) ? 1 : 0));
-    });
-}
-
-/**
  * Returns true if date_b is more recent than date_a
  * @param {string}      date_a      First date to check
  * @param {string}      date_b      Second date to check
@@ -295,8 +280,6 @@ function readTokenLayer(token_layer) {
 }
 
 /**
- * FIXME: Handle multiword and compound deprection
- * 
  * Convert raw NAF term layer object to a formated json object
  * @param {object}      term_layer  The raw NAF object to be converted
  * @param {object}      token_data  Information of all tokens in token layer
@@ -340,7 +323,7 @@ function readTermLayer(term_layer, token_data) {
 
                 var target_subtoken_id = sub_term['span']['target']['attr']['id'];
                 var target_sub_token = target_token['sub'][target_subtoken_id];
-                var sub_term_data = { 'text': target_sub_token['text'], // FIXME: Text based on len & offset
+                var sub_term_data = { 'text': target_sub_token['text'],
                                       'lemma': sub_term['attr']['lemma'],
                                       't_select': sub_term_id,
                                       'p_select': term_id,
@@ -1096,117 +1079,6 @@ function handleCoreferenceAnnotation(json_data, task_data, session_id) {
 //#endregion
 
 // =====================================
-var getActiveRoleAnnotation = function(annotation_refs, annotation_span, callback) {
-    getMostRecentExternalReference(annotation_refs, function(element_id, referents) {
-        callback(element_id, annotation_span);
-    });
-}
-
-// Get the frame element information for a predicate
-// Parameters: object, string, callback
-var getRolesForPredicate = function(jsonObj, pr_id, callback) {
-    var srl_data = [];
-
-    // Get SRL layer
-    if (jsonObj['NAF']['srl']) srl_data = jsonObj['NAF']['srl']['predicate'];
-
-    // Return empty if SRL layer is empty
-    if (!srl_data || srl_data.length == 0) {
-        callback();
-    } else {
-        if (!(Array.isArray(srl_data))) srl_data = [srl_data];
-
-        // Find predicate in SRL where pr_id == the_id
-        for (var i = 0; i < srl_data.length; i++){
-            var cur_pr = srl_data[i];
-            var cur_pr_id = cur_pr['attr']['id'];
-
-            if (cur_pr_id == pr_id) {
-                getMostRecentExternalReference(cur_pr["externalReferences"]["externalRef"], function(frame_id, referents) {
-                    var pr_elements = cur_pr['role'];
-
-                    // Get frame elements frame frame_id
-                    getFrameElements(frame_id, function(frame_elements) {
-                        var core_elements = frame_elements["Core"];
-                        var other_elements = [].concat(frame_elements["Peripheral"], frame_elements["Extra-thematic"], frame_elements["Core-unexpressed"]);
-                        
-                        // Loop core frame elements
-                        if (!pr_elements) {
-                            var result = {};
-                            for (var j = 0; j < core_elements.length; j++) {
-                                var frame_element = core_elements[j];
-                                result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Core", "target_ids": [], "color": CONTRASTING_COLORS[i], "annotated": false, "expressed": false };
-                            }
-
-                            callback(result)
-                        } else {
-                            if (!Array.isArray(pr_elements)) pr_elements = [pr_elements];
-
-                            var result = {};
-
-                            var annotations = {};
-                            for (var j = 0; j < pr_elements.length; j++) {
-                                var annotation_refs = pr_elements[j]["externalReferences"]["externalRef"];
-                                var annotation_span = pr_elements[j]["span"]["target"];
-                                
-                                if (pr_elements[j]["span"] != "") {
-                                    if (!Array.isArray(annotation_span)) annotation_span = [annotation_span];
-
-                                    for (var l = 0; l < annotation_span.length; l++) {
-                                        annotation_span[l] = annotation_span[l]["attr"]["id"];
-                                    }
-                                } else {
-                                    annotation_span = [];
-                                }
-
-                                getActiveRoleAnnotation(annotation_refs, annotation_span, function(key, value) {
-                                    annotations[key] = value;
-
-                                    if (Object.keys(annotations).length == pr_elements.length) {
-                                        var color_index = 0;
-
-                                        // Loop over core elements
-                                        for (var k = 0; k < core_elements.length; k++) {
-                                            var frame_element = core_elements[k];
-
-                                            var expressed = false;
-                                            var annotated = false;
-                                            var targets = [];
-
-                                            if (Object.keys(annotations).includes(frame_element["value"])) {
-                                                expressed = annotations[frame_element["value"]].length > 0;
-                                                targets = annotations[frame_element["value"]];
-                                                annotated = true;
-                                            }
-
-                                            result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Core", "target_ids": targets, "color": CONTRASTING_COLORS[color_index], "annotated": annotated, "expressed": expressed };
-                                            color_index++;
-                                        }
-
-                                        for (var k = 0; k < other_elements.length; k++) {
-                                            var frame_element = other_elements[k];
-
-                                            if (Object.keys(annotations).includes(frame_element["value"])) {
-                                                var expressed = annotations[frame_element["value"]].length > 0;
-                                                var targets = annotations[frame_element["value"]];
-
-                                                result[frame_element["value"]] = { "label": frame_element["label"], "fe_type": "Other", "target_ids": targets, "color": CONTRASTING_COLORS[color_index], "annotated": true, "expressed": expressed };
-                                                color_index++;
-                                            }
-                                        }
-
-                                        callback(result);
-                                    }
-                                });
-                            }
-                        }
-                    });
-                });
-            }
-        }    
-    }
-}
-
 // Get the frame elements for a specific frame type
 // Parameters: string, callback
 var getFrameElements = function(frame_id, callback) {
