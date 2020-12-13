@@ -61,7 +61,8 @@ $(function() {
                 $(t_selector).toggleClass('marked');
             } else if (is_frame) {
                 clearSelection();
-                activatePredicateFromText($(this));
+                $(t_selector).toggleClass('marked');
+                activatePredicate(term_selector);
             }
 
             var type = $('#ic-typ-select').val();
@@ -91,7 +92,9 @@ $(function() {
                         $(t_selector).toggleClass('marked');
                         predicate_selected = true;
 
-                        loadRoles(function(data) {
+                        var frame = annotations['fan'][term_selector]['premon'];
+
+                        loadRoles(frame, function(data) {
                             renderDropdownWithGroups('#fea-role-select', data,
                                 ['definition', 'framenet'], '-Pick a frame role-');
                         });
@@ -103,7 +106,9 @@ $(function() {
                     $(t_selector).toggleClass('marked');
                     predicate_selected = true;
 
-                    loadRoles(function(data) {
+                    var frame = annotations['fan'][term_selector]['premon'];
+
+                    loadRoles(frame, function(data) {
                         renderDropdownWithGroups('#fea-role-select', data,
                             ['definition', 'framenet'], '-Pick a frame role-');
                     });
@@ -169,9 +174,7 @@ function hexToRGB(color) {
     // Bitshift and mask to get r, g, b values
     var r = (hex >> 16) & 255;
     var g = (hex >> 8) & 255;
-    var b = hex & 255;
-
-    return [r, g, b];
+    var b = hex & 255;frame
 }
 
 function getSelected() {
@@ -534,17 +537,17 @@ function renderToken(term) {
     return '<span class="markable" lemma="' + term.lemma + '" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span> ';
 }
 
-function renderTokens(terms, fan, fea, sdr) {
+function renderTokens(terms) {
     var text = '';
 
     for (var i in terms) {
         var term = terms[i];
 
-        if (term.p_select in fan) {
+        if (term.t_select in annotations['fan']) {
             term.type += ' frame'
-        } else if (term.p_select in fea) {
+        } else if (term.t_select in annotations['fea']) {
             term.type += ' role'
-        } else if (term.p_select in sdr) {
+        } else if (term.t_select in annotations['sdr']) {
             term.type += ' reference'
         }
 
@@ -558,16 +561,17 @@ function renderDocument(doc_data) {
     // Extract necessary data
     var doc_id = doc_data['name']
     var source = doc_data['source'];
-    var fan = doc_data['frames'];
-    var fea = doc_data['frame_elements'];
-    var sdr = doc_data['coreferences'];
+
+    annotations['fan'] = doc_data['frames'];
+    annotations['fea'] = doc_data['frame_elements'];
+    annotations['sdr'] = doc_data['coreferences'];
 
     // Render title
     var title_tokens = doc_data['title'];
     var body_tokens = doc_data['body'];
 
-    title_render = renderTokens(title_tokens, fan, fea, sdr);
-    body_render = renderTokens(body_tokens, fan, fea, sdr);
+    title_render = renderTokens(title_tokens);
+    body_render = renderTokens(body_tokens);
 
     var result = '<div class="panel panel-default" id="' + doc_id + '">';
     result += '<div class="panel-heading"><h4 class="document-title">' + title_render; 
@@ -718,16 +722,12 @@ function loadFrames(type, language, lemma, callback) {
     });
 }
 
-function loadRoles(callback) {
-    if (predicate_selected) {
-        var get_data = { 'frame': $('span[frame].marked').attr('frame') };
+function loadRoles(frame, callback) {
+    var get_data = { 'frame': frame };
 
-        $.get('/get_frame_elements', get_data, function(result, status) {
-            callback(result);
-        });
-    } else {
-        console.warn('Roles could not be loaded: no predicate selected');
-    }
+    $.get('/frame_elements', get_data, function(result, status) {
+        callback(result);
+    });
 }
 
 // =====================================
@@ -901,10 +901,12 @@ function validateRoleAnnotation() {
     if (!(selected.length > 0)) {
         if (!confirm('Are you sure you want to annotate Frame Element as unexpressed?')) {
             return [false, 'Annotation interrupted'];
+        } else {
+            selected = 'unexpressed';
         }
     }
-
-    var pr_id = $('.annotated-depends.marked').attr('predicate');
+    var tid = $('.annotated-depends.marked').attr('term-selector');
+    var pr_id = annotations['fan'][tid]['predicate'];
     
     var task_data = { 'pr_id': pr_id, 'role': role, 'target_ids': selected };
     return [true, task_data];
@@ -999,99 +1001,61 @@ var storeStructuredData = function(data) {
 // UTILS ===============================
 // =====================================
 
-var activatePredicateRightPanel = function(theId) {
-    clearSelection();
-
-    var elems = theId.split('#');
-    var docId = elems[0].replace(/_/g, ' ');
-    var tid = elems[1];
-    activatePredicate(docId, tid);
-}
-
-var activateReferent = function(elem) {
-    var ref_uri = elem.data('ref');
-    $('.structured-data').removeClass('marked');
-    $('[data-uri="' + ref_uri + '"]').addClass('marked');
-}
-
-var activatePredicateFromText = function(elem) {
-    // Get document id and token id
-    var element_id = elem.attr('id');
-    var document_id = element_id.split('.')[0].replace(/_/g, ' ');
-    var token_id = element_id.split('.')[2];
-
-    activatePredicate(document_id, token_id);
-}
-
-var selectSpanUniqueID = function(docId, tid){
-    return $('#doc-container span[id=\"' + unique2tool[docId + '#' + tid] + '\"]');
-}
-
-var activatePredicateById = function(document_id, predicate_id) {
-    for (var token_id in annotations[document_id]['frames']) {
-        if (annotations[document_id]['frames'][token_id]['predicate'] === predicate_id) {
-            activatePredicate(document_id, token_id);
-            break;
-        }
-    }
-}
-
-var activatePredicate = function(document_id, token_id) {
+function activatePredicate(token_id) {
     // Get information from annotation
-    var frame = annotations[document_id]['frames'][token_id]['premon'] || noFrameType;
-    var predicate_id = annotations[document_id]['frames'][token_id]['predicate'];
-    var display_predicate = document_id + '@' + predicate_id;
+    var frame = annotations['fan'][token_id]['premon'] || noFrameType;
+    var predicate_id = annotations['fan'][token_id]['predicate'];
 
     // Set predicate summary
     $('#activeFrame').text(frame);
-    $('#activePredicate').text(display_predicate);
+    $('#activePredicate').text(predicate_id);
 
-    var document_annotations = annotations[document_id];
-    var display_document_id = document_id.replace(/ /g, '_');
+    for (var i in annotations['fea']['unexpressed']) {
+        var frame_element = annotations['fea']['unexpressed'][i];
 
-    // Loop over all frame annotations
-    for (var annotation_id in document_annotations['frames']) {
-        var annotation = document_annotations['frames'][annotation_id];
-
-        // Highlight all spans that need to be highlighted
-        if (annotation['predicate'] == predicate_id) {
-            var predicate_markable = selectSpanUniqueID(display_document_id, annotation_id);
-            predicate_markable.addClass('marked');
-
-            $('span[id="' + display_document_id + '#' + annotation_id + '"]').addClass('info-marked');
+        if (frame_element['predicate'] == predicate_id) {
+            // Show in info panel
         }
     }
 
-    updateRoleDropdown(frame);
+    for (var i in annotations['fea']) {
+        if (i != 'unexpressed') {
+            var frame_element = annotations['fea'][i];
 
-    $.get('/get_roles', { 'docid': document_id, 'prid': predicate_id }, function(data, status) {
-        for (var element in data) {
-            var bg_color = data[element]['color'];
-            var fg_color = '#000000';
-
-            if (contrastRatio(hexToRGB(fg_color), hexToRGB(bg_color)) < 4.5) {
-                fg_color = '#FFFFFF';
+            if (frame_element['predicate'] == predicate_id) {
+                // Show in info panel
             }
-
-            var new_row = $('<tr style="color: ' + fg_color + '; background: ' + bg_color + '"></tr>');
-
-            if (data[element]['annotated']) {
-                for (var index in data[element]['target_ids']) {
-                    var token = data[element]['target_ids'][index];
-                    var token_span = selectSpanUniqueID(display_document_id, token);
-
-                    token_span.attr('style', 'color: ' + fg_color + '; background: ' + bg_color);
-                }
-            }
-
-            new_row.append('<td>' + data[element]['label'] + '</td>');
-            new_row.append('<td>' + data[element]['fe_type'] + '</td>');
-            new_row.append('<td>' + data[element]['annotated'] + '</td>');
-            new_row.append('<td>' + data[element]['expressed'] + '</td>');
-
-            $('#selectedPredicateRoleInfo').append(new_row);
         }
-    });
+    }
+
+    // $.get('/get_roles', { 'docid': document_id, 'prid': predicate_id }, function(data, status) {
+    //     for (var element in data) {
+    //         var bg_color = data[element]['color'];
+    //         var fg_color = '#000000';
+
+    //         if (contrastRatio(hexToRGB(fg_color), hexToRGB(bg_color)) < 4.5) {
+    //             fg_color = '#FFFFFF';
+    //         }
+
+    //         var new_row = $('<tr style="color: ' + fg_color + '; background: ' + bg_color + '"></tr>');
+
+    //         if (data[element]['annotated']) {
+    //             for (var index in data[element]['target_ids']) {
+    //                 var token = data[element]['target_ids'][index];
+    //                 var token_span = selectSpanUniqueID(display_document_id, token);
+
+    //                 token_span.attr('style', 'color: ' + fg_color + '; background: ' + bg_color);
+    //             }
+    //         }
+
+    //         new_row.append('<td>' + data[element]['label'] + '</td>');
+    //         new_row.append('<td>' + data[element]['fe_type'] + '</td>');
+    //         new_row.append('<td>' + data[element]['annotated'] + '</td>');
+    //         new_row.append('<td>' + data[element]['expressed'] + '</td>');
+
+    //         $('#selectedPredicateRoleInfo').append(new_row);
+    //     }
+    // });
 }
 
 var updateChosenFrameInfo = function() {

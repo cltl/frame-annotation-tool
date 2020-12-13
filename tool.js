@@ -383,21 +383,20 @@ function readTermLayer(term_layer, token_data) {
  */
 function readRoleLayer(role_layer) {
     var result = [];
-
     if (!(Array.isArray(role_layer))) role_layer = [role_layer];
 
     // Loop over each frame element for current predicate
-    for (var i in frame_elements) {
-        var frame_element = frame_elements[i];
+    for (var i in role_layer) {
+        var role = role_layer[i];
 
-        var references = frame_element['externalReferences']['externalRef'];
+        var references = role['externalReferences']['externalRef'];
         var reference = getLatestExternalReference(references);
 
-        var frame_element_span = frame_element['span']['target'];
-        if (!(Array.isArray(frame_element_span))) frame_element_span = [frame_element_span];
+        var role_span = role['span']['target'];
+        if (!(Array.isArray(role_span))) role_span = [role_span];
 
         // Store frame element data need in result
-        result.push({ 'reference': reference, 'span': frame_element_span });
+        result.push({ 'reference': reference, 'span': role_span });
     }
 
     return result;
@@ -408,7 +407,7 @@ function readRoleLayer(role_layer) {
  * @param {object}      srl_layer   The raw NAF object to be converted
  */
 function readSRLLayer(srl_layer) {
-    var result = [{}, {}];
+    var result = [{}, { 'unexpressed': [] }];
 
     // Loop over each entry in SRL layer
     for (var i in srl_layer) {
@@ -435,18 +434,21 @@ function readSRLLayer(srl_layer) {
             // Get frame element annotations
             if ('role' in predicate) {
                 var frame_elements = readRoleLayer(predicate['role']);
-
                 // Loop over each frame element
                 for (var j in frame_elements) {
                     var frame_element = frame_elements[j]
                     var reference = frame_element['reference'];
 
                     // Loop over each term in frame element span
-                    for (var k in frame_element['span']) {
-                        var term = frame_element['span'][k];
-                        var term_id = term['attr']['id'];
+                    if (frame_element['span'][0] != undefined) {
+                        for (var k in frame_element['span']) {
+                            var term = frame_element['span'][k];
+                            var term_id = term['attr']['id'];
 
-                        result[1][term_id] = { 'premon': reference, 'predicate': predicate_id };
+                            result[1][term_id] = { 'premon': reference, 'predicate': predicate_id };
+                        }
+                    } else {
+                        result[1]['unexpressed'].push({ 'premon': reference, 'predicate': predicate_id });
                     }
                 }
             }
@@ -859,13 +861,16 @@ function addRoleEntry(json_data, target_id, role_data, session_id) {
         var predicate_id = predicate['attr']['id'];
 
         if (predicate_id == target_id) {
+            if (!('role' in predicate)) {
+                predicate['role'] = [];
+            }
+
             var role_layer = predicate['role'];
             if (!Array.isArray(role_layer)) role_layer = [role_layer];
-
+            
             // Construct role entry
-            var role_id = 'pr' + (role_layer.length + 1).toString();
-            var role_entry = { 'attr': { 'id': role_id,
-                                         'status': 'manual' },
+            var role_id = 'r' + (role_layer.length + 1).toString();
+            var role_entry = { 'attr': { 'id': role_id, 'status': 'manual' },
                                'span': { 'target': [] },
                                'externalReferences': { 'externalRef': [] }};
             
@@ -881,11 +886,11 @@ function addRoleEntry(json_data, target_id, role_data, session_id) {
                                    'timestamp': new Date().toISOString().replace(/\..+/, ''),
                                    'source': session_id,
                                    'reftype': '' }
-            role_entry = addExternalReferences(reference_data)
+            role_entry = addExternalReferences(role_entry, reference_data)
 
             // Store result in json_data
-            srl_layer.push(predicate_entry);
-            json_data['NAF']['srl']['predicate'] = srl_layer;
+            role_layer.push(role_entry);
+            json_data['NAF']['srl']['predicate'][i]['role'] = role_layer;
 
             break;
         }
@@ -1047,14 +1052,13 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
 
 // TODO: Handle frame element update
 function handleFrameElementAnnotation(json_data, task_data, session_id) {
-    if (task_data['target_ids'] == []) {
+    if (task_data['target_ids'] == 'unexpressed') {
         task_data['target_ids'] = ['unexpressed'];
     }
 
     // Create new predicate for each term in span
     for (var i in task_data['target_ids']) {
-        var role_data = { 'role': task_data['role'],
-                          'target_term': task_data['target_ids'][i] };
+        var role_data = { 'role': task_data['role'], 'target_term': task_data['target_ids'][i] };
         json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
     }
 
@@ -1506,7 +1510,7 @@ app.get('/frames', isAuthenticated, function(req, res) {
 });
 
 // Endpoint to get frame elements of a specific frame
-app.get('/get_frame_elements', isAuthenticated, function(req, res) {
+app.get('/frame_elements', isAuthenticated, function(req, res) {
     // Check if frame is provided
     if (!req.query["frame"]) {
         res.sendStatus(400);
@@ -1520,24 +1524,6 @@ app.get('/get_frame_elements', isAuthenticated, function(req, res) {
 
 app.get('/pos_info', isAuthenticated, function(req, res) {
     res.send(Object.keys(posInfo))
-});
-
-// TODO: move to prepare annotations
-// Endpoint to get annotated frame elements
-app.get('/get_roles', isAuthenticated, function(req, res) {
-    if (!req.query['docid'] || !req.query['prid']){
-        res.sendStatus(400);
-    } else {
-        var docid = req.query['docid'];
-
-        loadNAFFile(docid, false, function(rawData){
-            var the_id = req.query['prid'];
-
-            getRolesForPredicate(rawData, the_id, function(roleData) {
-                res.send(roleData);
-            });
-        });
-    }
 });
 
 app.post('/store_structured_data', isAuthenticated, function(req, res) {
