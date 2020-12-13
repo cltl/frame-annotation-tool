@@ -13,6 +13,15 @@ var predicate_selected = false;
 
 noFrameType = 'NO-FRAME';
 
+const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
+                            '#402310', '#7f4400', '#e5b073', '#8c7000',
+                            '#ffd940', '#eeff00', '#64664d', '#2a4000',
+                            '#86b32d', '#d6f2b6', '#20f200', '#00660e',
+                            '#7ca692', '#00cc88', '#00e2f2', '#00474d',
+                            '#36a3d9', '#397ee6', '#26364d', '#acc3e6',
+                            '#2d3eb3', '#1f00e6', '#311659', '#b836d9',
+                            '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
+
 $(function() {
     $('#annotation-controls').hide();
     $('#content-container').hide();
@@ -171,16 +180,14 @@ function contrastRatio(color1, color2) {
     return (luminanace(color1) + 0.05) / (luminanace(color2) + 0.05);
 }
 
-function hexToRGB(color) {
-    color = color.replace('#', '');
-    var hex = parseInt(color, 16);
-
-    // Bitshift and mask to get r, g, b values
-    var r = (hex >> 16) & 255;
-    var g = (hex >> 8) & 255;
-    var b = hex & 255;frame
-}
-
+function hexToRGB(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+     ] : null;
+  }
 function getSelected() {
     return $.unique($('.marked').not('.annotated-depends')
         .not('.structured-data').map(function() {
@@ -226,8 +233,9 @@ function hideInfoPanels() {
 
 function clearSelection() {
     predicate_selected = false;
-    $('span').removeClass('marked');
-    $('a').removeClass('marked');
+    $('.styled').removeAttr('style');
+    $('.styled').removeClass('styled');
+    $('.marked').removeClass('marked');
     $('#mcn-subdivide-input').val('');
     updateCPDSubdivide();    
 
@@ -1038,16 +1046,24 @@ function activatePredicate(token_id) {
     }
 
     loadRoles(frame, function(result) {
-        activateRoles(result, 'Core', an_ex, an_un, true);
-        activateRoles(result, 'Peripheral', an_ex, an_un, false);
-        activateRoles(result, 'Extra-thematic', an_ex, an_un, false);
-        activateRoles(result, 'Core-unexpressed', an_ex, an_un, false);
+        var color_index = 0;
+        color_index = activateRoles(result, 'Core', an_ex, an_un, true, color_index);
+        color_index = activateRoles(result, 'Peripheral', an_ex, an_un, false, color_index);
+        color_index = activateRoles(result, 'Extra-thematic', an_ex, an_un, false, color_index);
+        color_index = activateRoles(result, 'Core-unexpressed', an_ex, an_un, false), color_index;
     });
 }
 
-function activateRoles(datasource, type, an_ex, an_un, show) {
+function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
     data = datasource[type];
     for (var i in data) {
+        var bg_color = CONTRASTING_COLORS[color_index];
+        var fg_color = '#000000';
+
+        if (contrastRatio(hexToRGB(bg_color), hexToRGB(fg_color)) < 5) {
+            fg_color = '#ffffff';
+        }
+
         var annotated = false;
         var expressed = false;
 
@@ -1059,19 +1075,27 @@ function activateRoles(datasource, type, an_ex, an_un, show) {
 
             var t_select = an_ex[data[i]['value']];
 
-            $('[term-selector=' + t_select + ']').addClass('marked');
+            $('[term-selector=' + t_select + ']').addClass('styled');
+            $('[term-selector=' + t_select + ']').css('background-color', bg_color);
+            $('[term-selector=' + t_select + ']').css('color', fg_color);
         }
         
         if (annotated || show) {
             var new_row = $('<tr></tr>');
+            new_row.css('background-color', bg_color);
+            new_row.css('color', fg_color);
             new_row.append('<td>' + data[i]['label'] + '</td>');
             new_row.append('<td>' + type + '</td>');
             new_row.append('<td>' + annotated + '</td>');
             new_row.append('<td>' + expressed + '</td>');
 
             $('#selectedPredicateRoleInfo').append(new_row);
+
+            color_index += 1;
         }
     }
+
+    return color_index
 }
 
 var updateChosenFrameInfo = function() {

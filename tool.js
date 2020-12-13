@@ -55,14 +55,6 @@ app.use('/img', express.static('public/assets/images'));
 app.use('/logs', express.static('logs'));
 
 const LOCK_TIME = 20 // Time in minutes
-// const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
-//                             '#402310', '#7f4400', '#e5b073', '#8c7000',
-//                             '#ffd940', '#eeff00', '#64664d', '#2a4000',
-//                             '#86b32d', '#d6f2b6', '#20f200', '#00660e',
-//                             '#7ca692', '#00cc88', '#00e2f2', '#00474d',
-//                             '#36a3d9', '#397ee6', '#26364d', '#acc3e6',
-//                             '#2d3eb3', '#1f00e6', '#311659', '#b836d9',
-//                             '#d5a3d9', '#644d66', '#80206c', '#f200a2'];
 
 // Settings
 const GUIDELINESVERSION = 'v1'
