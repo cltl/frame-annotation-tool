@@ -180,6 +180,13 @@ app.post('/login', passport.authenticate('local', { failureRedirect: '/' }), fun
 });
  
 app.get('/logout', function(req, res) {
+    // Unclock any locked incident by user
+    Object.keys(LockedIncidents).some(function(k) {
+        if (LockedIncidents[k].user === req.user.user) {
+            delete LockedIncidents[k];
+        }
+    });
+
     req.session.destroy();
     req.logout();
 
