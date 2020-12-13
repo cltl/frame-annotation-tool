@@ -760,7 +760,7 @@ function validateCorrection() {
                             return $(this).attr('parent-selector');
                        }).get())[0];
 
-    if (mcn_type == '3') {
+    if (correction_task == '1' && mcn_type == '3') {
         for (var i in correction_subdivisions) {
             var id = 'subdiv_' + i;
             var cdata = $('#' + id + '_t').html();
