@@ -959,9 +959,11 @@ var validateStructuredData = function() {
             return [false, 'Select a relation type'];
         }
 
-        if (!(wdt_uri.startsWith('http://www.wikidata.org/entity'))) {
-            return [false, 'Wikdidata URI must start with http://www.wikidata.org/entity']
+        if (!(wdt_uri.startsWith('Q'))) {
+            return [false, 'Wikdidata identifier must start with Q']
         }
+
+        wdt_uri = 'http://www.wikidata.org/entity/' + wdt_uri;
 
         if (label == '') {
             return [false, 'No label specified'];
