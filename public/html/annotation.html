@@ -40,10 +40,9 @@
                     <select class="col-md-2 mr-4" id="ic-lan-select" onchange="updateIncidentSelection(3)">
                         <option value="None">-Select a language-</option>
                     </select>
-                    <select class="col-md-2 mr-4" id="ic-doc-select">
+                    <select class="col-md-2 mr-4" id="ic-doc-select" onchange="loadIncident()">
                         <option value="None">-Select a document-</option>
                     </select>
-                    <button class="btn btn-primary btn-ann" onclick="loadIncident()">Load incident</button><br/>
                 </div>
                 <div class="col-sm-2"><label id="message"></label></div>
             </div>
