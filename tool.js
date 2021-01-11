@@ -175,7 +175,7 @@ passport.deserializeUser(function(user, done) {
 });
 
 app.post('/login', passport.authenticate('local', { failureRedirect: '/' }), function(req, res) {
-    req.session.visited = new Date().toISOString().replace(/\..+/, '');
+    req.session.visited = new Date().string
     res.sendStatus(200);
 });
  
@@ -220,6 +220,17 @@ function moreRecent(date_a, date_b) {
     else
         return new Date(date_a) <= new Date(date_b);
 }
+
+Date.prototype.toNAFUTCString = function() {
+    var Y = this.getFullYear();
+    var m = this.getMonth() + 1;
+    var d = this.getDate();
+    var H = this.getHours();
+    var M = this.getMinutes();
+    var S = this.getSeconds();
+  
+    return [Y, '-', m, '-', d, 'T', H, ':', M, ':', S, 'UTC'].join('');
+  };
 //#endregion
 
 // =====================================
@@ -787,7 +798,7 @@ function addPredicateEntry(json_data, predicate_data, session_id) {
     var target_data = { 'attr': { 'id': predicate_data['target_term'] }};
     predicate_entry['span']['target'].push(target_data);
 
-    var timestamp = new Date().toISOString().replace(/\..+/, '');
+    var timestamp = new Date().toNAFUTCString();
     
     // Construct external references layer in predicate
     var reference_data = { 'reference': predicate_data['frame'],
@@ -865,7 +876,7 @@ function addRoleEntry(json_data, target_id, role_data, session_id) {
             // Construct external references layer in role
             var reference_data = { 'reference': role_data['role'],
                                    'resource': 'http://premon.fbk.eu/premon/fn17',
-                                   'timestamp': new Date().toISOString().replace(/\..+/, ''),
+                                   'timestamp': new Date().toNAFUTCString(),
                                    'source': session_id,
                                    'reftype': '' }
             role_entry = addExternalReferences(role_entry, reference_data)
@@ -935,7 +946,7 @@ function addCoreferenceEntry(json_data, coreference_data, session_id) {
     // Construct external references layer in coreference
     var reference_data = { 'reference': coreference_data['reference'],
                            'resource': 'http://www.wikidata.org',
-                           'timestamp': new Date().toISOString().replace(/\..+/, ''),
+                           'timestamp': new Date().toNAFUTCString(),
                            'source': session_id,
                            'reftype': coreference_data['type'] };
     correference_entry = addExternalReferences(correference_entry, reference_data);
@@ -998,7 +1009,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
     var srl_layer = json_data['NAF']['srl']['predicate'];
     if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
-    var timestamp = new Date().toISOString().replace(/\..+/, '');
+    var timestamp = new Date().toNAFUTCString();
 
     // Check for span overlap
     for (var i in srl_layer) {
@@ -1113,7 +1124,7 @@ var getFrameElements = function(frame_id, callback) {
 
 // TODO: Refactor needed
 var saveSessionInfo = function(jsonData, sessionId, annotator, loginTime){
-    var actionTime=new Date().toISOString().replace(/\..+/, '');
+    var actionTime=new Date().toNAFUTCString();
     var nafHeaders=jsonData['NAF']['nafHeader'];
     var lps=nafHeaders['linguisticProcessors'];
     for (var l=0; l<lps.length; l++){
