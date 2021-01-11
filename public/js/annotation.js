@@ -280,7 +280,6 @@ function restoreDefaults() {
 function updateTask() {
     current_task = $('#annotation-task-selection').val();
 
-    // Remove bold annotation
     $('.annotated').removeClass('annotated');
     $('.annotated-depends').removeClass('annotated-depends');
 
@@ -293,7 +292,6 @@ function updateTask() {
         $('.mcn-add-selectors').hide();
         $('.mcn-add-selectors2').hide();
         $('.mcn-add-selectors3').hide();
-        $('#ip-mcn').show();
 
         $('span[multiword]').addClass('annotated');
         $('span[compound]').addClass('annotated');
@@ -317,10 +315,6 @@ function updateTask() {
         $('.sde-rem-selectors').hide();
         $('.sde-add-selectors').hide();
     }
-
-    // clearChosenFrameInfo();
-    // clearChosenRoleInfo();
-    // clearRoleDropdown();
 }
 
 function updateSDETask() {
@@ -338,6 +332,7 @@ function updateSDETask() {
 function updateMCNTask() {
     clearSelection();
     mcn_task = $("#mcn-task-select").val();
+    $('#ip-mcn').hide();
 
     if (mcn_task == '1') {
         $('.mcn-add-selectors').show();
@@ -353,9 +348,11 @@ function updateMCNType() {
     mcn_type = $("#mcn-type-select").val();
 
     if (mcn_type == '1' || mcn_type == '2') {
+        $('#ip-mcn').hide();
         $('.mcn-add-selectors2').show();
         $('.mcn-add-selectors3').hide();
     } else if(mcn_type == '3') {
+        $('#ip-mcn').show();
         $('.mcn-add-selectors2').hide();
         $('.mcn-add-selectors3').show();
     }
@@ -371,12 +368,12 @@ function updateCPDSubdivide() {
         if (token != '') {
             var id = 'subdiv_' + i;
 
-            token = '<span id=' + id + '_t>' + token + '</span>';
-            var lem_input = '<input id=' + id + '_l type="text" class="w-100">';
+            token_sp = '<span id=' + id + '_t>' + token + '</span>';
+            var lem_input = '<input id=' + id + '_l type="text" class="w-100", value="' + token + '">';
             var pos_input = '<select id=' + id + '_p type="text" class="w-100">' + pos_options + '</select>';
             var hea_input = '<input id=' + id + '_h type="radio" name="head">';
 
-            $('#cpd-subdivisions').append('<tr><td>' + token + '</td>' +
+            $('#cpd-subdivisions').append('<tr><td>' + token_sp + '</td>' +
                                               '<td>' + lem_input + '</td>' +
                                               '<td>' + pos_input + '</td>' +
                                               '<td>' + hea_input + '</td></tr>');
