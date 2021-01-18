@@ -1,10 +1,10 @@
 var WDT_PREFIX = 'http://wikidata.org/wiki/';
 
-pos_options = ''
+var pos_options = ''
 annotations = {};
-referents = [];
 
 var current_task = 'None';
+var fan_task = 'None';
 var mcn_task = 'None';
 var mcn_type = 'None';
 
@@ -66,23 +66,29 @@ $(function() {
 
         // Currently annotating frames
         else if (current_task == '2') {
-            if (!is_frame && !is_role) {
+            // Creating new predicate
+            if (fan_task == '1') {
                 $(t_selector).toggleClass('marked');
-            } else if (is_frame) {
-                clearSelection();
-                $(t_selector).toggleClass('marked');
-                activatePredicate(term_selector);
-            }
 
-            var type = $('#ic-typ-select').val();
-            var language = $('#ic-lan-select').val();
-            var lemma = getLemma();
+                if (is_frame) {
+                    activatePredicate(term_selector);
+                }
 
-            if (lemma != undefined) {
-                loadFrames(type, language, lemma, function(data) {
-                    renderDropdownWithGroups('#fan-type-select', data,
-                        ['definition', 'framenet'], '-Pick frame-');
-                });
+                var type = $('#ic-typ-select').val();
+                var language = $('#ic-lan-select').val();
+                var lemma = getLemma();
+
+                if (lemma != undefined) {
+                    loadFrames(type, language, lemma, function(data) {
+                        renderDropdownWithGroups('#fan-type-select', data,
+                            ['definition', 'framenet'], '-Pick frame-');
+                    });
+                }
+            } else if (fan_task == '2') {
+                if (is_frame) {
+                    $(t_selector).toggleClass('marked');
+                    activatePredicate(term_selector);
+                }
             }
         }
         
@@ -292,8 +298,9 @@ function updateTask() {
         $('span[compound]').addClass('annotated');
     } else if (current_task == '2') {
         $('.fan-selectors').show();
-        $('#ip-fan').show();
-        $('#ip-pre').show();
+
+        $(".fan-add-selectors").hide();
+        $(".fan-rem-selectors").hide();
 
         $('span[frame]').addClass('annotated');
     } else if (current_task == '3') {
@@ -312,8 +319,27 @@ function updateTask() {
     }
 }
 
+function updateFANTask() {
+    clearSelection();
+    fan_task = $("#fan-task-select").val();
+
+    if (fan_task == "1") {
+        $('#ip-fan').show();
+        $('#ip-pre').show();
+
+        $(".fan-add-selectors").show();
+        $(".fan-rem-selectors").hide();
+    } else if (fan_task == '2') {
+        $('#ip-pre').show();
+        $('#ip-fan').hide();
+        
+        $(".fan-add-selectors").hide();
+        $(".fan-rem-selectors").show();
+    }
+}
+
 function updateSDETask() {
-    var task = $("#sde-action-select").val();
+    var task = $("#sde-task-select").val();
 
     if (task == "1") {
         $(".sde-add-selectors").show();
@@ -327,6 +353,7 @@ function updateSDETask() {
 function updateMCNTask() {
     clearSelection();
     mcn_task = $("#mcn-task-select").val();
+    
     $('#ip-mcn').hide();
 
     if (mcn_task == '1') {
@@ -440,7 +467,7 @@ function loadIncident() {
                 annotations['fea'] = result['frame_elements'];
                 annotations['sdr'] = result['coreferences'];
 
-                renderDocument(result);
+                renderDocument(result, annotations);
 
                 loadStructuredData(inc, function(data) {
                     renderStructuredData(inc, data);
@@ -550,18 +577,20 @@ function renderToken(term, prev_term) {
         join_sym = '_'
     }
 
-    return join_sym + '<span class="markable" lemma="' + term.lemma + '" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span>';
+    return join_sym + '<span class="markable ' + term.status + '" lemma="' + term.lemma + '" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span>';
 }
 
-function renderTokens(terms) {
+function renderTokens(terms, annotations) {
     var text = '';
     var prev_term = { 'type': 'None' };
 
     for (var i in terms) {
         var term = terms[i];
+        term.status = '';
 
         if (term.t_select in annotations['fan']) {
             term.type += ' frame'
+            term.status = annotations['fan'][term.t_select].status
         } else if (term.t_select in annotations['fea']) {
             term.type += ' role'
         } else if (term.t_select in annotations['sdr']) {
@@ -575,7 +604,7 @@ function renderTokens(terms) {
     return text;
 }
 
-function renderDocument(doc_data) {
+function renderDocument(doc_data, annotations) {
     // Extract necessary data
     var doc_id = doc_data['name']
     var source = doc_data['source'];
@@ -584,8 +613,8 @@ function renderDocument(doc_data) {
     var title_tokens = doc_data['title'];
     var body_tokens = doc_data['body'];
 
-    title_render = renderTokens(title_tokens);
-    body_render = renderTokens(body_tokens);
+    var title_render = renderTokens(title_tokens, annotations);
+    var body_render = renderTokens(body_tokens, annotations);
 
     var result = '<div class="panel panel-default" id="' + doc_id + '">';
     result += '<div class="panel-heading"><h4 class="document-title">' + title_render; 
@@ -692,7 +721,6 @@ function renderDropdown(element_id, items, data_items, default_option) {
     // Add group items
     $.each(items, function(item_index) {
         var item = items[item_index];
-        console.log(item)
         var cur_option = $('<option></option>').attr('value', item['value']).text(item['label'])
 
         // Add potential data to each option
@@ -898,20 +926,27 @@ function validateCorrection() {
 }
 
 function validateFrameAnnotation() {
+    var frame_task = $('#fan-task-select').val();
     var frame_type = $('#fan-type-select').val();
     var frame_relation = $('#fan-relation-select').val();
 
     var has_lu = $('#fan-type-select').data('lu') != '';
 
-    if (frame_type == 'None') {
-        return [false, 'Please pick a frame type'];
-    } else if (frame_relation == 'None') {
-        return [false, 'Please pick a frame relation type'];
+    if (frame_task == 'None') {
+        return [false, 'Please select an annotation task']
     }
 
-    if (has_lu) {
-        var lu_reference = $('#fan-type-select').data('lu-ref');
-        var lu_resource = $('#fan-type-select').data('lu-res');
+    if (frame_task == '1') {
+        if (frame_type == 'None') {
+            return [false, 'Please pick a frame type'];
+        } else if (frame_relation == 'None') {
+            return [false, 'Please pick a frame relation type'];
+        }
+
+        if (has_lu) {
+            var lu_reference = $('#fan-type-select').data('lu-ref');
+            var lu_resource = $('#fan-type-select').data('lu-res');
+        }
     }
 
     // Get all selected markables
@@ -921,14 +956,28 @@ function validateFrameAnnotation() {
         return [false, 'Please select at least one markable'];
     }
 
-    var task_data = { 'frame': frame_type,
-                      'type': frame_relation,
-                      'target_ids': selected,
-                      'has_lu': has_lu,
-                      'lu': lu_reference,
-                      'lu_resource': lu_resource };
+    // Create
+    if (frame_task == '1') {
+        var task_data = { 'fan_task': 1,
+                          'frame': frame_type,
+                          'type': frame_relation,
+                          'target_ids': selected,
+                          'has_lu': has_lu,
+                          'lu': lu_reference,
+                          'lu_resource': lu_resource };
 
-    return [true, task_data];
+        return [true, task_data];
+    }
+    // Remove
+    else {
+        var predicates = selected.map(function(term) {
+            return annotations.fan[term].predicate;
+        });
+
+        var task_data = { 'fan_task': 2, 'target_ids': predicates };
+        
+        return [true, task_data];
+    }
 }
 
 function validateRoleAnnotation() {
@@ -1049,12 +1098,16 @@ function activatePredicate(token_id) {
     clearActiveRoleTable();
 
     // Get information from annotation
-    var frame = annotations['fan'][token_id]['premon'] || noFrameType;
-    var predicate_id = annotations['fan'][token_id]['predicate'];
+    var info = annotations['fan'][token_id];
 
     // Set predicate summary
-    $('#activeFrame').text(frame);
-    $('#activePredicate').text(predicate_id);
+    $('#active-frame-label').text(info.label);
+    $('#active-frame-def').text(info.definition);
+    $('#active-frame-pre').text(info.premon);
+    $('#active-frame-pre').attr('href', info.premon);
+    $('#active-frame-frn').text(info.framenet);
+    $('#active-frame-frn').attr('href', info.framenet);
+    $('#activePredicate').text(info.predicate);
 
     var an_un = [];
     for (var i in annotations['fea']['unexpressed']) {
@@ -1077,7 +1130,7 @@ function activatePredicate(token_id) {
         }
     }
 
-    loadRoles(frame, function(result) {
+    loadRoles(info.premon, function(result) {
         var color_index = 0;
         color_index = activateRoles(result, 'Core', an_ex, an_un, true, color_index);
         color_index = activateRoles(result, 'Peripheral', an_ex, an_un, false, color_index);

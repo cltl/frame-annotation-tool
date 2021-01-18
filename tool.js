@@ -412,9 +412,10 @@ function readSRLLayer(srl_layer) {
     for (var i in srl_layer) {
         var predicate = srl_layer[i];
         var predicate_id = predicate['attr']['id'];
+        var predicate_stat = predicate['attr']['status'];
 
         // Get most recent annotation for current predicate if not deprecated
-        if (predicate['attr']['status'] !== 'deprecated') {
+        if (predicate_stat !== 'deprecated') {
             var references = predicate['externalReferences']['externalRef'];
             var reference = getLatestExternalReference(references);
             
@@ -427,7 +428,14 @@ function readSRLLayer(srl_layer) {
                 var term = predicate_span[i];
                 var term_id = term['attr']['id'];
 
-                result[0][term_id] = { 'premon': reference, 'predicate': predicate_id };
+                var frame_info = allFramesInfo[reference];
+
+                result[0][term_id] = { 'status': predicate_stat,
+                                       'label': frame_info.frame_label,
+                                       'definition': frame_info.definition,
+                                       'premon': reference,
+                                       'framenet': frame_info.framenet_url,
+                                       'predicate': predicate_id };
             }
 
             // Get frame element annotations
@@ -839,7 +847,7 @@ function deprecatePredicateEntry(json_data, target_id) {
         var predicate_id = predicate['attr']['id'];
 
         if (predicate_id == target_id) {
-            srl_layer[i]['status'] = 'deprecated';
+            srl_layer[i]['attr']['status'] = 'deprecated';
             break;
         }
     }
@@ -988,21 +996,21 @@ function deprecateCoreferenceEntry(json_data, target_id) {
 //#region Endpoint handling utilities
 function handleMarkableCorrection(json_data, task_data) {
     // Add markable correction
-    if (task_data['mcn_task'] == 1) {
-        if (task_data['mcn_type'] == 1 || task_data['mcn_type'] == 2) {
+    if (task_data.mcn_task == 1) {
+        if (task_data.mcn_type == 1 || task_data.mcn_type == 2) {
             json_data, mw_id = addMultiwordEntry(json_data, task_data);
             return updateMultiwordTerms(json_data, mw_id, task_data['target_ids'])
-        } else if (task_data['mcn_type'] == 3) {
+        } else if (task_data.mcn_type == 3) {
             json_data, t_id = addCompoundEntry(json_data, task_data);
             return updateCompoundTokens(json_data, t_id, task_data)
         }
     }
     
     // Remove markable corrections
-    else if (task_data['mcn_task'] == 2) {
-        if (task_data['mcn_type'] == 1) {
+    else if (task_data.mcn_task == 2) {
+        if (task_data.mcn_type == 1) {
             return deprecateMultiwordEntry(json_data, task_data['target_id']);
-        } else if (task_data['mcn_type'] == 2) {
+        } else if (task_data.mcn_type == 2) {
             return removeCompoundEntry(json_data, task_data['target_id']);
         }
     }
@@ -1011,40 +1019,47 @@ function handleMarkableCorrection(json_data, task_data) {
 }
 
 function handleFrameAnnotation(json_data, task_data, session_id) {
-    json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'srl', 'predicate');
-    var srl_layer = json_data['NAF']['srl']['predicate'];
-    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+    if (task_data.fan_task == 1) {
+        json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'srl', 'predicate');
+        var srl_layer = json_data['NAF']['srl']['predicate'];
+        if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
-    var timestamp = new Date().toNAFUTCString();
+        var timestamp = new Date().toNAFUTCString();
 
-    // Check for span overlap
-    for (var i in srl_layer) {
-        var predicate = srl_layer[i];
-        var predicate_target = predicate['span']['target'];
-        var predicate_target_id = predicate_target['attr']['id'];
-        var target_index = task_data['target_ids'].indexOf(predicate_target_id);
+        // Check for span overlap & Update where necessary
+        for (var i in srl_layer) {
+            var predicate = srl_layer[i];
+            var predicate_target = predicate['span']['target'];
+            var predicate_target_id = predicate_target['attr']['id'];
+            var target_index = task_data['target_ids'].indexOf(predicate_target_id);
 
-        if (target_index > -1) {
-            task_data['target_ids'].splice(target_index, 1);
-            var reference_data = { 'reference': task_data['frame'],
-                                   'resource': 'http://premon.fbk.eu/premon/fn17',
-                                   'timestamp': timestamp,
-                                   'source': session_id,
-                                   'reftype': task_data['type'] };
-            srl_layer[i] = addExternalReferences(predicate, reference_data);
+            if (target_index > -1) {
+                task_data['target_ids'].splice(target_index, 1);
+                var reference_data = { 'reference': task_data['frame'],
+                                    'resource': 'http://premon.fbk.eu/premon/fn17',
+                                    'timestamp': timestamp,
+                                    'source': session_id,
+                                    'reftype': task_data['type'] };
+                srl_layer[i] = addExternalReferences(predicate, reference_data);
+            }
         }
-    }
 
-    // Update overlap
-    json_data['NAF']['srl']['predicate'] = srl_layer;
+        // Update overlap
+        json_data['NAF']['srl']['predicate'] = srl_layer;
 
-    // Create new predicate for each term in selected
-    for (var i in task_data['target_ids']) {
-        var predicate_data = { 'frame': task_data['frame'],
-                            'type': task_data['type'],
-                            'target_term': task_data['target_ids'][i] };
-        json_data = addPredicateEntry(json_data, predicate_data, session_id);
-    }
+        // Create new predicate for each term in selected
+        for (var i in task_data['target_ids']) {
+            var predicate_data = { 'frame': task_data['frame'],
+                                'type': task_data['type'],
+                                'target_term': task_data['target_ids'][i] };
+            json_data = addPredicateEntry(json_data, predicate_data, session_id);
+        }
+    } else if (task_data.fan_task == 2) {
+        for (var i in task_data.target_ids) {
+            var target_id = task_data.target_ids[i];
+            json_data = deprecatePredicateEntry(json_data, target_id);
+        }
+    } 
 
     return json_data;
 }

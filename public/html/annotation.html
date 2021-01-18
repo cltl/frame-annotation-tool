@@ -12,39 +12,58 @@
 
             <!-- Title Row -->
             <div class="row mt-4" id="titlerow">
-                <div class="col-sm-8">
+                <div class="col-sm-9">
                     <h2>Frame Annotation Tool</h2>
                 </div>
                 <div class="col-sm-2">
                     <span>Logged user: <label><%= username %> </label></span><br/>
                     <a href="/dash">Back to dashboard</a>
                 </div>
-                <div class="col-sm-2">
+                <div class="col-sm-1">
                     <button class="btn btn-primary btn-ann" onclick="location.href='/logout'">Logout</button>
                 </div>
             </div>
             <br/>
 
-            <!-- Incidident Pick row -->
+            <!-- Incidident Select row -->
             <div class="row mt-4" id="incident-controls">
-                <div class="col-sm-10">
-                    <select class="col-md-2 mr-4" id="ic-pro-select" onchange="updateIncidentSelection(0)">
-                        <option value="None">-Select a project-</option>
-                    </select>
-                    <select class="col-md-2 mr-4" id="ic-typ-select" onchange="updateIncidentSelection(1)">
-                        <option value="None">-Select incident type-</option>
-                    </select>
-                    <select class="col-md-2 mr-4" id="ic-inc-select" onchange="updateIncidentSelection(2)">
-                        <option value="None">-Select an incident-</option>
-                    </select>
-                    <select class="col-md-2 mr-4" id="ic-lan-select" onchange="updateIncidentSelection(3)">
-                        <option value="None">-Select a language-</option>
-                    </select>
-                    <select class="col-md-2 mr-4" id="ic-doc-select" onchange="loadIncident()">
-                        <option value="None">-Select a document-</option>
-                    </select>
+                <div class='col-sm-9'>
+                    <div class='row'>
+                        <div class='col pr-0'>
+                            <select id="ic-pro-select" onchange="updateIncidentSelection(0)">
+                                <option value="None">-Select a project-</option>
+                            </select>
+                        </div>
+                        
+                        <div class='col pr-0'>
+                            <select id="ic-typ-select" onchange="updateIncidentSelection(1)">
+                                <option value="None">-Select incident type-</option>
+                            </select>    
+                        </div>
+
+                        <div class='col pr-0'>
+                            <select id="ic-inc-select" onchange="updateIncidentSelection(2)">
+                                <option value="None">-Select an incident-</option>
+                            </select>
+                        </div>
+
+                        <div class='col pr-0'>
+                            <select id="ic-lan-select" onchange="updateIncidentSelection(3)">
+                                <option value="None">-Select a language-</option>
+                            </select>
+                        </div>
+
+                        <div class='col pr-0'>
+                            <select id="ic-doc-select" onchange="loadIncident()">
+                                <option value="None">-Select a document-</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-sm-2"><label id="message"></label></div>
+
+                <div class="col-sm-3">
+                    <label id="message"></label>
+                </div>
             </div>
 
             <!-- Task, Task Details and Structured Data row -->
@@ -57,7 +76,7 @@
                         <label>Annotation type: </label>
                         <br/>
                         <select id="annotation-task-selection" onchange="updateTask()">
-                            <option value="None" selected>-Pick annotation type-</option>
+                            <option value="None" selected>-Select annotation type-</option>
                             <option value="1">Markable Correction</option>
                             <option value="2">Frame Annotation</option>
                             <option value="3">Frame Element Annotation</option>
@@ -71,7 +90,7 @@
                     <div class="mcn-selectors col-sm-3">
                         <label>Select Correction Task:</label><br/>
                         <select id="mcn-task-select" onchange="updateMCNTask()">
-                            <option value="None" selected>-Pick correction type-</option>
+                            <option value="None" selected>-Select correction type-</option>
                             <option value="1">Create</option>
                             <option value="2">Remove</option>
                         </select>
@@ -80,7 +99,7 @@
                     <div class="mcn-selectors mcn-add-selectors col-sm-3">
                         <label>Selet Correction Type:</label><br/>
                         <select id="mcn-type-select" onchange="updateMCNType()">
-                            <option value="None" selected>-Pick correction type-</option>
+                            <option value="None" selected>-Select correction type-</option>
                             <option value="1">Phrasal verb</option>
                             <option value="2">Idiom</option>
                             <option value="3">Compound</option>
@@ -98,18 +117,27 @@
                     </div>
 
                     <!-- Frame Selectors -->
-                    <!-- Frame Type -->
+                    <!-- Frame Annotation task -->
                     <div class="fan-selectors col-sm-3">
-                        <label>Frame Type</label><br/>
+                        <label>Select Annotation Task:</label><br/>
+                        <select id="fan-task-select" onchange="updateFANTask()">
+                            <option value="None" selected>-Select Task-</option>
+                            <option value="1">Create</option>
+                            <option value="2">Remove</option>
+                        </select>
+                    </div>
+                    <!-- Frame Type -->
+                    <div class="fan-selectors fan-add-selectors col-sm-3">
+                        <label>Select Frame Type</label><br/>
                         <select id="fan-type-select" onchange="updateChosenFrameInfo()">
-                            <option value="None" selected>-Pick frame-</option>
+                            <option value="None" selected>-Select frame-</option>
                         </select>
                     </div>
                     <!-- Relation Type -->
-                    <div class="fan-selectors col-sm-3">
-                        <label>Relation type:</label><br/>
+                    <div class="fan-selectors fan-add-selectors col-sm-3">
+                        <label>Select Relation type:</label><br/>
                         <select id="fan-relation-select">
-                            <option value="None" selected>-Pick relation-</option>
+                            <option value="None" selected>-Select relation-</option>
                             <option value="evoke">evokes</option>
                             <option value="type">isOfType</option>
                         </select>
@@ -118,34 +146,34 @@
                     <!-- Frame Element Selectors-->
                     <!-- Frame Element -->
                     <div class="fea-selectors col-sm-3">
-                        <label>Role:</label><br/>
+                        <label>Select Frame Element:</label><br/>
                         <select id="fea-role-select" onchange="updateChosenRoleInfo()">
-                            <option value="None" selected>-Pick frame role-</option>
+                            <option value="None" selected>-Select frame role-</option>
                         </select>
                     </div>
 
                     <!-- Structured Data Selectors -->
                     <!-- Task -->
                     <div class="sde-selectors col-sm-3">
-                        <label>Action:</label><br />
-                        <select id="sde-action-select" onchange="updateSDETask()">
-                            <option value="None" selected>-Pick action-</option>
-                            <option value="1">Add</option>
+                        <label>Select Reference Task:</label><br />
+                        <select id="sde-task-select" onchange="updateSDETask()">
+                            <option value="None" selected>-Select Task-</option>
+                            <option value="1">Create</option>
                             <option value="2">Remove</option>
                         </select>
                     </div>
                     <!-- Relation (in case of Add) -->
                     <div class="sde-selectors sde-add-selectors col-sm-2">
-                        <label>Relation:</label><br />
+                        <label>Select Relation:</label><br />
                         <select id="sde-relation-select">
-                            <option value="None" selected>-Pick relation-</option>
+                            <option value="None" selected>-Select relation-</option>
                             <option value="sem:hasActor">sem:hasActor</option>
                             <option value="sem:hasPlace">sem:hasPlace</option>
                         </select>
                     </div>
                     <!-- Structured data info -->
                     <div class="sde-selectors sde-add-selectors col-sm-2">
-                        <label>Wikidata URI:</label><br/>
+                        <label>Select Wikidata QID:</label><br/>
                         <input id="sde-uri-input" type="text" class="w-100">
                     </div>
                     <div class="sde-selectors sde-add-selectors col-sm-2">
@@ -156,7 +184,7 @@
                     <div class="sde-selectors sde-rem-selectors col-sm-3">
                         <label>Item to remove:</label><br />
                         <select id="sde-remove-select">
-                            <option value="None" selected>-Pick item-</option>
+                            <option value="None" selected>-Select item-</option>
                         </select>
                     </div>
                 </div>
@@ -213,16 +241,18 @@
                         <h4>Chosen Frame Element</h4>
                         <label>Label: </label> <span id="chosenRoleLabel"></span><br />
                         <label>Definition: </label> <span id="chosenRoleDef"></span><br />
-                        <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenRolePrem"></a><br />
+                        <label>Premon URI: </label> <a href="#" target="_blank" id="chosenRolePrem"></a><br />
                         <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenRoleFM"></a><br />
                     </div>
 
                     <!-- Selected Predicates Information -->
                     <div id="ip-pre" class='info-panel'>
                         <h4>Selected predicate</h4>
-                        <label>Frame type:</label> <span id="activeFrame"></span><br/>
-                        <label>Predicate ID:</label> <span id="activePredicate"></span><br/>
-                        <label>Referents:</label><div id="frameWdt"></div><br/>
+                        <label>Label:</label> <span id="active-frame-label"></span><br/>
+                        <label>Definition: </label> <span id="active-frame-def"></span><br/>
+                        <label>Premon:</label> <a href='#' target='_blank' id="active-frame-pre"></a><br/>
+                        <label>FrameNet:</label> <a href='#' target='_blank' id="active-frame-frn"></a><br/>
+                        <label>Predicate ID:</label> <span id="active-predicate-id"></span><br/>
 
                         <table id="selectedPredicateRoleInfo" class="table-condensed">
                             <tr>

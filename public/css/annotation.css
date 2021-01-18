@@ -15,18 +15,22 @@
 /* Messages */
 .error-msg {
     color: red;
+    margin-bottom: 0;
 }
 
 .info-msg {
     color: blue;
+    margin-bottom: 0;
 }
 
 .success-msg {
     color: green;
+    margin-bottom: 0;
 }
 
 .warning-msg {
     color: orange;
+    margin-bottom: 0;
 }
 
 /* Markables */
@@ -40,6 +44,14 @@
 
 .markable.annotated.marked {
     background: #BB8FCE !important;
+}
+
+.markable.annotated.system {
+    color: red !important;
+}
+
+.markable.annotated.manual {
+    color: blue !important;
 }
 
 span.info-marked {
