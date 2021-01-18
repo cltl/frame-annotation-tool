@@ -83,7 +83,7 @@ var xmlOptions = {
     parseNodeValue : false,
     parseAttributeValue : false,
     trimValues: true, // FI: to trim newlines and spaces (these are preserved with CDATA)
-    cdataTagName: "__cdata", //default is 'false'
+    cdataTagName: "#text", //default is 'false'
     cdataPositionChar: "\\c",
     localeRange: "", //To support non english character in tag/attribute values.
     parseTrueNumberOnly: true
@@ -94,7 +94,7 @@ var jsonOptions = {
     attrNodeName: "attr", //default is false
     textNodeName : "#text",
     ignoreAttributes : false,
-    cdataTagName: "__cdata", //default is false
+    cdataTagName: "#text", //default is false
     cdataPositionChar: "\\c",
     format: true,
     indentBy: "",
@@ -279,11 +279,11 @@ function readTokenLayer(token_layer) {
             if (!Array.isArray(subtokens)) subtokens = [subtokens];
 
             for (var j in subtokens) {
-                token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['__cdata'] };
+                token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['#text'] };
             }
         }
 
-        result[token_id] = { 'sent': token_sent, 'text': token['__cdata'], 'sub': token_subs};
+        result[token_id] = { 'sent': token_sent, 'text': token['#text'], 'sub': token_subs};
     }
 
     return result;
@@ -702,7 +702,7 @@ function updateCompoundTokens(json_data, target_token_id, compound_data) {
                                                  'length': subterm_length,
                                                  'offset': offset,
                                                },
-                                       '__cdata': subterm_cdata }
+                                       '#text': subterm_cdata }
                 token_layer[i]['subtoken'].push(subtoken_entry);
 
                 offset += parseInt(subterm_length);
