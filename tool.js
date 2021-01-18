@@ -64,11 +64,12 @@ const inc2lang2doc_file = 'data/DFNDataReleases/structured/inc2lang2doc_index.js
 const inc2str_file = 'data/DFNDataReleases/structured/inc2str_index.json';
 const type2inc_file = 'data/DFNDataReleases/structured/type2inc_index.json';
 const proj2inc_file = 'data/DFNDataReleases/structured/proj2inc_index.json';
+const labels_file = 'data/DFNDataReleases/structured/labels.json'
 
 const pos_info_file = 'data/DFNDataReleases/lexical_data/part_of_speech/part_of_speech_ud_info.json'
 const frame_info_file = 'data/DFNDataReleases/lexical_data/lexicons/frame_to_info.json';
-const LL_DIR = 'data/DFNDataReleases/lexical_data/typicality/lexical_lookup/';
 
+const LL_DIR = 'data/DFNDataReleases/lexical_data/typicality/lexical_lookup/';
 const NAF_DIR = 'data/DFNDataReleases/unstructured/';
 
 LockedIncidents = {}
@@ -122,6 +123,11 @@ fs.readFile(proj2inc_file, 'utf8', function (err, data) {
 fs.readFile(type2inc_file, 'utf8', function (err, data) {
     if (err) throw err; // we'll not consider error handling for now
     type2inc = JSON.parse(data);
+});
+
+fs.readFile(labels_file, 'utf8', function (err, data) {
+    if (err) throw err; // we'll not consider error handling for now
+    labels = JSON.parse(data);
 });
 
 fs.readFile(frame_info_file, 'utf8', function (err, data){
@@ -1234,8 +1240,16 @@ app.get("/projects", isAuthenticated, function(req, res) {
     var proj = Object.keys(proj2inc);
     var type = Object.keys(type2inc);
 
+    var proj_res = Array.from(proj).map(function(key) {
+        return { 'label': key, 'value': key };
+    });
+
+    var type_res = Array.from(type).map(function(key) {
+        return { 'label': labels[key], 'value': key };
+    });
+
     // Return projects and types
-    res.send({ "proj": Array.from(proj), "type": Array.from(type) });
+    res.send({ "proj": proj_res, "type": type_res });
 });
 
 // Endpoint to get all incidents of a certain type in a project
@@ -1247,9 +1261,14 @@ app.get("/project_incidents", isAuthenticated, function(req, res) {
     // Get all incidents
     var p2i = Array.from(proj2inc[proj]);
     var t2i = Array.from(type2inc[type]);
+    var intersect = _.intersection(p2i, t2i);
+
+    var result = intersect.map(function(key) {
+        return { 'label': labels[key], 'value': key };
+    });
 
     // Return result
-    res.send({ "inc": _.intersection(p2i, t2i) });
+    res.send({ "inc": result });
 });
 
 // Endpoint to get all languages in a specific incident
@@ -1258,7 +1277,9 @@ app.get('/incident_languages', isAuthenticated, function(req, res) {
     var inc = req.query['inc'];
 
     // Get all languages
-    var languages = Object.keys(inc2lang2doc[inc]);
+    var languages = Object.keys(inc2lang2doc[inc]).map(function(key) {
+        return { 'label': key, 'value': key };
+    });
 
     // Return result
     res.send({ 'lang': languages });
@@ -1273,8 +1294,13 @@ app.get('/incident_documents', isAuthenticated, function(req, res) {
     // Get all languages
     var doc = Array.from(inc2lang2doc[inc][lan]);
 
+    // Get all languages
+    var result = doc.map(function(key) {
+        return { 'label': key, 'value': key };
+    });
+
     // Return result
-    res.send({ 'doc': doc });
+    res.send({ 'doc': result });
 });
 
 // Endpoint to load an incident

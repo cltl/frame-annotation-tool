@@ -152,13 +152,8 @@ $(function() {
         var proj = data['proj'];
         var type = data['type'];
 
-        for(var i = 0; i < proj.length; i++) {
-            $('#ic-pro-select').append($('<option></option>').val(proj[i]).html(proj[i]));
-        }
-
-        for(var i = 0; i < type.length; i++) {
-            $('#ic-typ-select').append($('<option></option>').val(type[i]).html(type[i]));
-        }
+        renderDropdown('#ic-pro-select', proj, [], '-Select a project-');
+        renderDropdown('#ic-typ-select', type, [], '-Select a project-');
     });
 });
 
@@ -392,38 +387,38 @@ function updateIncidentSelection(changed) {
     var selected_lan = $('#ic-lan-select').val();
 
     if (changed == 0 || changed == 1) {
-        reloadDropdown('#ic-lan-select', [], '-Select a language-');
-        reloadDropdown('#ic-doc-select', [], '-Select a document-');
+        renderDropdown('#ic-lan-select', [], [], '-Select a language-');
+        renderDropdown('#ic-lan-select', [], [], '-Select a language-');
 
         if (selected_pro == 'None' || selected_typ == 'None') {
-            reloadDropdown('#ic-inc-select', [], '-Select an incident-');
+            renderDropdown('#ic-inc-select', [], [], '-Select an incident-');
         } else {
             var get_data = { 'proj': selected_pro, 'type': selected_typ  };
             $.get('/project_incidents', get_data, function(result, status) {
-                var inc = result['inc'].sort();
-                reloadDropdown('#ic-inc-select', inc, '-Select an incident-')
+                var inc = result['inc'];
+                renderDropdown('#ic-inc-select', inc, [], '-Select an incident-')
             });
         }
     } else if (changed == 2) {
-        reloadDropdown('#ic-doc-select', [], '-Select a document-');
+        renderDropdown('#ic-doc-select', [], [], '-Select a document-');
 
         if (selected_inc == 'None') {
-            reloadDropdown('#ic-lan-select', [], '-Select a language-');
+            renderDropdown('#ic-lan-select', [], [], '-Select a language-');
         } else {
             var get_data = { 'inc': selected_inc };
             $.get('/incident_languages', get_data, function(result, status) {
-                var lang = result['lang'].sort();
-                reloadDropdown('#ic-lan-select', lang, '-Select a language-')
+                var lang = result['lang'];
+                renderDropdown('#ic-lan-select', lang, [], '-Select a language-')
             });
         }
     } else if (changed == 3) {
         if (selected_lan == 'None') {
-            reloadDropdown('#ic-doc-select', [], '-Select a document-');
+            renderDropdown('#ic-doc-select', [], [], '-Select a document-');
         } else {
             var get_data = { 'inc': selected_inc, 'lan': selected_lan };
             $.get('/incident_documents', get_data, function(result, status) {
-                var doc = result['doc'].sort();
-                reloadDropdown('#ic-doc-select', doc, '-Select a document-')
+                var doc = result['doc'];
+                renderDropdown('#ic-doc-select', doc, [], '-Select a document-')
             });
         }
     }
@@ -687,6 +682,29 @@ function renderDropdownWithGroups(element_id, items, data_items, default_option)
         element.append(optgroup);
     }
 }
+
+function renderDropdown(element_id, items, data_items, default_option) {
+    var element = $(element_id);
+
+    element.empty();
+    element.append($('<option value="None" selected>' + default_option + '</option>'));
+
+    // Add group items
+    $.each(items, function(item_index) {
+        var item = items[item_index];
+        console.log(item)
+        var cur_option = $('<option></option>').attr('value', item['value']).text(item['label'])
+
+        // Add potential data to each option
+        for (var data_item_index in data_items) {
+            var data_item = data_items[data_item_index];
+            cur_option.attr('data-' + data_item, item[data_item]);
+        }
+
+        element.append(cur_option);
+    });
+}
+
 
 function printMessage(message, type) {
     $('#message').html(message);
@@ -1160,17 +1178,4 @@ var clearChosenRoleInfo = function() {
 
 var clearActiveRoleTable = function() {
     $('#selectedPredicateRoleInfo').find('tr:gt(0)').remove();
-}
-
-function reloadDropdown(elementId, sourceList, defaultOption) {
-    var $el = $(elementId);
-    $el.empty(); // remove old options
-    $el.append($('<option value="None" selected>' + defaultOption + '</option>'));
-    if (sourceList && sourceList.length){
-        $.each(sourceList, function(anIndex) {
-            var unit = sourceList[anIndex];
-            $el.append($('<option></option>')
-                .attr('value', unit).text(unit));
-        });
-    }
 }
