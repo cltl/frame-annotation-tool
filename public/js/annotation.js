@@ -542,16 +542,25 @@ function saveChanges() {
 // RENDERING ===========================
 // =====================================
 
-function renderToken(term) {
+function renderToken(term, prev_term) {
     if (term.text == '\n') return '<br/>';
     
     var t_select = term.t_select;
     var p_select = term.p_select;
-    return '<span class="markable" lemma="' + term.lemma + '" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span> ';
+    var join_sym = ' ';
+
+    if (prev_term.typ == 'None') {
+        join_sym = '';
+    } else if (prev_term.type == 'compound' && term.type == 'compound') {
+        join_sym = '_'
+    }
+
+    return join_sym + '<span class="markable" lemma="' + term.lemma + '" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + '</span>';
 }
 
 function renderTokens(terms) {
     var text = '';
+    var prev_term = { 'type': 'None' };
 
     for (var i in terms) {
         var term = terms[i];
@@ -564,7 +573,8 @@ function renderTokens(terms) {
             term.type += ' reference'
         }
 
-        text += renderToken(term);
+        text += renderToken(term, prev_term);
+        prev_term = term;
     }
 
     return text;
