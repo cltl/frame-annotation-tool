@@ -747,7 +747,8 @@ function validateCorrection() {
     var correction_type = mcn_type;
 
     var correction_lemma = $('#mcn-lemma-input').val();
-
+    
+    var correction_original = $('.marked').text();
     var correction_subdivisions = $('#mcn-subdivide-input').val().split('|');
     var correction_subdiv_props = [];
     var correction_subdiv_head = -1;
@@ -806,6 +807,10 @@ function validateCorrection() {
         else {
             if (correction_subdivisions.length < 2) {
                 return [false, 'Create at least one subdivision'];
+            }
+
+            if (correction_subdivisions.join('') != correction_original) {
+                return [false, 'Compound components should recreate entire compound'];
             }
 
             if (!correction_subdiv_vali) {
