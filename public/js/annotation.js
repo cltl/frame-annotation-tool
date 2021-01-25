@@ -460,6 +460,8 @@ function loadIncident() {
     var lan = $('#ic-lan-select').val();
     var doc = $('#ic-doc-select').val();
 
+    var inc_txt =$('#ic-inc-select option:selected').text(); 
+
     if (lan != 'None' && doc != 'None') {
         annotations = {};
         restoreDefaults();
@@ -474,7 +476,7 @@ function loadIncident() {
                 renderDocument(result, annotations);
 
                 loadStructuredData(inc, function(data) {
-                    renderStructuredData(inc, data);
+                    renderStructuredData(inc, inc_txt, data);
 
                     var dropdown_data = { 'sem:hasPlace': [],
                                           'sem:hasActor': [],
@@ -633,21 +635,21 @@ function renderDocument(doc_data, annotations) {
     $("#doc-container").append(result);
 }
 
-function renderStructuredData(incident_id, data) {
+function renderStructuredData(incident_id, incident_txt, data) {
     var incident_type_uri = $('#ic-typ-select').val();
+    var incident_type_txt = $('#ic-typ-select option:selected').text();
     var incident_type_url = WDT_PREFIX + incident_type_uri;
-    var incident_type_label = incident_type_uri;
 
     var incident_url = WDT_PREFIX + incident_id;
 
     // Render incident type
     var result = '<label>incident type:</label> ';
-    result += '<a href="' + incident_type_url + '" data-uri="' + incident_type_uri + '" target="_blank">' + incident_type_label + '</a>';
+    result += '<a href="' + incident_type_url + '" data-uri="' + incident_type_uri + '" target="_blank">' + incident_type_txt + '</a>';
     result += '<br/>';
 
     // Render incident ID
     result += '<label>incident ID:</label> ';
-    result += '<a href="' + incident_url + '" data-uri="' + incident_id + '" data-type="event" class="structured-data" target="_blank">' + incident_id + '</a>';
+    result += '<a href="' + incident_url + '" data-uri="' + incident_id + '" data-type="event" class="structured-data" target="_blank">' + incident_txt + '</a>';
     result += '<br/>';
 
     // Render incident properties
