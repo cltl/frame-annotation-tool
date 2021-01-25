@@ -152,6 +152,10 @@ $(function() {
             }
         }
     });
+
+    $('#mcn-subdivide-input').on('input', function() {
+        updateCPDSubdivide();
+    });
     
     // Fill project & type selectors
     $.get('/projects', {}, function(data, status) { 
