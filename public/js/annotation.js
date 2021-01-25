@@ -1031,7 +1031,7 @@ var validateReference = function() {
 }
 
 var validateStructuredData = function() {
-    var action = $("#sde-action-select").val();
+    var action = $("#sde-task-select").val();
 
     if (action == 'None') {
         return [false, 'Select data annotation action'];
@@ -1055,7 +1055,7 @@ var validateStructuredData = function() {
         }
 
         var task_data = { 'action': 1, 'relation': relation, 'wdt_uri': wdt_uri, 'label': label }
-        return [true, { 'task': 5, 'task_data': task_data } ]
+        return [true, task_data ]
     } else {
         var item = $("#sde-remove-select").val().split(';');
         var rel = item[0];
@@ -1066,7 +1066,7 @@ var validateStructuredData = function() {
         }
 
         var task_data = { 'action': 2, 'relation': rel, 'item': val };
-        return [true, { 'task': 5, 'task_data': task_data } ]
+        return [true, task_data ]
     }
 }
 
@@ -1075,20 +1075,12 @@ var validateStructuredData = function() {
 // =====================================
 
 function storeAndReload(task_data) {
+    var inc = $('#ic-inc-select').val();
     var lan = $('#ic-lan-select').val();
     var doc = $('#ic-doc-select').val();
-    var request_data = { 'lan': lan, 'doc': doc, 'tid': current_task, 'tda': task_data };
+    var request_data = { 'inc': inc, 'lan': lan, 'doc': doc, 'tid': current_task, 'tda': task_data };
 
     $.post('/store_annotation', request_data).done(function(result) {
-        printMessage('Successfully saved annotations', 'success');
-        loadIncident();
-    }).fail(function(err) {
-        printMessage('There was an error while saving your annotations', 'warning');
-    });
-}
-
-var storeStructuredData = function(data) {
-    $.post('/store_structured_data', data).done(function(result) {
         printMessage('Successfully saved annotations', 'success');
         loadIncident();
     }).fail(function(err) {
