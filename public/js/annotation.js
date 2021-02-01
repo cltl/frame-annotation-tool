@@ -218,9 +218,8 @@ function clearSelection() {
     }
 }
 
-function restoreDefaults() {
+function restoreDefaults(hard_reset) {
     $('#infoMessage').html('');
-    $('.annotated').removeClass('annotated');
 
     // Empty docs and info panels
     $('#doc-container').html('');
@@ -229,23 +228,27 @@ function restoreDefaults() {
     clearChosenRoleInfo();
     clearActivePredicate();
 
-    // Reset selection boxes
-    $('#annotation-task-selection').val('None');
-    $('#mcn-task-select').val('None');
-    $('#fan-type-select').val('None');
-    $('#fan-relation-select').val('None');
-    $('#fea-role-select').val('None');
-    $('#sde-action-select').val('None');
-    $('#sde-relation-select').val('None');
-    $('#sde-remove-select').val('None');
+    if (hard_reset) {
+        // Reset selection boxes
+        $('#annotation-task-selection').val('None');
+        $('#mcn-task-select').val('None');
+        $('#fan-type-select').val('None');
+        $('#fan-relation-select').val('None');
+        $('#fea-pred-select').val('None');
+        $('#fea-role-select').val('None');
+        $('#sde-action-select').val('None');
+        $('#sde-relation-select').val('None');
+        $('#sde-remove-select').val('None');
+
+        hideSelectors();
+        hideInfoPanels();
+    }
 
     // Reset text inputs
     $('#mcn-lemma-input').val('');
     $('#sde-uri-input').val('');
     $('#sde-label-input').val('');
 
-    hideSelectors();
-    hideInfoPanels();
     clearSelection();
 
     predicate_selected = false;
@@ -253,9 +256,7 @@ function restoreDefaults() {
 
 function updateTask() {
     current_task = $('#annotation-task-selection').val();
-
     $('.annotated').removeClass('annotated');
-    $('.annotated-depends').removeClass('annotated-depends');
 
     hideSelectors();
     hideInfoPanels();
@@ -448,6 +449,11 @@ function updateIncidentSelection(changed) {
 }
 
 function loadDocument() {
+    var task = $('#annotation-task-selection').val();
+    var hard_reset = task == 'None' || task == '-1'
+    console.log(hard_reset);
+    console.log(task);
+
     var inc = $('#ic-inc-select').val();
     var lan = $('#ic-lan-select').val();
     var doc = $('#ic-doc-select').val();
@@ -456,7 +462,7 @@ function loadDocument() {
 
     if (lan != 'None' && doc != 'None') {
         annotations = {};
-        restoreDefaults();
+        restoreDefaults(hard_reset);
         clearSelection();
 
         loadNAFFile(inc, lan + '/' + doc, function(result) {
