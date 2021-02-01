@@ -1102,7 +1102,6 @@ function activatePredicate(token_id) {
 
     // Set predicate summary
     $('#active-frame-label').text(info.label);
-    $('#active-frame-def').text(info.definition);
     $('#active-frame-pre').text(info.premon);
     $('#active-frame-pre').attr('href', info.premon);
     $('#active-frame-frn').text(info.framenet);
