@@ -1107,6 +1107,30 @@ function handleCoreferenceAnnotation(json_data, task_data, session_id) {
 
     return addCoreferenceEntry(json_data, task_data)
 }
+
+function handleStructuredDataAnnotation(incident_id, task_data) {
+    var relation = task_data['relation'];
+
+    if (task_data['action'] == '1') {
+        // Add wdt item to inc2str
+        var item = task_data['wdt_uri'] + ' | ' + task_data['label'];
+
+        if (!(relation in inc2str[incident_id])) {
+            inc2str[incident_id][relation] = [];
+        }
+
+        inc2str[incident_id][relation].push(item);
+    } else {
+        // Remove wdt item from inc2str
+        var item = task_data['item'];
+
+        var index = inc2str[incident_id][relation].indexOf(item);
+        if (index !== -1) inc2str[incident_id][relation].splice(index, 1);
+    }
+
+    // Store inc2str
+    fs.writeFile(inc2str_file, JSON.stringify(inc2str), function() {});
+}
 //#endregion
 
 // =====================================
@@ -1216,37 +1240,43 @@ app.post('/store_annotation', isAuthenticated, function(req, res) {
         return
     }
 
+    var inc = req.body['inc'];
     var lan = req.body['lan'];
     var doc = req.body['doc'];
     var tid = parseInt(req.body['tid']);
     var tda = req.body['tda'];
 
-    // Load NAF file for editing
-    loadNAFFile(lan + '/' + doc, false, true, function(json_data) {
-        if (tid == 1) {
-            json_data = handleMarkableCorrection(json_data, tda);
-        } else if (tid == 2) {
-            json_data = handleFrameAnnotation(json_data, tda, req.sessionID);
-            json_data = saveSessionInfo(json_data, req.sessionID, user, login_time);
-        } else if (tid == 3) {
-            json_data = handleFrameElementAnnotation(json_data, tda, req.sessionID);
-            json_data = saveSessionInfo(json_data, req.sessionID, user, login_time);
-        } else if (tid == 4) {
-            json_data = handleCoreferenceAnnotation(json_data, tda);
-        } else {
-            // TODO: Handle invalid task
-        }
-
-        saveNAF(NAF_DIR + lan + '/' + doc + '.naf', json_data, function(error) {
-            if (error) {
-                console.error('Error while saving NAF: ' + error);
-                res.sendStatus(400).json({ "error": error });
+    if (tid == 5) {
+        handleStructuredDataAnnotation(inc, tda);
+        res.sendStatus(200);
+    } else {
+        // Load NAF file for editing
+        loadNAFFile(lan + '/' + doc, false, true, function(json_data) {
+            if (tid == 1) {
+                json_data = handleMarkableCorrection(json_data, tda);
+            } else if (tid == 2) {
+                json_data = handleFrameAnnotation(json_data, tda, req.sessionID);
+                json_data = saveSessionInfo(json_data, req.sessionID, user, login_time);
+            } else if (tid == 3) {
+                json_data = handleFrameElementAnnotation(json_data, tda, req.sessionID);
+                json_data = saveSessionInfo(json_data, req.sessionID, user, login_time);
+            } else if (tid == 4) {
+                json_data = handleCoreferenceAnnotation(json_data, tda);
             } else {
-                console.log("Successfully saved annotation");
-                res.sendStatus(200);
+                // TODO: Handle invalid task
             }
+
+            saveNAF(NAF_DIR + lan + '/' + doc + '.naf', json_data, function(error) {
+                if (error) {
+                    console.error('Error while saving NAF: ' + error);
+                    res.sendStatus(400).json({ "error": error });
+                } else {
+                    console.log("Successfully saved annotation");
+                    res.sendStatus(200);
+                }
+            });
         });
-    });
+    }
 });
 
 // Endpoint to get all projects and incident types
@@ -1447,40 +1477,6 @@ app.get('/frame_elements', isAuthenticated, function(req, res) {
 
 app.get('/pos_info', isAuthenticated, function(req, res) {
     res.send(Object.keys(posInfo))
-});
-
-app.post('/store_structured_data', isAuthenticated, function(req, res) {
-    var user = req.user.user;
-
-    console.log("Storing structured data received from " + user);
-
-    if (!req.body.incident) {
-        console.error("Storing of structured data: incident not specified - user: " + user);
-        res.sendStatus(400);
-    } else {
-        // Get task data from request body
-        var task_data = req.body["task_data"] || {};
-        var incident_id = req.body["incident"];
-
-        if (task_data['action'] == 1) {
-            // Add wdt item to inc2str
-            var relation = task_data['relation'];
-            var item = task_data['wdt_uri'] + ' | ' + task_data['label'];
-            inc2str[incident_id][relation].push(item);
-        } else {
-            // Remove wdt item from inc2str
-            var item = task_data['item'];
-            var relation = task_data['relation'];
-
-            var index = inc2str[incident_id][relation].indexOf(item);
-            if (index !== -1) inc2str[incident_id][relation].splice(index, 1);
-        }
-
-        // Store inc2str
-        fs.writeFile(inc2str_file, JSON.stringify(inc2str), function() {
-            res.sendStatus(200);
-        });
-    }
 });
 
 // =====================================
