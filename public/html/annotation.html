@@ -54,7 +54,7 @@
                         </div>
 
                         <div class='col pr-0'>
-                            <select id="ic-doc-select" onchange="loadIncident()">
+                            <select id="ic-doc-select" onchange="loadDocument()">
                                 <option value="None">-Select a document-</option>
                             </select>
                         </div>
@@ -144,6 +144,14 @@
                     </div>
 
                     <!-- Frame Element Selectors-->
+                    <!-- Frame From Text -->
+                    <div class="fea-selectors col-sm-3">
+                        <label>Select Predicate:</label><br/>
+                        <select id="fea-pred-select", onchange="updateFEATask()">
+                            <option value="None" selected>-Select a predicate-</option>
+                        </select>
+                    </div>
+
                     <!-- Frame Element -->
                     <div class="fea-selectors col-sm-3">
                         <label>Select Frame Element:</label><br/>
