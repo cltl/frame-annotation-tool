@@ -84,7 +84,7 @@ var xmlOptions = {
     parseNodeValue : false,
     parseAttributeValue : false,
     trimValues: true, // FI: to trim newlines and spaces (these are preserved with CDATA)
-    cdataTagName: "#text", //default is 'false'
+    cdataTagName: "#cdata", //default is 'false'
     cdataPositionChar: "\\c",
     localeRange: "", //To support non english character in tag/attribute values.
     parseTrueNumberOnly: true
@@ -95,7 +95,7 @@ var jsonOptions = {
     attrNodeName: "attr", //default is false
     textNodeName : "#text",
     ignoreAttributes : false,
-    cdataTagName: "#text", //default is false
+    cdataTagName: "#cdata", //default is false
     cdataPositionChar: "\\c",
     format: true,
     indentBy: "",
@@ -285,11 +285,11 @@ function readTokenLayer(token_layer) {
             if (!Array.isArray(subtokens)) subtokens = [subtokens];
 
             for (var j in subtokens) {
-                token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['#text'] };
+                token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['#cdata'] };
             }
         }
 
-        result[token_id] = { 'sent': token_sent, 'text': token['#text'], 'sub': token_subs};
+        result[token_id] = { 'sent': token_sent, 'text': token['#cdata'], 'sub': token_subs};
     }
 
     return result;
