@@ -463,6 +463,8 @@ function loadDocument() {
     if (lan != 'None' && doc != 'None') {
         annotations = {};
         restoreDefaults(hard_reset);
+        updateTask();
+        
         clearSelection();
 
         loadNAFFile(inc, lan + '/' + doc, function(result) {
