@@ -218,6 +218,17 @@ function clearSelection() {
     }
 }
 
+function resetSubTasks() {
+    $('#mcn-task-select').val('None');
+    $('#fan-type-select').val('None');
+    $('#fan-relation-select').val('None');
+    $('#fea-pred-select').val('None');
+    $('#fea-role-select').val('None');
+    $('#sde-action-select').val('None');
+    $('#sde-relation-select').val('None');
+    $('#sde-remove-select').val('None');
+}
+
 function restoreDefaults(hard_reset) {
     $('#infoMessage').html('');
 
@@ -231,14 +242,7 @@ function restoreDefaults(hard_reset) {
     if (hard_reset) {
         // Reset selection boxes
         $('#annotation-task-selection').val('None');
-        $('#mcn-task-select').val('None');
-        $('#fan-type-select').val('None');
-        $('#fan-relation-select').val('None');
-        $('#fea-pred-select').val('None');
-        $('#fea-role-select').val('None');
-        $('#sde-action-select').val('None');
-        $('#sde-relation-select').val('None');
-        $('#sde-remove-select').val('None');
+        resetSubTasks();
 
         hideSelectors();
         hideInfoPanels();
@@ -258,6 +262,7 @@ function updateTask() {
     current_task = $('#annotation-task-selection').val();
     $('.annotated').removeClass('annotated');
 
+    resetSubTasks();
     hideSelectors();
     hideInfoPanels();
     clearSelection();
