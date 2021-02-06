@@ -218,10 +218,14 @@ function clearSelection() {
 
 function resetSubTasks() {
     $('#mcn-task-select').val('None');
+
+    $('#fan-task-select').val('None');
     $('#fan-type-select').val('None');
     $('#fan-relation-select').val('None');
+
     $('#fea-pred-select').val('None');
     $('#fea-role-select').val('None');
+
     $('#sde-action-select').val('None');
     $('#sde-relation-select').val('None');
     $('#sde-remove-select').val('None');
@@ -233,11 +237,10 @@ function resetSubTasks() {
 }
 
 function restoreDefaults(hard_reset) {
-    $('#infoMessage').html('');
-
     // Empty docs and info panels
     $('#doc-container').html('');
     $('#ip-sdi').html('');
+
     clearChosenFrameInfo();
     clearChosenRoleInfo();
     clearActivePredicate();
@@ -261,9 +264,11 @@ function restoreDefaults(hard_reset) {
     predicate_selected = false;
 }
 
-function updateTask() {
+function updateTask(clear) {
     current_task = $('#annotation-task-selection').val();
     $('.annotated').removeClass('annotated');
+
+    if (clear == true) { clearMessage(); }
 
     resetSubTasks();
     hideSelectors();
@@ -286,7 +291,6 @@ function updateTask() {
         $(".fan-rem-selectors").hide();
 
         $('span[frame]').addClass('annotated');
-        console.log($('span[frame]'));
     } else if (current_task == '3') {
         $('.fea-selectors').show();
         $('#ip-fea').show();
@@ -303,7 +307,9 @@ function updateTask() {
 }
 
 function updateFANTask() {
+    clearMessage();
     clearSelection();
+
     fan_task = $("#fan-task-select").val();
 
     if (fan_task == "1") {
@@ -322,6 +328,7 @@ function updateFANTask() {
 }
 
 function updateFEATask() {
+    // clearMessage();
     clearSelection();
     clearActivePredicate();
     
@@ -343,6 +350,8 @@ function updateFEATask() {
 }
 
 function updateSDETask() {
+    // clearMessage();
+
     var task = $("#sde-task-select").val();
 
     if (task == "1") {
@@ -355,7 +364,9 @@ function updateSDETask() {
 }
 
 function updateMCNTask() {
+    // clearMessage();
     clearSelection();
+
     mcn_task = $("#mcn-task-select").val();
     
     $('#ip-mcn').hide();
@@ -370,7 +381,9 @@ function updateMCNTask() {
 }
 
 function updateMCNType() {
+    // clearMessage();
     clearSelection();
+
     mcn_type = $("#mcn-type-select").val();
 
     if (mcn_type == '1' || mcn_type == '2') {
@@ -385,6 +398,8 @@ function updateMCNType() {
 }
 
 function updateCPDSubdivide() {
+    // clearMessage();
+
     var subdivisions = $('#mcn-subdivide-input').val().split('|');
     $('#cpd-subdivisions').empty();
     $('#cpd-subdivisions').append('<tr><th>Token</th><th>Lemma</th><th>POS</th><th>Head</th></tr>');
@@ -478,7 +493,7 @@ function loadDocument() {
                 annotations['sdr'] = result['coreferences'];
 
                 renderDocument(result, annotations);
-                updateTask();
+                updateTask(false);
                 
                 $('sup').hide();
 
@@ -759,6 +774,10 @@ function renderDropdown(element_id, items, data_items, default_option) {
     });
 }
 
+function clearMessage() {
+    $('#message').html('');
+    $('#message').removeClass();
+}
 
 function printMessage(message, type) {
     $('#message').html(message);
@@ -782,19 +801,6 @@ function loadNAFFile(incident, document, callback) {
             callback(0);
         } else {
             printMessage('Something went wrong while loading the requested document.', 'error');
-        }
-    });
-}
-
-function loadNAFFiles(incident_id, callback) {
-    var get_data = { 'incident': incident_id };
-    $.get('/load_incident', get_data, function(result, status) {
-        callback(result['nafs'])
-    }).fail(function(e) {
-        // Incident locked
-        if (e.status == 423) {
-            alert('The incident you tried to load is locked by another user.');
-            callback(0);
         }
     });
 }
