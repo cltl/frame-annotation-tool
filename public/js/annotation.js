@@ -53,7 +53,8 @@ $(function() {
             if (mcn_task == '1') {
                 if (mcn_type == '3') {
                     clearSelection();
-                    var token = $(t_selector).html();
+                    // Dont select sup
+                    var token = $(t_selector).clone().children().remove().end().text();
                     $('#mcn-subdivide-input').val(token);
                     updateCPDSubdivide();
                 }
