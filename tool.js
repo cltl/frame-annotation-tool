@@ -1041,6 +1041,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
                                     'source': session_id,
                                     'reftype': task_data['type'] };
                 srl_layer[i] = addExternalReferences(predicate, reference_data);
+                srl_layer[i]['attr']['status'] = 'manual';
             }
         }
 
