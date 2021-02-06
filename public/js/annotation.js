@@ -202,9 +202,7 @@ function hideInfoPanels() {
 }
 
 function clearSelection() {
-    if (predicate_selected) {
-        $('.annotated').removeClass('.annotated');
-    }
+    $('.annotated').removeClass('.annotated');
 
     predicate_selected = false;
     $('.styled').removeAttr('style');
@@ -227,6 +225,11 @@ function resetSubTasks() {
     $('#sde-action-select').val('None');
     $('#sde-relation-select').val('None');
     $('#sde-remove-select').val('None');
+
+    // Reset text inputs
+    $('#mcn-lemma-input').val('');
+    $('#sde-uri-input').val('');
+    $('#sde-label-input').val('');
 }
 
 function restoreDefaults(hard_reset) {
@@ -283,13 +286,12 @@ function updateTask() {
         $(".fan-rem-selectors").hide();
 
         $('span[frame]').addClass('annotated');
+        console.log($('span[frame]'));
     } else if (current_task == '3') {
         $('.fea-selectors').show();
         $('#ip-fea').show();
         $('#ip-pre').show();
 
-        // $('span[role]').addClass('annotated');
-        // $('span[frame]').addClass('annotated-depends');
         $('sup').show();
     } else if (current_task == '4') {
         $('span[reference]').addClass('annotated');
@@ -455,9 +457,7 @@ function updateIncidentSelection(changed) {
 
 function loadDocument() {
     var task = $('#annotation-task-selection').val();
-    var hard_reset = task == 'None' || task == '-1'
-    console.log(hard_reset);
-    console.log(task);
+    var hard_reset = task == 'None' || task == '-1';
 
     var inc = $('#ic-inc-select').val();
     var lan = $('#ic-lan-select').val();
@@ -467,10 +467,9 @@ function loadDocument() {
 
     if (lan != 'None' && doc != 'None') {
         annotations = {};
-        restoreDefaults(hard_reset);
-        updateTask();
-        
+
         clearSelection();
+        restoreDefaults(hard_reset);
 
         loadNAFFile(inc, lan + '/' + doc, function(result) {
             if (result != 0) {
@@ -479,6 +478,8 @@ function loadDocument() {
                 annotations['sdr'] = result['coreferences'];
 
                 renderDocument(result, annotations);
+                updateTask();
+                
                 $('sup').hide();
 
                 var predicates = [];
@@ -1023,7 +1024,6 @@ function validateRoleAnnotation() {
     }
 
     var tid = $('.annotated.depends.marked').attr('term-selector');
-    console.log(tid)
     var pr_id = annotations['fan'][tid]['predicate'];
     
     var task_data = { 'pr_id': pr_id, 'role': role, 'target_ids': selected };
