@@ -285,6 +285,7 @@ function readTokenLayer(token_layer) {
             if (!Array.isArray(subtokens)) subtokens = [subtokens];
 
             for (var j in subtokens) {
+                console.log(subtokens[j]);
                 token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['#cdata'] };
             }
         }
@@ -332,6 +333,7 @@ function readTermLayer(term_layer, token_data) {
             var sub_terms = term['component'];
             var target_token_id = term['span']['target']['attr']['id'];
             var target_token = token_data[target_token_id];
+            console.log(target_token);
 
             for (var j in sub_terms) {
                 var sub_term = sub_terms[j];
@@ -339,6 +341,8 @@ function readTermLayer(term_layer, token_data) {
 
                 var target_subtoken_id = sub_term['span']['target']['attr']['id'];
                 var target_sub_token = target_token['sub'][target_subtoken_id];
+                console.log(target_sub_token);
+                
                 var sub_term_data = { 'text': target_sub_token['text'],
                                       'lemma': sub_term['attr']['lemma'],
                                       't_select': sub_term_id,
@@ -716,7 +720,7 @@ function updateCompoundTokens(json_data, target_token_id, compound_data) {
                                                  'length': subterm_length,
                                                  'offset': offset,
                                                },
-                                       '#text': subterm_cdata }
+                                       '#cdata': subterm_cdata }
                 token_layer[i]['subtoken'].push(subtoken_entry);
 
                 offset += parseInt(subterm_length);
