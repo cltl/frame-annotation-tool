@@ -1,4 +1,5 @@
 var WDT_PREFIX = 'http://wikidata.org/wiki/';
+var cur_doc = 'None';
 
 var pos_options = ''
 annotations = {};
@@ -8,7 +9,7 @@ var fan_task = 'None';
 var mcn_task = 'None';
 var mcn_type = 'None';
 
-var enforced_role_annotation = false;
+var enforced_role_annotation = 'None';
 var predicate_selected = false;
 
 noFrameType = 'NO-FRAME';
@@ -53,6 +54,7 @@ $(function() {
             if (mcn_task == '1') {
                 if (mcn_type == '3') {
                     clearSelection();
+
                     // Dont select sup
                     var token = $(t_selector).clone().children().remove().end().text();
                     $('#mcn-subdivide-input').val(token);
@@ -82,7 +84,7 @@ $(function() {
                 if (lemma != undefined) {
                     loadFrames(type, language, lemma, function(data) {
                         renderDropdownWithGroups('#fan-type-select', data,
-                            ['definition', 'framenet'], '-Pick frame-');
+                            ['definition', 'framenet'], '-Select frame-');
                     });
                 }
             } else if (fan_task == '2') {
@@ -159,14 +161,14 @@ function hexToRGB(hex) {
      ] : null;
   }
 function getSelected() {
-    return $.unique($('.marked').not('.annotated-depends')
+    return $.unique($('.marked').not('.annotated.depends')
         .not('.structured-data').map(function() {
         return $(this).attr('term-selector');
     }).get());
 }
 
 function getLemma() {
-    return $.unique($('.marked').not('.annotated-depends')
+    return $.unique($('.marked').not('.annotated.depends')
         .not('.structured-data').map(function() {
         return $(this).attr('lemma');
     }).get())[0];
@@ -212,7 +214,7 @@ function clearSelection() {
     $('#mcn-subdivide-input').val('');
     updateCPDSubdivide();    
 
-    if (!enforced_role_annotation) {
+    if (enforced_role_annotation == 'None') {
         $('span').removeClass('info-marked');
     }
 }
@@ -266,11 +268,24 @@ function restoreDefaults(hard_reset) {
 }
 
 function updateTask(clear) {
-    current_task = $('#annotation-task-selection').val();
-    $('.annotated').removeClass('annotated');
+    if (enforced_role_annotation != 'None') {
+        $('#annotation-task-selection').prop('disabled', true);
+        $('#fea-pred-select').prop('disabled', true);
+        updateFEATask();
+    } else {
+        $('#annotation-task-selection').prop('disabled', false);
+        $('#fea-pred-select').prop('disabled', false);
+    }
+
+    var new_task = $('#annotation-task-selection').val();
 
     if (clear == true) { clearMessage(); }
+    if (new_task == current_task) { return; }
 
+    $('.annotated').removeClass('annotated');
+    $('sup').hide();
+
+    current_task = new_task
     resetSubTasks();
     hideSelectors();
     hideInfoPanels();
@@ -341,7 +356,7 @@ function updateFEATask() {
 
     loadRoles(frame, function(data) {
         renderDropdownWithGroups('#fea-role-select', data,
-            ['definition', 'framenet'], '-Pick a frame role-');
+            ['definition', 'framenet'], '-Select a frame role-');
     });
 
     if (fea_tid != '-1') {
@@ -472,12 +487,11 @@ function updateIncidentSelection(changed) {
 }
 
 function loadDocument() {
-    var task = $('#annotation-task-selection').val();
-    var hard_reset = task == 'None' || task == '-1';
-
     var inc = $('#ic-inc-select').val();
     var lan = $('#ic-lan-select').val();
     var doc = $('#ic-doc-select').val();
+    var hard_reset = doc != cur_doc;
+    cur_doc = doc;
 
     var inc_txt =$('#ic-inc-select option:selected').text(); 
 
@@ -494,16 +508,16 @@ function loadDocument() {
                 annotations['sdr'] = result['coreferences'];
 
                 renderDocument(result, annotations);
-                updateTask(false);
-                
-                $('sup').hide();
 
                 var predicates = [];
                 for (var key in annotations.fan) {
                     predicates.push({ 'label': annotations.fan[key].predicate, 'value': key })
                 }
 
-                renderDropdown('#fea-pred-select', predicates, [], '-Select a predicate-');
+                if (hard_reset) {
+                    renderDropdown('#fea-pred-select', predicates, [], '-Select a predicate-');
+                    $('sup').hide();
+                }
 
                 loadStructuredData(inc, function(data) {
                     renderStructuredData(inc, inc_txt, data);
@@ -521,12 +535,14 @@ function loadDocument() {
                         }
                     }
 
-                    renderDropdownWithGroups('#sde-remove-select', dropdown_data, [], '-Pick item-')
+                    renderDropdownWithGroups('#sde-remove-select', dropdown_data, [], '-Select item-')
                 });
 
                 // Show controls
                 $('#annotation-controls').show();
                 $('#content-container').show();
+
+                updateTask(false);
             }
         });
     } else{
@@ -537,7 +553,7 @@ function loadDocument() {
 function saveChanges() {
     // No task selected
     if (current_task == 'None'){
-        printMessage('Please pick an annotation type', 'error');
+        printMessage('Please Select an annotation type', 'error');
     }
 
     // Markable correction selected
@@ -761,7 +777,7 @@ function renderDropdown(element_id, items, data_items, default_option) {
     element.append($('<option value="None" selected>' + default_option + '</option>'));
 
     // Add group items
-    $.each(items, function(item_index) {
+    for (var item_index in items) {
         var item = items[item_index];
         var cur_option = $('<option></option>').attr('value', item['value']).text(item['label'])
 
@@ -772,7 +788,7 @@ function renderDropdown(element_id, items, data_items, default_option) {
         }
 
         element.append(cur_option);
-    });
+    }
 }
 
 function clearMessage() {
@@ -971,9 +987,9 @@ function validateFrameAnnotation() {
 
     if (frame_task == '1') {
         if (frame_type == 'None') {
-            return [false, 'Please pick a frame type'];
+            return [false, 'Please select a frame type'];
         } else if (frame_relation == 'None') {
-            return [false, 'Please pick a frame relation type'];
+            return [false, 'Please select a frame relation type'];
         }
 
         if (has_lu) {
@@ -1017,7 +1033,7 @@ function validateRoleAnnotation() {
     var role = $('#fea-role-select').val();
 
     if (role == 'None') {
-        return [false, 'Please pick a role'];
+        return [false, 'Please select a role'];
     }
 
     var selected = getSelected();
@@ -1032,7 +1048,39 @@ function validateRoleAnnotation() {
 
     var tid = $('.annotated.depends.marked').attr('term-selector');
     var pr_id = annotations['fan'][tid]['predicate'];
+
+    var an_un = [role];
+    for (var i in annotations['fea']['unexpressed']) {
+        var frame_element = annotations['fea']['unexpressed'][i];
+
+        if (frame_element['predicate'] == pr_id) {
+            an_un.push(frame_element['premon']);
+        }
+    }
     
+    var an_ex = {};
+    for (var i in annotations['fea']) {
+        if (i != 'unexpressed') {
+            var frame_element = annotations['fea'][i];
+
+            if (frame_element['predicate'] == pr_id) {
+                an_ex[frame_element['premon']] = i;
+            }
+        }
+    }
+
+    loadRoles(annotations['fan'][tid]['premon'], function(result) {
+        enforced_role_annotation = 'None';
+        for (i in result.Core) {
+            el = result.Core[i].value;
+
+            if (an_un.indexOf(el) == -1 && !(el in an_ex)) {
+                enforced_role_annotation = tid;
+                break;
+            }
+        }
+    });
+
     var task_data = { 'pr_id': pr_id, 'role': role, 'target_ids': selected };
     return [true, task_data];
 }
@@ -1166,6 +1214,7 @@ function activatePredicate(token_id) {
 
 function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
     data = datasource[type];
+
     for (var i in data) {
         var bg_color = CONTRASTING_COLORS[color_index];
         var fg_color = '#000000';
