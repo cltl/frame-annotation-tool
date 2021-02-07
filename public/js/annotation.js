@@ -27,13 +27,18 @@ $(function() {
     $('#annotation-controls').hide();
     $('#content-container').hide();
 
-    hideInfoPanels();
-
     $.get('/pos_info', function(result) {
         for (var i in result) {
             pos_options += '<option value="' + result[i] + '">' + result[i] + '</option>';
         }
-    });
+    })
+
+    resetDocument();
+    resetSelection();
+    resetTaskSelection();
+    resetSubTaskSelections();
+    resetSubtaskAnnotations();
+    resetSubtaskPanels();
 
     // On click markable
     $(document).on('click', 'span.markable', function() {
@@ -53,7 +58,7 @@ $(function() {
             // Add checks for already marked
             if (mcn_task == '1') {
                 if (mcn_type == '3') {
-                    clearSelection();
+                    resetSelection();
 
                     // Dont select sup
                     var token = $(t_selector).clone().children().remove().end().text();
@@ -125,7 +130,7 @@ $(function() {
     });
     
     // Fill project & type selectors
-    $.get('/projects', {}, function(data, status) { 
+    $.get('/projects', {}, function(data, status) {
         var proj = data['proj'];
         var type = data['type'];
 
@@ -189,89 +194,107 @@ function arraysMatch(arr1, arr2) {
 // UI CONTROLS =========================
 // =====================================
 
-function hideSelectors() {
-    $('.mcn-selectors').hide();
-    $('.fan-selectors').hide();
-    $('.fea-selectors').hide();
-    $('.sde-selectors').hide();
-    $('sup').hide();
+function resetDocument() {
+    $('#doc-container').html('');
 }
 
-function hideInfoPanels() {
-    $('#ip-mcn').hide();
-    $('#ip-fan').hide();
-    $('#ip-fea').hide();
-    $('#ip-pre').hide();
-}
-
-function clearSelection() {
-    $('.annotated').removeClass('.annotated');
-
+function resetSelection() {
     predicate_selected = false;
+    
     $('.styled').removeAttr('style');
     $('.styled').removeClass('styled');
     $('.marked').removeClass('marked');
     $('#mcn-subdivide-input').val('');
-    updateCPDSubdivide();    
-
-    if (enforced_role_annotation == 'None') {
-        $('span').removeClass('info-marked');
-    }
+    updateCPDSubdivide();
 }
 
-function resetSubTasks() {
+function resetTaskSelection() {
+    $('#annotation-task-selection').val('None');
+}
+
+function resetSubTaskSelections() {
     $('#mcn-task-select').val('None');
+    $('#mcn-type-select').val('None');
+    $('#mcn-lemma-input').val('');
+    $('.mcn-selectors').hide();
 
     $('#fan-task-select').val('None');
     $('#fan-type-select').val('None');
     $('#fan-relation-select').val('None');
+    $('.fan-selectors').hide();
 
     $('#fea-pred-select').val('None');
     $('#fea-role-select').val('None');
+    $('.fea-selectors').hide();
 
     $('#sde-action-select').val('None');
     $('#sde-relation-select').val('None');
     $('#sde-remove-select').val('None');
-
-    // Reset text inputs
-    $('#mcn-lemma-input').val('');
     $('#sde-uri-input').val('');
     $('#sde-label-input').val('');
+    $('.sde-selectors').hide();
 }
 
-function restoreDefaults(hard_reset) {
-    // Empty docs and info panels
-    $('#doc-container').html('');
-    $('#ip-sdi').html('');
+function resetSubtaskAnnotations() {
+    $('.annotated').removeClass('annotated');
+    $('.depends').removeClass('depends');
+    $('sup').hide();
+}
 
-    clearChosenFrameInfo();
-    clearChosenRoleInfo();
-    clearActivePredicate();
+function resetMCNPanel() {
+    $('#ip-mcn-subdiv').empty();
+    $('#ip-mcn-subdiv').append('<tr><th>Token</th><th>Lemma</th><th>POS</th><th>Head</th></tr>');
+    
+    $('#ip-mcn').hide();
+}
 
-    if (hard_reset) {
-        // Reset selection boxes
-        $('#annotation-task-selection').val('None');
-        resetSubTasks();
+function resetFANPanel() {
+    $('#ip-fan-label').html('');
+    $('#ip-fan-def').html('');
+    $('#ip-fan-pre').html('');
+    $('#ip-fan-pre').attr('href', '#');
+    $('#ip-fan-fra').html('');
+    $('#ip-fan-fra').attr('href', '#');
 
-        hideSelectors();
-        hideInfoPanels();
-    }
+    $('#ip-fan').hide();
+}
 
-    // Reset text inputs
-    $('#mcn-lemma-input').val('');
-    $('#sde-uri-input').val('');
-    $('#sde-label-input').val('');
+function resetFEAPanel() {
+    $('#ip-fea-label').html('');
+    $('#ip-fea-def').html('');
+    $('#ip-fea-pre').html('');
+    $('#ip-fea-pre').attr('href', '#');
+    $('#ip-fea-fra').html('');
+    $('#ip-fea-fra').attr('href', '#');
 
-    clearSelection();
+    $('#ip-fea').hide();
+}
 
-    predicate_selected = false;
+function resetPREPanel() {
+    $('#ip-pre-label').html('');
+    $('#ip-pre-pre').html('');
+    $('#ip-pre-pre').attr('href', '#');
+    $('#ip-pre-fra').html('');
+    $('#ip-pre-fra').attr('href', '#');
+    $('#ip-pre-ide').html('');
+
+    $('#ip-pre-rol').empty();
+    $('#ip-pre-rol').append('<tr><th>Frame Element</th><th>Role Type</th><th>Annotated</th><th>Expressed</th></tr>');
+
+    $('#ip-pre').hide();
+}
+
+function resetSubtaskPanels() {
+    resetMCNPanel();
+    resetFANPanel();
+    resetFEAPanel();
+    resetPREPanel();
 }
 
 function updateTask(clear) {
     if (enforced_role_annotation != 'None') {
         $('#annotation-task-selection').prop('disabled', true);
         $('#fea-pred-select').prop('disabled', true);
-        updateFEATask();
     } else {
         $('#annotation-task-selection').prop('disabled', false);
         $('#fea-pred-select').prop('disabled', false);
@@ -279,116 +302,64 @@ function updateTask(clear) {
 
     var new_task = $('#annotation-task-selection').val();
 
-    if (clear == true) { clearMessage(); }
-    if (new_task == current_task) { return; }
+    if (clear == true) {
+        clearMessage();
+    }
 
-    $('.annotated').removeClass('annotated');
-    $('sup').hide();
+    if (new_task == current_task) {
+        if (current_task == '3') {
+            updateFEATask();
+        }
+
+        return;
+    }
 
     current_task = new_task
-    resetSubTasks();
-    hideSelectors();
-    hideInfoPanels();
-    clearSelection();
-    clearActivePredicate();
+
+    resetSelection();
+    resetSubTaskSelections();
+    resetSubtaskAnnotations();
+    resetSubtaskPanels();
 
     if (current_task == '1') {
-        $('.mcn-selectors').show();
-        $('.mcn-add-selectors').hide();
-        $('.mcn-add-selectors2').hide();
-        $('.mcn-add-selectors3').hide();
-
+        $('.mcn-selectors').show(); 
         $('span[multiword]').addClass('annotated');
         $('span[compound]').addClass('annotated');
+
+        updateMCNTask();
     } else if (current_task == '2') {
         $('.fan-selectors').show();
-
-        $(".fan-add-selectors").hide();
-        $(".fan-rem-selectors").hide();
-
         $('span[frame]').addClass('annotated');
+
+        updateFANTask();
     } else if (current_task == '3') {
         $('.fea-selectors').show();
         $('#ip-fea').show();
         $('#ip-pre').show();
-
-        $('sup').show();
+        
+        updateFEATask();
     } else if (current_task == '4') {
         $('span[reference]').addClass('annotated');
     } else if (current_task == '5') {
         $('.sde-selectors').show();
         $('.sde-rem-selectors').hide();
         $('.sde-add-selectors').hide();
-    }
-}
 
-function updateFANTask() {
-    clearMessage();
-    clearSelection();
-
-    fan_task = $("#fan-task-select").val();
-
-    if (fan_task == "1") {
-        $('#ip-fan').show();
-        $('#ip-pre').show();
-
-        $(".fan-add-selectors").show();
-        $(".fan-rem-selectors").hide();
-    } else if (fan_task == '2') {
-        $('#ip-pre').show();
-        $('#ip-fan').hide();
-        
-        $(".fan-add-selectors").hide();
-        $(".fan-rem-selectors").show();
-    }
-}
-
-function updateFEATask() {
-    // clearMessage();
-    clearSelection();
-    clearActivePredicate();
-    
-    var fea_tid = $("#fea-pred-select").val();
-    $('.annotated').removeClass('annotated')
-    activatePredicate(fea_tid);
-
-    var frame = annotations['fan'][fea_tid]['premon'];
-
-    loadRoles(frame, function(data) {
-        renderDropdownWithGroups('#fea-role-select', data,
-            ['definition', 'framenet'], '-Select a frame role-');
-    });
-
-    if (fea_tid != '-1') {
-        predicate_selected = true;
-        $('[term-selector=' + fea_tid + ']').addClass('marked annotated depends');
-    }
-}
-
-function updateSDETask() {
-    // clearMessage();
-
-    var task = $("#sde-task-select").val();
-
-    if (task == "1") {
-        $(".sde-add-selectors").show();
-        $(".sde-rem-selectors").hide();
-    } else {
-        $(".sde-add-selectors").hide();
-        $(".sde-rem-selectors").show();
+        updateSDETask();
     }
 }
 
 function updateMCNTask() {
-    // clearMessage();
-    clearSelection();
+    resetSelection();
+    resetSubtaskPanels();
+    $('#mcn-type-select').val('None');
+    $('#mcn-lemma-input').val('');
 
     mcn_task = $("#mcn-task-select").val();
-    
-    $('#ip-mcn').hide();
 
     if (mcn_task == '1') {
         $('.mcn-add-selectors').show();
+        updateMCNType();
     } else {
         $('.mcn-add-selectors').hide();
         $('.mcn-add-selectors2').hide();
@@ -397,8 +368,9 @@ function updateMCNTask() {
 }
 
 function updateMCNType() {
-    // clearMessage();
-    clearSelection();
+    resetSelection();
+    resetSubtaskPanels();
+    $('#mcn-lemma-input').val('');
 
     mcn_type = $("#mcn-type-select").val();
 
@@ -410,15 +382,86 @@ function updateMCNType() {
         $('#ip-mcn').show();
         $('.mcn-add-selectors2').hide();
         $('.mcn-add-selectors3').show();
+    } else {
+        $('#ip-mcn').hide();
+        $('.mcn-add-selectors2').hide();
+        $('.mcn-add-selectors3').hide();
+    }
+}
+
+function updateFANTask() {
+    resetSelection();
+    resetSubtaskPanels();
+    $('#fan-type-select').val('None');
+    $('#fan-relation-select').val('None');
+
+    fan_task = $("#fan-task-select").val();
+
+    if (fan_task == "1") {
+        $('#ip-fan').show();
+        $(".fan-add-selectors").show();
+    } else if (fan_task == '2') {
+        $('#ip-pre').show();
+        $(".fan-add-selectors").hide();
+    } else {
+        $(".fan-add-selectors").hide();
+    }
+}
+
+function updateFEATask() {
+    resetSelection();
+    resetSubtaskAnnotations();
+    resetSubtaskPanels();
+
+    $('#ip-pre').show();
+    $('sup').show();
+    $('#fea-role-select').val('None');
+    
+    var fea_tid = $("#fea-pred-select").val();
+
+    if (fea_tid != 'None') {
+        activatePredicate(fea_tid);
+
+        var frame = annotations['fan'][fea_tid]['premon'];
+    
+        loadRoles(frame, function(data) {
+            renderDropdownWithGroups('#fea-role-select', data,
+                ['definition', 'framenet'], '-Select a frame role-');
+        });
+        
+        if (fea_tid != '-1') {
+            predicate_selected = true;
+            $('[term-selector=' + fea_tid + ']').addClass('marked annotated depends');
+        }
+    }
+}
+
+function updateSDETask() {
+    resetSelection();
+    resetSubtaskPanels();
+
+    $('#sde-action-select').val('None');
+    $('#sde-relation-select').val('None');
+    $('#sde-remove-select').val('None');
+    $('#sde-uri-input').val('');
+    $('#sde-label-input').val('');
+
+    var task = $("#sde-task-select").val();
+
+    if (task == '1') {
+        $(".sde-add-selectors").show();
+        $(".sde-rem-selectors").hide();
+    } else if (task == '2') {
+        $(".sde-add-selectors").hide();
+        $(".sde-rem-selectors").show();
+    } else {
+        $(".sde-add-selectors").hide();
+        $(".sde-rem-selectors").hide();
     }
 }
 
 function updateCPDSubdivide() {
-    // clearMessage();
-
     var subdivisions = $('#mcn-subdivide-input').val().split('|');
-    $('#cpd-subdivisions').empty();
-    $('#cpd-subdivisions').append('<tr><th>Token</th><th>Lemma</th><th>POS</th><th>Head</th></tr>');
 
     for (var i in subdivisions) {
         var token = subdivisions[i];
@@ -430,7 +473,7 @@ function updateCPDSubdivide() {
             var pos_input = '<select id=' + id + '_p type="text" class="w-100">' + pos_options + '</select>';
             var hea_input = '<input id=' + id + '_h type="radio" name="head">';
 
-            $('#cpd-subdivisions').append('<tr><td>' + token_sp + '</td>' +
+            $('#ip-mcn-subdiv').append('<tr><td>' + token_sp + '</td>' +
                                               '<td>' + lem_input + '</td>' +
                                               '<td>' + pos_input + '</td>' +
                                               '<td>' + hea_input + '</td></tr>');
@@ -490,16 +533,18 @@ function loadDocument() {
     var inc = $('#ic-inc-select').val();
     var lan = $('#ic-lan-select').val();
     var doc = $('#ic-doc-select').val();
-    var hard_reset = doc != cur_doc;
+
+    var new_load = doc != cur_doc;
     cur_doc = doc;
 
     var inc_txt =$('#ic-inc-select option:selected').text(); 
 
+    resetDocument();
+    resetSelection();
+    resetSubtaskPanels();
+
     if (lan != 'None' && doc != 'None') {
         annotations = {};
-
-        clearSelection();
-        restoreDefaults(hard_reset);
 
         loadNAFFile(inc, lan + '/' + doc, function(result) {
             if (result != 0) {
@@ -508,17 +553,19 @@ function loadDocument() {
                 annotations['sdr'] = result['coreferences'];
 
                 renderDocument(result, annotations);
+                $('sup').hide();
 
-                var predicates = [];
-                for (var key in annotations.fan) {
-                    predicates.push({ 'label': annotations.fan[key].predicate, 'value': key })
-                }
+                // Load and render predicates dropdown
+                if (new_load) {
+                    var predicates = [];
+                    for (var key in annotations.fan) {
+                        predicates.push({ 'label': annotations.fan[key].predicate, 'value': key })
+                    }
 
-                if (hard_reset) {
                     renderDropdown('#fea-pred-select', predicates, [], '-Select a predicate-');
-                    $('sup').hide();
                 }
 
+                // Loadand render structured data controls
                 loadStructuredData(inc, function(data) {
                     renderStructuredData(inc, inc_txt, data);
 
@@ -1169,18 +1216,15 @@ function storeAndReload(task_data) {
 // =====================================
 
 function activatePredicate(token_id) {
-    clearActivePredicate();
-
     // Get information from annotation
     var info = annotations['fan'][token_id];
 
-
     // Set predicate summary
-    $('#active-frame-label').text(info.label);
-    $('#active-frame-pre').text(info.premon);
-    $('#active-frame-pre').attr('href', info.premon);
-    $('#active-frame-frn').text(info.framenet);
-    $('#active-frame-frn').attr('href', info.framenet);
+    $('#ip-pre-label').text(info.label);
+    $('#ip-pre-pre').text(info.premon);
+    $('#ip-pre-pre').attr('href', info.premon);
+    $('#ip-pre-fra-frn').text(info.framenet);
+    $('#ip-pre-fra-frn').attr('href', info.framenet);
     $('#activePredicate').text(info.predicate);
 
     var an_un = [];
@@ -1248,67 +1292,11 @@ function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
             new_row.append('<td>' + annotated + '</td>');
             new_row.append('<td>' + expressed + '</td>');
 
-            $('#selectedPredicateRoleInfo').append(new_row);
+            $('#ip-pre-rol').append(new_row);
 
             color_index += 1;
         }
     }
 
     return color_index
-}
-
-var updateChosenFrameInfo = function() {
-    var chosen_frame = $('#fan-type-select option:selected').text();
-    var chosen_frame_premon = $('#fan-type-select option:selected').val();
-    var chosen_frame_framenet = $('#fan-type-select option:selected').attr('data-framenet');
-    var chosen_frame_definition = $('#fan-type-select option:selected').attr('data-definition');
-
-    $('#chosenFrameLabel').text(chosen_frame);
-    $('#chosenFrameDef').text(chosen_frame_definition);
-    $('#chosenFramePrem').attr('href', chosen_frame_premon);
-    $('#chosenFramePrem').text('Click here');
-    $('#chosenFrameFM').attr('href', chosen_frame_framenet);
-    $('#chosenFrameFM').text('Click here');
-}
-
-var clearChosenFrameInfo = function() {
-    $('#chosenFrameLabel').text('');
-    $('#chosenFrameDef').text('');
-    $('#chosenFramePrem').attr('href', '#');
-    $('#chosenFramePrem').text('');
-    $('#chosenFrameFM').attr('href', '#');
-    $('#chosenFrameFM').text('');
-}
-
-var updateChosenRoleInfo = function() {
-    var chosen_role = $('#fea-role-select option:selected').text();
-    var chosen_role_premon = $('#fea-role-select option:selected').val();
-    var chosen_role_framenet = $('#fea-role-select option:selected').attr('data-framenet');
-    var chosen_role_definition = $('#fea-role-select option:selected').attr('data-definition');
-
-    $('#chosenRoleLabel').text(chosen_role);
-    $('#chosenRoleDef').text(chosen_role_definition);
-    $('#chosenRolePrem').attr('href', chosen_role_premon);
-    $('#chosenRolePrem').text('Click here');
-    $('#chosenRoleFM').attr('href', chosen_role_framenet);
-    $('#chosenRoleFM').text('Click here');
-}
-
-var clearChosenRoleInfo = function() {
-    $('#chosenRoleLabel').text('');
-    $('#chosenRoleDef').text('');
-    $('#chosenRolePrem').attr('href', '#');
-    $('#chosenRolePrem').text('');
-    $('#chosenRoleFM').attr('href', '#');
-    $('#chosenRoleFM').text('');
-}
-
-var clearActivePredicate = function() {
-    $('#active-frame-label').text('');
-    $('#active-frame-pre').text('');
-    $('#active-frame-pre').attr('href', '#');
-    $('#active-frame-frn').text('');
-    $('#active-frame-frn').attr('href', '#');
-    $('#active-predicate-id').text('');
-    $('#selectedPredicateRoleInfo').find('tr:gt(0)').remove();
 }
