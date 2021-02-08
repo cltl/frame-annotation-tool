@@ -400,6 +400,7 @@ function updateFANTask() {
     resetSelection();
     resetSubtaskPanels();
 
+    $('#ip-pre').show();
     $('span[frame]').addClass('annotated');
     $('#fan-type-select').val('None');
     $('#fan-relation-select').val('None');
