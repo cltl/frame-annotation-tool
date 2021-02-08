@@ -424,6 +424,8 @@ function updateFEATask() {
     resetSubtaskPanels();
 
     $('#ip-pre').show();
+    $('#ip-fea').show();
+
     $('sup').show();
     $('#fea-role-select').val('None');
     
@@ -1312,5 +1314,19 @@ function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
 }
 
 function updateChosenFrameInfo() {
+    var chosen_element = $('#fan-type-select option:selected')
+    $('#ip-fan-label').html(chosen_element.text());
+    $('#ip-fan-pre').html('Click here');
+    $('#ip-fan-pre').attr('href', chosen_element.val());
+    $('#ip-fan-fra').html('Click here');
+    $('#ip-fan-fra').attr('href', chosen_element.data('framenet'));
+}
 
+function updateChosenRoleInfo() {
+    var chosen_element = $('#fea-type-select option:selected')
+    $('#ip-fea-label').html(chosen_element.text());
+    $('#ip-fea-pre').html('Click here');
+    $('#ip-fea-pre').attr('href', chosen_element.val());
+    $('#ip-fea-fra').html('Click here');
+    $('#ip-fea-fra').attr('href', chosen_element.data('framenet'));
 }
