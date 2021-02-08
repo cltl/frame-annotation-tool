@@ -307,8 +307,14 @@ function updateTask(clear) {
     }
 
     if (new_task == current_task) {
-        if (current_task == '3') {
+        if (current_task == '1') {
+            updateMCNTask();
+        } else if (current_task == '2') {
+            updateFANTask();
+        } else if (current_task == '3') {
             updateFEATask();
+        } else if (current_task == '4') {
+            $('span[reference]').addClass('annotated');
         }
 
         return;
@@ -322,14 +328,11 @@ function updateTask(clear) {
     resetSubtaskPanels();
 
     if (current_task == '1') {
-        $('.mcn-selectors').show(); 
-        $('span[multiword]').addClass('annotated');
-        $('span[compound]').addClass('annotated');
+        $('.mcn-selectors').show();  
 
         updateMCNTask();
     } else if (current_task == '2') {
         $('.fan-selectors').show();
-        $('span[frame]').addClass('annotated');
 
         updateFANTask();
     } else if (current_task == '3') {
@@ -352,6 +355,10 @@ function updateTask(clear) {
 function updateMCNTask() {
     resetSelection();
     resetSubtaskPanels();
+
+    $('span[multiword]').addClass('annotated');
+    $('span[compound]').addClass('annotated');  
+
     $('#mcn-type-select').val('None');
     $('#mcn-lemma-input').val('');
 
@@ -392,6 +399,8 @@ function updateMCNType() {
 function updateFANTask() {
     resetSelection();
     resetSubtaskPanels();
+
+    $('span[frame]').addClass('annotated');
     $('#fan-type-select').val('None');
     $('#fan-relation-select').val('None');
 
@@ -1299,4 +1308,8 @@ function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
     }
 
     return color_index
+}
+
+function updateChosenFrameInfo() {
+
 }
