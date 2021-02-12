@@ -733,19 +733,18 @@ function renderTokens(terms, annotations) {
 
 function renderDocument(doc_data, annotations) {
     // Extract necessary data
-    var doc_id = doc_data['name']
+    var doc_id = doc_data['name'];
+    var title = doc_id.split('/')[1];
     var source = doc_data['source'];
 
     // Render title
-    var title_tokens = doc_data['title'];
     var body_tokens = doc_data['body'];
 
-    var title_render = renderTokens(title_tokens, annotations);
     var body_render = renderTokens(body_tokens, annotations);
 
     var result = '<div class="panel panel-default" id="' + doc_id + '">';
-    result += '<div class="panel-heading"><h4 class="document-title">' + title_render; 
-    result += '(<a href="' + source + '">source</a>)';
+    result += '<div class="panel-heading"><h4 class="document-title">' + title; 
+    result += ' (<a href="' + source + '">source</a>)';
     result += '</h4></div>';
 
     // Render body

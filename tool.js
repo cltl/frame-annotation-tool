@@ -301,7 +301,7 @@ function readTokenLayer(token_layer) {
  * @param {object}      token_data  Information of all tokens in token layer
  */
 function readTermLayer(term_layer, token_data) {
-    var result = [[], []];
+    var result = [];
 
     // Loop trough term layer
     for (var i in term_layer) {
@@ -320,11 +320,7 @@ function readTermLayer(term_layer, token_data) {
                               'type': 'multiword',
                               'sent': target_token['sent'] };
 
-            if (target_token['sent'] == '1') {
-                result[0].push(term_data);
-            } else {
-                result[1].push(term_data);
-            }
+            result.push(term_data);
         }
 
         // Term is part compound
@@ -346,12 +342,7 @@ function readTermLayer(term_layer, token_data) {
                                       'p_select': term_id,
                                       'type': 'compound',
                                       'sent': target_token['sent'] };
-
-                if (target_token['sent'] == '1') {
-                    result[0].push(sub_term_data);
-                } else {
-                    result[1].push(sub_term_data);
-                }
+                result.push(sub_term_data);
             }
         }
 
@@ -365,12 +356,7 @@ function readTermLayer(term_layer, token_data) {
                               'p_select': term_id,
                               'type': 'singleton',
                               'sent': target_token['sent'] };
-
-            if (target_token['sent'] == '1') {
-                result[0].push(term_data);
-            } else {
-                result[1].push(term_data);
-            }
+            result.push(term_data);
         }
     }
 
@@ -525,8 +511,8 @@ function readNAFFile(json_data, doc_name) {
     var predicates = readSRLLayer(srl_layer);
     var coreferences = readCoreferencesLayer(coref_layer);
 
-    return { 'name': doc_name, 'source': source, 'title': term_info[0],
-             'body': term_info[1], 'frames': predicates[0],
+    return { 'name': doc_name, 'source': source, 'title': 'test',
+             'body': term_info, 'frames': predicates[0],
              'frame_elements': predicates[1], 'coreferences': coreferences }
 }
 
