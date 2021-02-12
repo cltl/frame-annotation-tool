@@ -1259,7 +1259,11 @@ function activatePredicate(token_id) {
             var frame_element = annotations['fea'][i];
 
             if (frame_element['predicate'] == info.predicate) {
-                an_ex[frame_element['premon']] = i;
+                if (!(frame_element['premon'] in an_ex)) {
+                    an_ex[frame_element['premon']] = [];
+                }
+
+                an_ex[frame_element['premon']].push(i);
             }
         }
     }
@@ -1294,10 +1298,13 @@ function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
             expressed = true;
 
             var t_select = an_ex[data[i]['value']];
-
-            $('[term-selector=' + t_select + ']').addClass('styled');
-            $('[term-selector=' + t_select + ']').css('background-color', bg_color);
-            $('[term-selector=' + t_select + ']').css('color', fg_color);
+            
+            for (var i in t_select) {
+                var term = t_select[i]; 
+                $('[term-selector=' + term + ']').addClass('styled');
+                $('[term-selector=' + term + ']').css('background-color', bg_color);
+                $('[term-selector=' + term + ']').css('color', fg_color);
+            }
         }
         
         if (annotated || show) {
