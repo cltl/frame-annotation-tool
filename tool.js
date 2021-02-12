@@ -1083,6 +1083,7 @@ function handleFrameElementAnnotation(json_data, task_data, session_id) {
 
 // TODO: Handle coreference update
 function handleCoreferenceAnnotation(json_data, task_data, session_id) {
+    json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'coreferences', 'coref');
     var coref_layer = json_data['NAF']['coreferences']['coref'];
     if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
 
