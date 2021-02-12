@@ -1027,7 +1027,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
 
         var timestamp = new Date().toNAFUTCString();
 
-        // Check for span overlap & Update where necessary
+        // Check for span overlap & update where necessary
         for (var i in srl_layer) {
             var predicate = srl_layer[i];
             var predicate_target = predicate['span']['target'];

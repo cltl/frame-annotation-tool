@@ -79,6 +79,7 @@ $(function() {
                 $(t_selector).toggleClass('marked');
 
                 if (is_frame) {
+                    resetPREPanel();
                     activatePredicate(term_selector);
                 }
 
@@ -95,6 +96,8 @@ $(function() {
             } else if (fan_task == '2') {
                 if (is_frame) {
                     $(t_selector).toggleClass('marked');
+
+                    resetPREPanel();
                     activatePredicate(term_selector);
                 }
             }
@@ -1228,6 +1231,8 @@ function storeAndReload(task_data) {
 // =====================================
 
 function activatePredicate(token_id) {
+    $('#ip-pre').show();
+
     // Get information from annotation
     var info = annotations['fan'][token_id];
 
