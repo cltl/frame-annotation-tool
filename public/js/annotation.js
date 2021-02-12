@@ -135,7 +135,7 @@ $(function() {
         var type = data['type'];
 
         renderDropdown('#ic-pro-select', proj, [], '-Select a project-');
-        renderDropdown('#ic-typ-select', type, [], '-Select a project-');
+        renderDropdown('#ic-typ-select', type, [], '-Select incident type-');
     });
 });
 
