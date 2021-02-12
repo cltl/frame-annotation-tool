@@ -207,6 +207,12 @@ function resetSelection() {
     $('.styled').removeAttr('style');
     $('.styled').removeClass('styled');
     $('.marked').removeClass('marked');
+
+    if (current_task == '3') {
+        $('.annotated').removeClass('annotated');
+        $('.depends').removeClass('depends');
+    }
+
     $('#mcn-subdivide-input').val('');
     updateCPDSubdivide();
 }
