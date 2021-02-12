@@ -571,7 +571,7 @@ function loadDocument() {
                 $('sup').hide();
 
                 // Load and render predicates dropdown
-                if (new_load) {
+                if (new_load || current_task == '2') {
                     var predicates = [];
                     for (var key in annotations.fan) {
                         predicates.push({ 'label': annotations.fan[key].predicate, 'value': key })
