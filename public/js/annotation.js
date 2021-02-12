@@ -214,6 +214,7 @@ function resetSelection() {
     }
 
     $('#mcn-subdivide-input').val('');
+    $("#fea-pred-select").val('None');
     updateCPDSubdivide();
 }
 
@@ -428,17 +429,17 @@ function updateFANTask() {
 }
 
 function updateFEATask() {
+    var fea_tid = $("#fea-pred-select").val();
     resetSelection();
     resetSubtaskAnnotations();
     resetSubtaskPanels();
+    $("#fea-pred-select").val(fea_tid);
 
     $('#ip-pre').show();
     $('#ip-fea').show();
 
     $('sup').show();
     $('#fea-role-select').val('None');
-    
-    var fea_tid = $("#fea-pred-select").val();
 
     if (fea_tid != 'None') {
         activatePredicate(fea_tid);
