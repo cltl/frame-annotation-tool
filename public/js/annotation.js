@@ -1264,13 +1264,16 @@ function activatePredicate(token_id) {
     for (var i in annotations['fea']) {
         if (i != 'unexpressed') {
             var frame_element = annotations['fea'][i];
+            console.log(frame_element);
+            console.log(info.predicate);
 
-            if (frame_element['predicate'] == info.predicate) {
-                if (!(frame_element['premon'] in an_ex)) {
-                    an_ex[frame_element['premon']] = [];
+            if (frame_element.predicate == info.predicate) {
+                console.log('test');
+                if (!(frame_element.premon in an_ex)) {
+                    an_ex[frame_element.premon] = [];
                 }
 
-                an_ex[frame_element['premon']].push(i);
+                an_ex[frame_element.premon].push(i);
             }
         }
     }

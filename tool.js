@@ -428,6 +428,7 @@ function readSRLLayer(srl_layer) {
             // Get frame element annotations
             if ('role' in predicate) {
                 var frame_elements = readRoleLayer(predicate['role']);
+
                 // Loop over each frame element
                 for (var j in frame_elements) {
                     var frame_element = frame_elements[j]
@@ -869,9 +870,12 @@ function addRoleEntry(json_data, target_id, role_data, session_id) {
                                'externalReferences': { 'externalRef': [] }};
             
             // Construct span layer
-            if (role_data['target_term'] != 'unexpressed') {
-                var target_data = { 'attr': { 'id': role_data['target_term'] }};
-                role_entry['span']['target'].push(target_data);
+            if (role_data['target_terms'] != 'unexpressed') {
+                for (var j in role_data['target_terms']) {
+                    var target =  role_data['target_terms'][j];
+                    var target_data = { 'attr': { 'id': target }};
+                    role_entry['span']['target'].push(target_data);
+                }
             }
 
             // Construct external references layer in role
@@ -1058,11 +1062,8 @@ function handleFrameElementAnnotation(json_data, task_data, session_id) {
         task_data['target_ids'] = ['unexpressed'];
     }
 
-    // Create new predicate for each term in span
-    for (var i in task_data['target_ids']) {
-        var role_data = { 'role': task_data['role'], 'target_term': task_data['target_ids'][i] };
-        json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
-    }
+    var role_data = { 'role': task_data['role'], 'target_terms': task_data['target_ids'] };
+    json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
 
     return json_data;
 }
