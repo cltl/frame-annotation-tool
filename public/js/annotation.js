@@ -202,20 +202,18 @@ function resetDocument() {
 }
 
 function resetSelection() {
-    predicate_selected = false;
-    
-    $('.styled').removeAttr('style');
-    $('.styled').removeClass('styled');
-    $('.marked').removeClass('marked');
-
     if (current_task == '3') {
-        $('.annotated').removeClass('annotated');
-        $('.depends').removeClass('depends');
-    }
+        $('.marked').not('.annotated').removeClass('marked');
+    } else {
+        predicate_selected = false;
+    
+        $('.styled').removeAttr('style');
+        $('.styled').removeClass('styled');
+        $('.marked').removeClass('marked');
 
-    $('#mcn-subdivide-input').val('');
-    $("#fea-pred-select").val('None');
-    updateCPDSubdivide();
+        $('#mcn-subdivide-input').val('');
+        updateCPDSubdivide();
+    }
 }
 
 function resetTaskSelection() {
@@ -246,6 +244,8 @@ function resetSubTaskSelections() {
 }
 
 function resetSubtaskAnnotations() {
+    $('.styled').removeAttr('style');
+    $('.styled').removeClass('styled');
     $('.annotated').removeClass('annotated');
     $('.depends').removeClass('depends');
     $('sup').hide();
@@ -430,8 +430,9 @@ function updateFANTask() {
 
 function updateFEATask() {
     var fea_tid = $("#fea-pred-select").val();
-    resetSelection();
+    
     resetSubtaskAnnotations();
+    resetSelection();
     resetSubtaskPanels();
     $("#fea-pred-select").val(fea_tid);
 
