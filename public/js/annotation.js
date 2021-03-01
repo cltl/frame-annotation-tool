@@ -49,6 +49,7 @@ $(function() {
         var t_selector = '[term-selector="' + term_selector + '"]';
         var p_selector = '[parent-selector="' + parent_selector + '"]';
         
+        var is_annotated = $(t_selector).hasClass('annotated') 
         var is_refering = $(t_selector).is('[reference]');
         var is_frame = $(t_selector).is('[frame]');
         var is_role = $(t_selector).is('[role]');
@@ -74,8 +75,14 @@ $(function() {
 
         // Currently annotating frames
         else if (current_task == '2') {
-            // Creating new predicate
             if (fan_task == '1') {
+                if (is_annotated) {
+                    $(t_selector).toggleClass('marked');
+
+                    resetPREPanel();
+                    activatePredicate(term_selector);
+                }
+            } else if (fan_task == '2') {
                 $(t_selector).toggleClass('marked');
 
                 if (is_frame) {
@@ -93,7 +100,7 @@ $(function() {
                             ['definition', 'framenet'], '-Select frame-');
                     });
                 }
-            } else if (fan_task == '2') {
+            } else if (fan_task == '3') {
                 if (is_frame) {
                     $(t_selector).toggleClass('marked');
 
@@ -417,14 +424,14 @@ function updateFANTask() {
 
     fan_task = $("#fan-task-select").val();
 
-    $('span[frame]').addClass('annotated');
     if (fan_task == "1") {
         $('#ip-pre').show();
         $('#ip-fan').hide();
 
         $(".fan-add-selectors").hide();
         $(".fan-rem-selectors").hide();
-
+        
+        $('span[frame].manual').removeClass('annotated');
     } else if (fan_task == "2") {
         $('#ip-fan').show();
         $(".fan-add-selectors").show();
@@ -1083,8 +1090,17 @@ function validateFrameAnnotation() {
         return [false, 'Please select at least one markable'];
     }
 
+    if (frame_task == '1') {
+        var predicates = selected.map(function(term) {
+            return annotations.fan[term].predicate;
+        });
+
+        var task_data = { 'fan_task': 1, 'target_ids': predicates };
+
+        return [true, task_data]
+    }
     // Create
-    if (frame_task == '2') {
+    else if (frame_task == '2') {
         var task_data = { 'fan_task': 2,
                           'frame': frame_type,
                           'type': frame_relation,

@@ -244,7 +244,7 @@ Date.prototype.toNAFUTCString = function() {
 function getLatestExternalReference(references) {
     // Only 1 external reference found
     if (!(Array.isArray(references))) {
-        return references['attr']['reference'];
+        return references['attr'];
     } else {
         var most_recent = undefined;
 
@@ -262,7 +262,7 @@ function getLatestExternalReference(references) {
             }
         }
 
-        return most_recent['attr']['reference'];
+        return most_recent['attr'];
     }
 }
 
@@ -376,7 +376,7 @@ function readRoleLayer(role_layer) {
         var role = role_layer[i];
 
         var references = role['externalReferences']['externalRef'];
-        var reference = getLatestExternalReference(references);
+        var reference = getLatestExternalReference(references).reference;
 
         var role_span = role['span']['target'];
         if (!(Array.isArray(role_span))) role_span = [role_span];
@@ -404,7 +404,7 @@ function readSRLLayer(srl_layer) {
         // Get most recent annotation for current predicate if not deprecated
         if (predicate_stat !== 'deprecated') {
             var references = predicate['externalReferences']['externalRef'];
-            var reference = getLatestExternalReference(references);
+            var reference = getLatestExternalReference(references).reference;
             
             // Loop over each term in the predicate span
             var predicate_span = predicate['span']['target'];
@@ -471,7 +471,7 @@ function readCoreferencesLayer(coref_layer) {
         references = references !== undefined ? references['externalRef'] : [];
 
         if (references) {
-            var reference = getLatestExternalReference(references);
+            var reference = getLatestExternalReference(references).reference;
             for (var i in coref_span) {
                 var term_id = coref_span[i]['attr']['id'];
 
@@ -1011,7 +1011,23 @@ function handleMarkableCorrection(json_data, task_data) {
 
 function handleFrameAnnotation(json_data, task_data, session_id) {
     if (task_data.fan_task == 1) {
-        
+        var srl_layer = json_data['NAF']['srl']['predicate'];
+        if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+        var timestamp = new Date().toNAFUTCString();
+
+        for (var i in srl_layer) {
+            var predicate = srl_layer[i];
+            var predicate_id = predicate.attr.id;
+
+            if (task_data.target_ids.includes(predicate_id)) {
+                var reference_data = getLatestExternalReference(predicate.externalReferences.externalRef);
+                reference_data['timestamp'] = timestamp;
+                reference_data['source'] = session_id;
+                
+                srl_layer[i] = addExternalReferences(predicate, reference_data);
+                srl_layer[i]['attr']['status'] = 'manual';
+            }
+        }
     } else if (task_data.fan_task == 2) {
         json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'srl', 'predicate');
         var srl_layer = json_data['NAF']['srl']['predicate'];
