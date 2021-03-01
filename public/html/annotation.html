@@ -75,7 +75,7 @@
                     <div class="annotation-task-selectors col-sm-3">
                         <label>Annotation type: </label>
                         <br/>
-                        <select id="annotation-task-selection" onchange="updateTask()">
+                        <select id="annotation-task-selection" onchange="updateTask(true)">
                             <option value="None" selected>-Select annotation type-</option>
                             <option value="1">Markable Correction</option>
                             <option value="2">Frame Annotation</option>
@@ -148,7 +148,7 @@
                     <!-- Frame From Text -->
                     <div class="fea-selectors col-sm-3">
                         <label>Select Predicate:</label><br/>
-                        <select id="fea-pred-select", onchange="updateFEATask()">
+                        <select id="fea-pred-select" onchange="updateFEATask()">
                             <option value="None" selected>-Select a predicate-</option>
                         </select>
                     </div>
@@ -203,7 +203,7 @@
                     <!-- Control Buttons and Boxes -->
                     <div class="col-sm-12">
                         <button class="btn btn-success btn-ann" onclick="saveChanges()">Save</button>
-                        <button class="btn btn-info btn-aux" onclick="clearSelection()">Clear selection</button>
+                        <button class="btn btn-info btn-aux" onclick="resetSelection()">Clear selection</button>
                     </div>
                 </div>
             </div>
@@ -226,7 +226,7 @@
                     <!-- Compound Creation -->
                     <div id="ip-mcn" class='info-panel'>
                         <h4>Create Compound</h4>
-                        <table id="cpd-subdivisions" class="table-condensed">
+                        <table id="ip-mcn-subdiv" class="table-condensed">
                             <tr>
                                 <th>Token</th>
                                 <th>Lemma</th>
@@ -239,30 +239,30 @@
                     <!-- Chosen Frame Information -->
                     <div id="ip-fan" class='info-panel'>
                         <h4>Chosen Frame</h4>
-                        <label>Label: </label> <span id="chosenFrameLabel"></span><br />
-                        <label>Definition: </label> <span id="chosenFrameDef"></span><br />
-                        <label>PreMOn URI: </label> <a href="#" target="_blank" id="chosenFramePrem"></a><br />
-                        <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenFrameFM"></a><br />
+                        <label>Label: </label> <span id="ip-fan-label"></span><br />
+                        <!-- <label>Definition: </label> <span id="ip-fan-def"></span><br /> -->
+                        <label>PreMOn URI: </label> <a href="#" target="_blank" id="ip-fan-pre"></a><br />
+                        <label>FrameNet URL: </label> <a href="#" target="_blank" id="ip-fan-fra"></a><br />
                     </div>
 
                     <!-- Chosen Frame Element Information -->
                     <div id="ip-fea" class='info-panel'>
                         <h4>Chosen Frame Element</h4>
-                        <label>Label: </label> <span id="chosenRoleLabel"></span><br />
-                        <label>Definition: </label> <span id="chosenRoleDef"></span><br />
-                        <label>Premon URI: </label> <a href="#" target="_blank" id="chosenRolePrem"></a><br />
-                        <label>FrameNet URL: </label> <a href="#" target="_blank" id="chosenRoleFM"></a><br />
+                        <label>Label: </label> <span id="ip-fea-label"></span><br />
+                        <!-- <label>Definition: </label> <span id="ip-fea-def"></span><br /> -->
+                        <label>Premon URI: </label> <a href="#" target="_blank" id="ip-fea-pre"></a><br />
+                        <label>FrameNet URL: </label> <a href="#" target="_blank" id="ip-fea-fra"></a><br />
                     </div>
 
                     <!-- Selected Predicates Information -->
                     <div id="ip-pre" class='info-panel'>
                         <h4>Selected predicate</h4>
-                        <label>Label:</label> <span id="active-frame-label"></span><br/>
-                        <label>Premon:</label> <a href='#' target='_blank' id="active-frame-pre"></a><br/>
-                        <label>FrameNet:</label> <a href='#' target='_blank' id="active-frame-frn"></a><br/>
-                        <label>Predicate ID:</label> <span id="active-predicate-id"></span><br/>
+                        <label>Label:</label> <span id="ip-pre-label"></span><br/>
+                        <label>Premon:</label> <a href='#' target='_blank' id="ip-pre-pre"></a><br/>
+                        <label>FrameNet:</label> <a href='#' target='_blank' id="ip-pre-fra"></a><br/>
+                        <label>Predicate ID:</label> <span id="ip-pre-ide"></span><br/>
 
-                        <table id="selectedPredicateRoleInfo" class="table-condensed">
+                        <table id="ip-pre-rol" class="table-condensed">
                             <tr>
                                 <th>Frame element</th>
                                 <th>Role type</th>

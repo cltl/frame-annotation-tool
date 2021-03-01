@@ -301,7 +301,7 @@ function readTokenLayer(token_layer) {
  * @param {object}      token_data  Information of all tokens in token layer
  */
 function readTermLayer(term_layer, token_data) {
-    var result = [[], []];
+    var result = [];
 
     // Loop trough term layer
     for (var i in term_layer) {
@@ -320,11 +320,7 @@ function readTermLayer(term_layer, token_data) {
                               'type': 'multiword',
                               'sent': target_token['sent'] };
 
-            if (target_token['sent'] == '1') {
-                result[0].push(term_data);
-            } else {
-                result[1].push(term_data);
-            }
+            result.push(term_data);
         }
 
         // Term is part compound
@@ -339,18 +335,14 @@ function readTermLayer(term_layer, token_data) {
 
                 var target_subtoken_id = sub_term['span']['target']['attr']['id'];
                 var target_sub_token = target_token['sub'][target_subtoken_id];
+                
                 var sub_term_data = { 'text': target_sub_token['text'],
                                       'lemma': sub_term['attr']['lemma'],
                                       't_select': sub_term_id,
                                       'p_select': term_id,
                                       'type': 'compound',
                                       'sent': target_token['sent'] };
-
-                if (target_token['sent'] == '1') {
-                    result[0].push(sub_term_data);
-                } else {
-                    result[1].push(sub_term_data);
-                }
+                result.push(sub_term_data);
             }
         }
 
@@ -364,12 +356,7 @@ function readTermLayer(term_layer, token_data) {
                               'p_select': term_id,
                               'type': 'singleton',
                               'sent': target_token['sent'] };
-
-            if (target_token['sent'] == '1') {
-                result[0].push(term_data);
-            } else {
-                result[1].push(term_data);
-            }
+            result.push(term_data);
         }
     }
 
@@ -441,6 +428,7 @@ function readSRLLayer(srl_layer) {
             // Get frame element annotations
             if ('role' in predicate) {
                 var frame_elements = readRoleLayer(predicate['role']);
+
                 // Loop over each frame element
                 for (var j in frame_elements) {
                     var frame_element = frame_elements[j]
@@ -524,8 +512,8 @@ function readNAFFile(json_data, doc_name) {
     var predicates = readSRLLayer(srl_layer);
     var coreferences = readCoreferencesLayer(coref_layer);
 
-    return { 'name': doc_name, 'source': source, 'title': term_info[0],
-             'body': term_info[1], 'frames': predicates[0],
+    return { 'name': doc_name, 'source': source, 'title': 'test',
+             'body': term_info, 'frames': predicates[0],
              'frame_elements': predicates[1], 'coreferences': coreferences }
 }
 
@@ -716,7 +704,7 @@ function updateCompoundTokens(json_data, target_token_id, compound_data) {
                                                  'length': subterm_length,
                                                  'offset': offset,
                                                },
-                                       '#text': subterm_cdata }
+                                       '#cdata': subterm_cdata }
                 token_layer[i]['subtoken'].push(subtoken_entry);
 
                 offset += parseInt(subterm_length);
@@ -882,9 +870,12 @@ function addRoleEntry(json_data, target_id, role_data, session_id) {
                                'externalReferences': { 'externalRef': [] }};
             
             // Construct span layer
-            if (role_data['target_term'] != 'unexpressed') {
-                var target_data = { 'attr': { 'id': role_data['target_term'] }};
-                role_entry['span']['target'].push(target_data);
+            if (role_data['target_terms'] != 'unexpressed') {
+                for (var j in role_data['target_terms']) {
+                    var target =  role_data['target_terms'][j];
+                    var target_data = { 'attr': { 'id': target }};
+                    role_entry['span']['target'].push(target_data);
+                }
             }
 
             // Construct external references layer in role
@@ -1028,7 +1019,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
 
         var timestamp = new Date().toNAFUTCString();
 
-        // Check for span overlap & Update where necessary
+        // Check for span overlap & update where necessary
         for (var i in srl_layer) {
             var predicate = srl_layer[i];
             var predicate_target = predicate['span']['target'];
@@ -1043,6 +1034,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
                                     'source': session_id,
                                     'reftype': task_data['type'] };
                 srl_layer[i] = addExternalReferences(predicate, reference_data);
+                srl_layer[i]['attr']['status'] = 'manual';
             }
         }
 
@@ -1072,17 +1064,15 @@ function handleFrameElementAnnotation(json_data, task_data, session_id) {
         task_data['target_ids'] = ['unexpressed'];
     }
 
-    // Create new predicate for each term in span
-    for (var i in task_data['target_ids']) {
-        var role_data = { 'role': task_data['role'], 'target_term': task_data['target_ids'][i] };
-        json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
-    }
+    var role_data = { 'role': task_data['role'], 'target_terms': task_data['target_ids'] };
+    json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
 
     return json_data;
 }
 
 // TODO: Handle coreference update
 function handleCoreferenceAnnotation(json_data, task_data, session_id) {
+    json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'coreferences', 'coref');
     var coref_layer = json_data['NAF']['coreferences']['coref'];
     if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
 
