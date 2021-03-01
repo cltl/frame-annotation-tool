@@ -299,13 +299,21 @@ function updateFANTask() {
     clearSelection();
     fan_task = $("#fan-task-select").val();
 
+    $('span[frame]').addClass('annotated');
     if (fan_task == "1") {
+        $('#ip-pre').show();
+        $('#ip-fan').hide();
+
+        $(".fan-add-selectors").hide();
+        $(".fan-rem-selectors").hide();
+
+    } else if (fan_task == "2") {
         $('#ip-fan').show();
         $('#ip-pre').show();
 
         $(".fan-add-selectors").show();
         $(".fan-rem-selectors").hide();
-    } else if (fan_task == '2') {
+    } else if (fan_task == '3') {
         $('#ip-pre').show();
         $('#ip-fan').hide();
         
@@ -956,7 +964,7 @@ function validateFrameAnnotation() {
         return [false, 'Please select an annotation task']
     }
 
-    if (frame_task == '1') {
+    if (frame_task == '2') {
         if (frame_type == 'None') {
             return [false, 'Please pick a frame type'];
         } else if (frame_relation == 'None') {
@@ -977,8 +985,8 @@ function validateFrameAnnotation() {
     }
 
     // Create
-    if (frame_task == '1') {
-        var task_data = { 'fan_task': 1,
+    if (frame_task == '2') {
+        var task_data = { 'fan_task': 2,
                           'frame': frame_type,
                           'type': frame_relation,
                           'target_ids': selected,
@@ -994,7 +1002,7 @@ function validateFrameAnnotation() {
             return annotations.fan[term].predicate;
         });
 
-        var task_data = { 'fan_task': 2, 'target_ids': predicates };
+        var task_data = { 'fan_task': 3, 'target_ids': predicates };
         
         return [true, task_data];
     }

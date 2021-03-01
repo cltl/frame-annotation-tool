@@ -1020,6 +1020,8 @@ function handleMarkableCorrection(json_data, task_data) {
 
 function handleFrameAnnotation(json_data, task_data, session_id) {
     if (task_data.fan_task == 1) {
+        
+    } else if (task_data.fan_task == 2) {
         json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'srl', 'predicate');
         var srl_layer = json_data['NAF']['srl']['predicate'];
         if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
@@ -1054,7 +1056,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
                                 'target_term': task_data['target_ids'][i] };
             json_data = addPredicateEntry(json_data, predicate_data, session_id);
         }
-    } else if (task_data.fan_task == 2) {
+    } else if (task_data.fan_task == 3) {
         for (var i in task_data.target_ids) {
             var target_id = task_data.target_ids[i];
             json_data = deprecatePredicateEntry(json_data, target_id);
