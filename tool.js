@@ -1144,7 +1144,7 @@ function handleStructuredDataAnnotation(incident_id, task_data) {
 // =====================================
 // Get the frame elements for a specific frame type
 // Parameters: string, callback
-var getFrameElements = function(frame_id, callback) {
+var getFrameElements = function(frame_id) {
     var core_elements = [];
     var peripheral_elements = [];
     var extra_thematic_elements = [];
@@ -1172,7 +1172,7 @@ var getFrameElements = function(frame_id, callback) {
         else continue
     }
 
-    callback({ "Core": core_elements, "Peripheral": peripheral_elements, "Extra-thematic": extra_thematic_elements, "Core-unexpressed": core_unexpressed_elements });
+    return { "Core": core_elements, "Peripheral": peripheral_elements, "Extra-thematic": extra_thematic_elements, "Core-unexpressed": core_unexpressed_elements };
 }
 
 // TODO: Refactor needed
@@ -1476,10 +1476,24 @@ app.get('/frame_elements', isAuthenticated, function(req, res) {
     if (!req.query["frame"]) {
         res.sendStatus(400);
     } else {
-        // Get Frame elements and return results
-        getFrameElements(req.query["frame"], function(result) {
-            res.send(result);
-        });
+        res.send(getFrameElements(req.query["frame"]));
+    }
+});
+
+// Endpoint to get frame elements of a specific frame
+app.post('/multi_frame_elements', isAuthenticated, function(req, res) {
+    // Check if frame is provided
+    if (!req.body["frames"]) {
+        res.sendStatus(400);
+    } else {
+        var frames_info = {};
+
+        for (var i in req.body['frames']) {
+            var frame = req.body['frames'][i];
+            frames_info[frame] = getFrameElements(frame);
+        }
+
+        res.send(frames_info);
     }
 });
 

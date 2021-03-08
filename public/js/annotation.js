@@ -605,12 +605,62 @@ function loadDocument() {
 
                 // Load and render predicates dropdown
                 if (new_load || current_task == '2') {
-                    var predicates = [];
+                    var predicate_info = {};
+                    var predicate_prems = [];
+
+                    // Extract all annotated predicate ids
                     for (var key in annotations.fan) {
-                        predicates.push({ 'label': annotations.fan[key].predicate, 'value': key })
+                        var p_info = annotations.fan[key];
+                        predicate_info[p_info.predicate] = { 'tid': key, 'roles': [], 'prem': p_info.premon };
+                        predicate_prems.push(p_info.premon);
                     }
 
-                    renderDropdown('#fea-pred-select', predicates, [], '-Select a predicate-');
+                    // Add all roles to annotated predicates
+                    for (var key in annotations.fea) {
+                        if (key == 'unexpressed') {
+                            for (key2 in annotations.fea.unexpressed) {
+                                var r_info = annotations.fea[key2];
+                                predicate_info[r_info.predicate].roles.push(r_info.premon);
+                            }
+                        } else {
+                            var r_info = annotations.fea[key];
+                            predicate_info[r_info.predicate].roles.push(r_info.premon);
+                        }
+                    }
+
+                    // Populate dropdown
+                    loadMultipleRoles(predicate_prems, function(role_data) {
+                        var sub_annotated = [];
+                        var non_annotated = [];
+                        var all_annotated = [];
+
+                        for (pr_id in predicate_info) {
+                            var p_info = predicate_info[pr_id];
+                            var r_info = role_data[p_info.prem].Core;
+                            var overlap = 0;
+
+                            for (var i in r_info) {
+                                if (p_info.roles.indexOf(r_info[i].value) > -1) {
+                                    overlap += 1
+                                }
+                            }
+
+                            var entry = { 'label': pr_id, 'value': p_info.tid }
+                            if (overlap == 0) {
+                                non_annotated.push(entry)
+                            } else if (overlap == r_info.length) {
+                                sub_annotated.push(entry)
+                            } else {
+                                sub_annotated.push(entry)
+                            }
+                        }
+
+                        var result = { 'Subset annotated': sub_annotated,
+                                       'No core roles annotated': non_annotated,
+                                       'All core roles annotated': all_annotated };
+
+                        renderDropdownWithGroups('#fea-pred-select', result, [], '-Select a predicate-');
+                    });
                 }
 
                 // Loadand render structured data controls
@@ -934,6 +984,14 @@ function loadRoles(frame, callback) {
     var get_data = { 'frame': frame };
 
     $.get('/frame_elements', get_data, function(result, status) {
+        callback(result);
+    });
+}
+
+function loadMultipleRoles(frames, callback) {
+    var post_data = { 'frames': frames };
+
+    $.post('/multi_frame_elements', post_data, function(result, status) {
         callback(result);
     });
 }
@@ -1302,11 +1360,8 @@ function activatePredicate(token_id) {
     for (var i in annotations['fea']) {
         if (i != 'unexpressed') {
             var frame_element = annotations['fea'][i];
-            console.log(frame_element);
-            console.log(info.predicate);
 
             if (frame_element.predicate == info.predicate) {
-                console.log('test');
                 if (!(frame_element.premon in an_ex)) {
                     an_ex[frame_element.premon] = [];
                 }
