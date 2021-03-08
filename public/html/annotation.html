@@ -167,11 +167,12 @@
                         <label>Select Reference Task:</label><br />
                         <select id="sde-task-select" onchange="updateSDETask()">
                             <option value="None" selected>-Select Task-</option>
-                            <option value="1">Create</option>
-                            <option value="2">Remove</option>
+                            <option value="1">Create Wikidata Entity</option>
+                            <option value="2">Create NIL Entity</option>
+                            <option value="3">Remove Entity</option>
                         </select>
                     </div>
-                    <!-- Relation (in case of Add) -->
+                    <!-- Relation (in case of create) -->
                     <div class="sde-selectors sde-add-selectors col-sm-2">
                         <label>Select Relation:</label><br />
                         <select id="sde-relation-select">
@@ -181,7 +182,7 @@
                         </select>
                     </div>
                     <!-- Structured data info -->
-                    <div class="sde-selectors sde-add-selectors col-sm-2">
+                    <div class="sde-selectors sde-add-selectors-1 col-sm-2">
                         <label>Select Wikidata QID:</label><br/>
                         <input id="sde-uri-input" type="text" class="w-100">
                     </div>

@@ -365,6 +365,7 @@ function updateTask(clear) {
         $('.sde-selectors').show();
         $('.sde-rem-selectors').hide();
         $('.sde-add-selectors').hide();
+        $('.sde-add-selectors-1').hide();
 
         updateSDETask();
     }
@@ -490,12 +491,19 @@ function updateSDETask() {
 
     if (task == '1') {
         $(".sde-add-selectors").show();
+        $(".sde-add-selectors-1").show();
         $(".sde-rem-selectors").hide();
     } else if (task == '2') {
+        $(".sde-add-selectors").show();
+        $(".sde-add-selectors-1").hide();
+        $(".sde-rem-selectors").hide();
+    } else if (task == '3') {
         $(".sde-add-selectors").hide();
+        $(".sde-add-selectors-1").hide();
         $(".sde-rem-selectors").show();
     } else {
         $(".sde-add-selectors").hide();
+        $(".sde-add-selectors-1").hide();
         $(".sde-rem-selectors").hide();
     }
 }
@@ -1206,13 +1214,17 @@ var validateStructuredData = function() {
 
     if (action == 'None') {
         return [false, 'Select data annotation action'];
-    } else if (action == "1") {
+    } else if (action == "1" || action == "2") {
         var relation = $("#sde-relation-select").val();
         var wdt_uri = $('#sde-uri-input').val();
         var label = $('#sde-label-input').val();
 
         if (relation == 'None') {
             return [false, 'Select a relation type'];
+        }
+
+        if (action == "2") {
+            wdt_uri = "Q" + Date.now();
         }
 
         if (!(wdt_uri.startsWith('Q'))) {
@@ -1227,7 +1239,7 @@ var validateStructuredData = function() {
 
         var task_data = { 'action': 1, 'relation': relation, 'wdt_uri': wdt_uri, 'label': label }
         return [true, task_data ]
-    } else {
+    } else if (action == "3") {
         var item = $("#sde-remove-select").val().split(';');
         var rel = item[0];
         var val = item[1];
