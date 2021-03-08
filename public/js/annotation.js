@@ -49,7 +49,8 @@ $(function() {
         var t_selector = '[term-selector="' + term_selector + '"]';
         var p_selector = '[parent-selector="' + parent_selector + '"]';
         
-        var is_annotated = $(t_selector).hasClass('annotated') 
+        var is_annotated = $(t_selector).hasClass('annotated');
+        var is_machine = $(t_selector).hasClass('system');
         var is_refering = $(t_selector).is('[reference]');
         var is_frame = $(t_selector).is('[frame]');
         var is_role = $(t_selector).is('[role]');
@@ -76,7 +77,7 @@ $(function() {
         // Currently annotating frames
         else if (current_task == '2') {
             if (fan_task == '1') {
-                if (is_annotated) {
+                if (is_machine ) {
                     $(t_selector).toggleClass('marked');
 
                     resetPREPanel();
@@ -431,7 +432,7 @@ function updateFANTask() {
         $(".fan-add-selectors").hide();
         $(".fan-rem-selectors").hide();
         
-        $('span[frame].manual').removeClass('annotated');
+        // $('span[frame].manual').removeClass('annotated');
     } else if (fan_task == "2") {
         $('#ip-fan').show();
         $(".fan-add-selectors").show();
