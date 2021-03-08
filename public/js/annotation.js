@@ -779,7 +779,10 @@ function renderToken(term, prev_term) {
         super_script = '<sup>' + term.pr_id  + '</sup>'
     }
 
-    return join_sym + '<span class="markable ' + term.status + '" lemma="' + term.lemma + '" term-selector="' + t_select + '" parent-selector="' + p_select + '" ' + term.type + '>' + term.text + super_script + '</span>';
+    return join_sym + '<span class="markable ' + term.status + '" lemma="' +
+                      term.lemma + '" pos="' + term.pos + '" term-selector="' +
+                      t_select + '" parent-selector="' + p_select + '" ' +
+                      term.type + '>' + term.text + super_script + '</span>';
 }
 
 function renderTokens(terms, annotations) {
@@ -1338,9 +1341,11 @@ function activatePredicate(token_id) {
 
     // Get information from annotation
     var info = annotations['fan'][token_id];
+    var pos = $('[term-selector=' + token_id + ']').attr('pos');
 
     // Set predicate summary
     $('#ip-pre-label').text(info.label);
+    $('#ip-pre-pos').text(pos);
     $('#ip-pre-pre').text(info.premon);
     $('#ip-pre-pre').attr('href', info.premon);
     $('#ip-pre-fra-frn').text(info.framenet);

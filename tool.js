@@ -315,6 +315,7 @@ function readTermLayer(term_layer, token_data) {
             var target_token = token_data[target_token_id];
             var term_data = { 'text': target_token['text'],
                               'lemma': term['attr']['lemma'],
+                              'pos': term['attr']['pos'],
                               't_select': par_term_id,
                               'p_select': par_term_id,
                               'type': 'multiword',
@@ -338,6 +339,7 @@ function readTermLayer(term_layer, token_data) {
                 
                 var sub_term_data = { 'text': target_sub_token['text'],
                                       'lemma': sub_term['attr']['lemma'],
+                                      'pos': sub_term['attr']['pos'],
                                       't_select': sub_term_id,
                                       'p_select': term_id,
                                       'type': 'compound',
@@ -352,6 +354,7 @@ function readTermLayer(term_layer, token_data) {
             var target_token = token_data[target_token_id];
             var term_data = { 'text': target_token['text'],
                               'lemma': term['attr']['lemma'],
+                              'pos': term['attr']['pos'],
                               't_select': term_id,
                               'p_select': term_id,
                               'type': 'singleton',
