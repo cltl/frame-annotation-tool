@@ -983,7 +983,7 @@ function addCoreferenceEntry(json_data, coreference_data, session_id) {
                                'externalReferences': { 'externalRef': [] }};
     
     // Construct span layer
-    var target_data = { 'attr': { 'id': coreference_data['target_term'][i] }};
+    var target_data = { 'attr': { 'id': coreference_data['target_term'] }};
     correference_entry['span']['target'].push(target_data);
 
     // Construct external references layer in coreference
