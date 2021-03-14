@@ -641,7 +641,23 @@ function updateMultiwordTerms(json_data, multiword_id, target_term_ids) {
         }
     }
 
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_span = predicate['span']['target'];
+
+        for (j in predicate_span) {
+            var term = predicate_span[j];
+            if (term in target_term_ids) {
+                delete srl_layer[i];
+            }
+        }
+    }
+
     json_data['NAF']['terms']['term'] = term_layer;
+    json_data['NAF']['srl']['predicate'] = srl_layer;
     return json_data;
 }
 
@@ -749,6 +765,22 @@ function deprecateMultiwordEntry(json_data, target_id) {
         }
     }
 
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_span = predicate['span']['target'];
+
+        for (j in predicate_span) {
+            var term = predicate_span[j];
+            if (term == target_id) {
+                delete srl_layer[i];
+            }
+        }
+    }
+
+    json_data['NAF']['srl']['predicate'] = srl_layer;
     json_data["NAF"]["multiwords"]["mw"] = mw_layer;
     json_data['NAF']['terms']['term'] = term_layer;
     return json_data;

@@ -510,6 +510,8 @@ function updateSDETask() {
 
 function updateCPDSubdivide() {
     var subdivisions = $('#mcn-subdivide-input').val().split('|');
+    $('#ip-mcn-subdiv').empty();
+    $('#ip-mcn-subdiv').append('<tr><th>Token</th><th>Lemma</th><th>POS</th><th>Head</th></tr>');
 
     for (var i in subdivisions) {
         var token = subdivisions[i];
@@ -1008,7 +1010,7 @@ function validateCorrection() {
 
     var correction_lemma = $('#mcn-lemma-input').val();
     
-    var correction_original = $('.marked').text();
+    var correction_original = $('.marked').clone().children().remove().end().text();
     var correction_subdivisions = $('#mcn-subdivide-input').val().split('|');
     var correction_subdiv_props = [];
     var correction_subdiv_head = -1;
@@ -1070,6 +1072,8 @@ function validateCorrection() {
             }
 
             if (correction_subdivisions.join('') != correction_original) {
+                console.log(correction_original);
+                console.log(correction_subdivisions);
                 return [false, 'Compound components should recreate entire compound'];
             }
 
