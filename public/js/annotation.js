@@ -1160,6 +1160,7 @@ function validateFrameAnnotation() {
         return [false, 'Please select at least one markable'];
     }
 
+    // Validate
     if (frame_task == '1') {
         var predicates = selected.map(function(term) {
             return annotations.fan[term].predicate;

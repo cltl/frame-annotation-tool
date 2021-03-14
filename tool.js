@@ -221,10 +221,13 @@ function isAuthenticated(req, res, next) {
  * @param {string}      date_b      Second date to check
  */
 function moreRecent(date_a, date_b) {
-    if (!date_a)
+    if (!date_a) {
         return true;
-    else
-        return new Date(date_a) <= new Date(date_b);
+    } else {
+        date_a = Date.parse(date_a.replace('UTC', ''))
+        date_b = Date.parse(date_b.replace('UTC', ''))
+        return date_a <= date_b
+    }
 }
 
 Date.prototype.toNAFUTCString = function() {
@@ -584,7 +587,7 @@ function addExternalReferences(object, reference_data) {
     references = object['externalReferences']['externalRef']
     if (!Array.isArray(references)) references = [references]; 
 
-    references.push({ 'attr': reference_data })
+    references.push({ 'attr': reference_data });
     object['externalReferences']['externalRef'] = references;
     return object;
 }
@@ -1048,10 +1051,10 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
             if (target_index > -1) {
                 task_data['target_ids'].splice(target_index, 1);
                 var reference_data = { 'reference': task_data['frame'],
-                                    'resource': 'http://premon.fbk.eu/premon/fn17',
-                                    'timestamp': timestamp,
-                                    'source': session_id,
-                                    'reftype': task_data['type'] };
+                                       'resource': 'http://premon.fbk.eu/premon/fn17',
+                                       'timestamp': timestamp,
+                                       'source': session_id,
+                                       'reftype': task_data['type'] };
                 srl_layer[i] = addExternalReferences(predicate, reference_data);
                 srl_layer[i]['attr']['status'] = 'manual';
             }
