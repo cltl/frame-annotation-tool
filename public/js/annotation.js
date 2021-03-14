@@ -649,7 +649,7 @@ function loadDocument() {
                             if (overlap == 0) {
                                 non_annotated.push(entry)
                             } else if (overlap == r_info.length) {
-                                sub_annotated.push(entry)
+                                all_annotated.push(entry)
                             } else {
                                 sub_annotated.push(entry)
                             }
