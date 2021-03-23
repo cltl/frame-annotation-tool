@@ -221,10 +221,13 @@ function isAuthenticated(req, res, next) {
  * @param {string}      date_b      Second date to check
  */
 function moreRecent(date_a, date_b) {
-    if (!date_a)
+    if (!date_a) {
         return true;
-    else
-        return new Date(date_a) <= new Date(date_b);
+    } else {
+        date_a = Date.parse(date_a.replace('UTC', ''))
+        date_b = Date.parse(date_b.replace('UTC', ''))
+        return date_a <= date_b
+    }
 }
 
 Date.prototype.toNAFUTCString = function() {
@@ -584,7 +587,7 @@ function addExternalReferences(object, reference_data) {
     references = object['externalReferences']['externalRef']
     if (!Array.isArray(references)) references = [references]; 
 
-    references.push({ 'attr': reference_data })
+    references.push({ 'attr': reference_data });
     object['externalReferences']['externalRef'] = references;
     return object;
 }
@@ -638,7 +641,23 @@ function updateMultiwordTerms(json_data, multiword_id, target_term_ids) {
         }
     }
 
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_span = predicate['span']['target'];
+
+        for (j in predicate_span) {
+            var term = predicate_span[j];
+            if (term in target_term_ids) {
+                delete srl_layer[i];
+            }
+        }
+    }
+
     json_data['NAF']['terms']['term'] = term_layer;
+    json_data['NAF']['srl']['predicate'] = srl_layer;
     return json_data;
 }
 
@@ -746,6 +765,22 @@ function deprecateMultiwordEntry(json_data, target_id) {
         }
     }
 
+    var srl_layer = json_data['NAF']['srl']['predicate'];
+    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+
+    for (var i in srl_layer) {
+        var predicate = srl_layer[i];
+        var predicate_span = predicate['span']['target'];
+
+        for (j in predicate_span) {
+            var term = predicate_span[j];
+            if (term == target_id) {
+                delete srl_layer[i];
+            }
+        }
+    }
+
+    json_data['NAF']['srl']['predicate'] = srl_layer;
     json_data["NAF"]["multiwords"]["mw"] = mw_layer;
     json_data['NAF']['terms']['term'] = term_layer;
     return json_data;
@@ -948,7 +983,7 @@ function addCoreferenceEntry(json_data, coreference_data, session_id) {
                                'externalReferences': { 'externalRef': [] }};
     
     // Construct span layer
-    var target_data = { 'attr': { 'id': coreference_data['target_term'][i] }};
+    var target_data = { 'attr': { 'id': coreference_data['target_term'] }};
     correference_entry['span']['target'].push(target_data);
 
     // Construct external references layer in coreference
@@ -1048,10 +1083,10 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
             if (target_index > -1) {
                 task_data['target_ids'].splice(target_index, 1);
                 var reference_data = { 'reference': task_data['frame'],
-                                    'resource': 'http://premon.fbk.eu/premon/fn17',
-                                    'timestamp': timestamp,
-                                    'source': session_id,
-                                    'reftype': task_data['type'] };
+                                       'resource': 'http://premon.fbk.eu/premon/fn17',
+                                       'timestamp': timestamp,
+                                       'source': session_id,
+                                       'reftype': task_data['type'] };
                 srl_layer[i] = addExternalReferences(predicate, reference_data);
                 srl_layer[i]['attr']['status'] = 'manual';
             }
