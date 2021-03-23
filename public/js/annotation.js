@@ -607,7 +607,7 @@ function loadDocument() {
                 $('sup').hide();
 
                 // Load and render predicates dropdown
-                if (new_load || current_task == '2') {
+                if (new_load || current_task == '2' || current_task == '3') {
                     var predicate_info = {};
                     var predicate_prems = [];
 
@@ -622,7 +622,7 @@ function loadDocument() {
                     for (var key in annotations.fea) {
                         if (key == 'unexpressed') {
                             for (key2 in annotations.fea.unexpressed) {
-                                var r_info = annotations.fea[key2];
+                                var r_info = annotations.fea.unexpressed[key2];
                                 predicate_info[r_info.predicate].roles.push(r_info.premon);
                             }
                         } else {
@@ -1217,7 +1217,7 @@ function validateRoleAnnotation() {
     }
 
     var tid = $('.annotated.depends.marked').attr('term-selector');
-    var pr_id = annotations['fan'][tid]['predicate'];
+    var pr_id = annotations.fan[tid]['predicate'];
 
     var an_un = [role];
     for (var i in annotations['fea']['unexpressed']) {
