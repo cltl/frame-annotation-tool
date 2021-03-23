@@ -224,19 +224,19 @@ function moreRecent(date_a, date_b) {
     if (!date_a) {
         return true;
     } else {
-        date_a = Date.parse(date_a.replace('UTC', ''))
-        date_b = Date.parse(date_b.replace('UTC', ''))
-        return date_a <= date_b
+        date_a = Date.parse(date_a.replace('UTC', ''));
+        date_b = Date.parse(date_b.replace('UTC', ''));
+        return date_a <= date_b;
     }
 }
 
 Date.prototype.toNAFUTCString = function() {
     var Y = this.getFullYear();
-    var m = this.getMonth() + 1;
-    var d = this.getDate();
-    var H = this.getHours();
-    var M = this.getMinutes();
-    var S = this.getSeconds();
+    var m = ('0' + (this.getMonth() + 1)).slice(-2);
+    var d = ('0' + (this.getDate())).slice(-2);
+    var H = ('0' + this.getHours()).slice(-2);
+    var M = ('0' + this.getMinutes()).slice(-2);
+    var S = ('0' + this.getSeconds()).slice(-2);
   
     return [Y, '-', m, '-', d, 'T', H, ':', M, ':', S, 'UTC'].join('');
   };
