@@ -290,6 +290,7 @@ function resetFEAPanel() {
 
 function resetPREPanel() {
     $('#ip-pre-label').html('');
+    $('#ip-pre-pos').html('')
     $('#ip-pre-pre').html('');
     $('#ip-pre-pre').attr('href', '#');
     $('#ip-pre-fra').html('');
