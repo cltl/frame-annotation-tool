@@ -73,6 +73,7 @@ const LL_DIR = 'data/DFNDataReleases/lexical_data/typicality/lexical_lookup/';
 const NAF_DIR = 'data/DFNDataReleases/unstructured/';
 
 LockedIncidents = {}
+DynamicLexicon = {}
 
 var xmlOptions = {
     attributeNamePrefix : "",
@@ -1098,8 +1099,8 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
         // Create new predicate for each term in selected
         for (var i in task_data['target_ids']) {
             var predicate_data = { 'frame': task_data['frame'],
-                                'type': task_data['type'],
-                                'target_term': task_data['target_ids'][i] };
+                                   'type': task_data['type'],
+                                   'target_term': task_data['target_ids'][i] };
             json_data = addPredicateEntry(json_data, predicate_data, session_id);
         }
     } else if (task_data.fan_task == 3) {
@@ -1269,7 +1270,59 @@ var saveNAF = function(file_name, json_data, callback) {
         } else {
             callback(false);
         }
-  });
+    });
+}
+
+// =====================================
+// DYNAMIC LEXCION =====================
+// =====================================
+function storeDynamicLexicon(callback) {
+    data = json.stringify(DynamicLexicon);
+    fs.writeFile('data/DynamicLexicon.json', data, function(err, data) {
+        if (err) {
+            console.log(err);
+            callback(err);
+        } else {
+            callback(false);
+        }
+    });
+}
+
+function dynamicLexicalLookup(lemma, pos, frame) {
+    var namespace = 'http://rdf.cltl.nl/efn/fn_eng-lexicon-1.7-lu-';
+    var new_id = (new Date()).getTime();
+
+    if (lemma in DynamicLexicon) {
+        if (pos in DynamicLexicon[lemma]) {
+            // LU ID already exists
+            if (frame in DynamicLexicon[lemma][pos]) {
+                storeDynamicLexicon(function(error) {
+                    return DynamicLexicon[lemma][pos][frame];
+                });
+            }
+
+            // Lemma and pos already exist, add frame and generate new ID
+            DynamicLexicon[lemma][pos][frame] = namespace + new_id;
+            storeDynamicLexicon(function(error) {
+                return namespace + new_id;
+            });
+        }
+
+        // Lemma already exist, add pos and generate new ID
+        DynamicLexicon[lemma][pos] = {};
+        DynamicLexicon[lemma][pos][frame] = namespace + new_id;
+        storeDynamicLexicon(function(error) {
+            return namespace + new_id;
+        });
+    }
+
+    // Nothing exists, add lemma pos and generate new ID
+    DynamicLexicon[lemma] = {};
+    DynamicLexicon[lemma][pos] = {};
+    DynamicLexicon[lemma][pos][frame] = namespace + new_id;
+    storeDynamicLexicon(function(error) {
+        return namespace + new_id;
+    });
 }
 
 // =====================================
@@ -1472,6 +1525,22 @@ app.get('/frames', isAuthenticated, function(req, res) {
         var result = {};
         var occupied_frames = [];
 
+        if (DynamicLexicon[lem]) {
+            var lemma_data = DynamicLexicon[lem];
+            for (pos in lemma_data) {
+                var lemma_frames = [];
+                var pos_data = lemma[pos];
+                for (frame in pos_data) {
+                    // TODO: get label and framenet
+                    var frame_info = allFramesInfo[frame];
+                    var entry = { 'label': frame, 'value': cur_frame[2], 'framenet': frame_info['framenet_url'], 'definition': frame_info['definition'] };
+                    lemma_frames.push();
+                }
+
+                result[pos] = lemma_frames;
+            }
+        }
+
         if (data['lexical_lookup'][lem]) {
             var lemma_data = data['lexical_lookup'][lem];
 
@@ -1487,7 +1556,10 @@ app.get('/frames', isAuthenticated, function(req, res) {
                         lemma_frames.push(entry);
                     }
 
-                    result[key] = lemma_frames;
+                    if (!(key in result)) {
+                        result[key] = [];
+                    }
+                    result[key].push(lemma_frames);
                 }
             }
         }
