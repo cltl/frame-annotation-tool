@@ -98,7 +98,7 @@ $(function() {
                 if (lemma != undefined) {
                     loadFrames(type, language, lemma, function(data) {
                         renderDropdownWithGroups('#fan-type-select', data,
-                            ['definition', 'framenet'], '-Select frame-');
+                            ['lu', 'definition', 'framenet'], '-Select frame-');
                     });
                 }
             } else if (fan_task == '3') {
@@ -1138,8 +1138,7 @@ function validateFrameAnnotation() {
     var frame_task = $('#fan-task-select').val();
     var frame_type = $('#fan-type-select').val();
     var frame_relation = $('#fan-relation-select').val();
-
-    var has_lu = $('#fan-type-select').data('lu') != '';
+    var lu_url = $('#fan-type-select').find(':selected').data('lu');
 
     if (frame_task == 'None') {
         return [false, 'Please select an annotation task']
@@ -1151,11 +1150,6 @@ function validateFrameAnnotation() {
         } else if (frame_relation == 'None') {
             return [false, 'Please select a frame relation type'];
         }
-
-        if (has_lu) {
-            var lu_reference = $('#fan-type-select').data('lu-ref');
-            var lu_resource = $('#fan-type-select').data('lu-res');
-        }
     }
 
     // Get all selected markables
@@ -1164,6 +1158,11 @@ function validateFrameAnnotation() {
     if (!(selected.length > 0)) {
         return [false, 'Please select at least one markable'];
     }
+
+    var lem = $('[term-selector=' + selected + ']').attr('lemma');
+    var pos = $('[term-selector=' + selected + ']').attr('pos');
+    console.log(lem);
+    console.log(pos);
 
     // Validate
     if (frame_task == '1') {
@@ -1181,9 +1180,9 @@ function validateFrameAnnotation() {
                           'frame': frame_type,
                           'type': frame_relation,
                           'target_ids': selected,
-                          'has_lu': has_lu,
-                          'lu': lu_reference,
-                          'lu_resource': lu_resource };
+                          'lu': lu_url,
+                          'lem': lem,
+                          'pos': pos };
 
         return [true, task_data];
     }

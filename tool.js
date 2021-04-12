@@ -846,18 +846,9 @@ function addPredicateEntry(json_data, predicate_data, session_id) {
                            'resource': 'http://premon.fbk.eu/premon/fn17',
                            'timestamp': timestamp,
                            'source': session_id,
+                           'lu_url': predicate_data['lu'],
                            'reftype': predicate_data['type'] };
     predicate_entry = addExternalReferences(predicate_entry, reference_data);
-
-    // Add external reference for LU to predicate
-    if (predicate_data['has_lu']) {
-        var lu_data = { 'reference': predicate_data['lu'],
-                        'resource': predicate_data['lu_resource'],
-                        'timestamp': timestamp,
-                        'source': session_id,
-                        'reftype': 'http://www.w3.org/ns/lemon/ontolex#Sense' };
-        predicate_entry = addExternalReferences(predicate_entry, lu_data);
-    }
 
     // Store result in json_data and return
     srl_layer.push(predicate_entry);
@@ -1074,6 +1065,13 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
 
         var timestamp = new Date().toNAFUTCString();
 
+        if (task_data['lu'] == '') {
+            task_data['lu'] = dynamicLexicalLookup(task_data['lem'],
+                                                   task_data['pos'],
+                                                   task_data['frame']);
+            console.log(task_data);
+        } 
+
         // Check for span overlap & update where necessary
         for (var i in srl_layer) {
             var predicate = srl_layer[i];
@@ -1087,6 +1085,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
                                        'resource': 'http://premon.fbk.eu/premon/fn17',
                                        'timestamp': timestamp,
                                        'source': session_id,
+                                       'lu_url': task_data['lu'],
                                        'reftype': task_data['type'] };
                 srl_layer[i] = addExternalReferences(predicate, reference_data);
                 srl_layer[i]['attr']['status'] = 'manual';
@@ -1100,6 +1099,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
         for (var i in task_data['target_ids']) {
             var predicate_data = { 'frame': task_data['frame'],
                                    'type': task_data['type'],
+                                   'lu': task_data['lu'],
                                    'target_term': task_data['target_ids'][i] };
             json_data = addPredicateEntry(json_data, predicate_data, session_id);
         }
@@ -1277,7 +1277,7 @@ var saveNAF = function(file_name, json_data, callback) {
 // DYNAMIC LEXCION =====================
 // =====================================
 function storeDynamicLexicon(callback) {
-    data = json.stringify(DynamicLexicon);
+    data = JSON.stringify(DynamicLexicon);
     fs.writeFile('data/DynamicLexicon.json', data, function(err, data) {
         if (err) {
             console.log(err);
@@ -1529,12 +1529,17 @@ app.get('/frames', isAuthenticated, function(req, res) {
             var lemma_data = DynamicLexicon[lem];
             for (pos in lemma_data) {
                 var lemma_frames = [];
-                var pos_data = lemma[pos];
+                var pos_data = lemma_data[pos];
+
                 for (frame in pos_data) {
-                    // TODO: get label and framenet
                     var frame_info = allFramesInfo[frame];
-                    var entry = { 'label': frame, 'value': cur_frame[2], 'framenet': frame_info['framenet_url'], 'definition': frame_info['definition'] };
-                    lemma_frames.push();
+                    var label = frame_info['frame_label'] + ' (' + lem + '.' + pos + ') (User)'; 
+                    var entry = { 'label': label,
+                                  'value': frame,
+                                  'lu': pos_data[frame],
+                                  'framenet': frame_info['framenet_url'],
+                                  'definition': frame_info['definition'] };
+                    lemma_frames.push(entry);
                 }
 
                 result[pos] = lemma_frames;
@@ -1551,7 +1556,11 @@ app.get('/frames', isAuthenticated, function(req, res) {
                     for (frame in lemma_data[key]) {
                         var cur_frame = lemma_data[key][frame];
                         var frame_info = allFramesInfo[cur_frame[2]];
-                        var entry = { 'label': cur_frame[1], 'value': cur_frame[2], 'framenet': frame_info['framenet_url'], 'definition': frame_info['definition'] };
+                        var entry = { 'label': cur_frame[1],
+                                      'value': cur_frame[2],
+                                      'lu': cur_frame[3],
+                                      'framenet': frame_info['framenet_url'],
+                                      'definition': frame_info['definition'] };
                         occupied_frames.push(cur_frame[2]);
                         lemma_frames.push(entry);
                     }
@@ -1559,7 +1568,8 @@ app.get('/frames', isAuthenticated, function(req, res) {
                     if (!(key in result)) {
                         result[key] = [];
                     }
-                    result[key].push(lemma_frames);
+
+                    result[key] = result[key].concat(lemma_frames);
                 }
             }
         }
@@ -1571,7 +1581,11 @@ app.get('/frames', isAuthenticated, function(req, res) {
             var cur_frame = ordered[frame];
             if (!occupied_frames.includes(cur_frame[1])) {
                 var frame_info = allFramesInfo[cur_frame[2]];
-                var entry = { 'label': cur_frame[1], 'value': cur_frame[2], 'framenet': frame_info['framenet_url'], 'definition': frame_info['definition'] };
+                var entry = { 'label': cur_frame[1],
+                              'value': cur_frame[2],
+                              'lu': '',
+                              'framenet': frame_info['framenet_url'],
+                              'definition': frame_info['definition'] };
                 result['Other'].push(entry)
             }
         }
