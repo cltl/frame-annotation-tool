@@ -40,7 +40,13 @@ $(function() {
         step: 0.05,
         values: [0, 1],
         slide: function(e, u) {
-            console.log(u.values);
+            $('[frame].system').removeClass('annotated');
+            var selected = $('[frame].system').filter(function() {
+                var score = parseFloat($(this).attr('typicality'));
+                return score >= u.values[0] && score <= u.values[1];
+            })
+
+            selected.addClass('annotated')
         }
     });
 
@@ -596,6 +602,7 @@ function updateIncidentSelection(changed) {
 }
 
 function loadDocument() {
+    var typ = $('#ic-typ-select').val();
     var inc = $('#ic-inc-select').val();
     var lan = $('#ic-lan-select').val();
     var doc = $('#ic-doc-select').val();
@@ -612,7 +619,7 @@ function loadDocument() {
     if (lan != 'None' && doc != 'None') {
         annotations = {};
 
-        loadNAFFile(inc, lan + '/' + doc, function(result) {
+        loadNAFFile(typ, inc, lan + '/' + doc, function(result) {
             if (result != 0) {
                 annotations['fan'] = result['frames'];
                 annotations['fea'] = result['frame_elements'];
@@ -800,7 +807,8 @@ function renderToken(term, prev_term) {
     return join_sym + '<span class="markable ' + term.status + '" lemma="' +
                       term.lemma + '" pos="' + term.pos + '" term-selector="' +
                       t_select + '" parent-selector="' + p_select + '" ' +
-                      term.type + '>' + term.text + super_script + '</span>';
+                      term.type + ' typicality=' + term.typical + '>' +
+                      term.text + super_script + '</span>';
 }
 
 function renderTokens(terms, annotations) {
@@ -814,7 +822,8 @@ function renderTokens(terms, annotations) {
         if (term.t_select in annotations['fan']) {
             term.type += ' frame'
             term.pr_id = annotations.fan[term.t_select].predicate;
-            term.status = annotations['fan'][term.t_select].status
+            term.status = annotations['fan'][term.t_select].status;
+            term.typical = annotations['fan'][term.t_select].typicality;
         } else if (term.t_select in annotations['fea']) {
             term.type += ' role'
         } else if (term.t_select in annotations['sdr']) {
@@ -971,9 +980,9 @@ function printMessage(message, type) {
 // RETRIEVE UTILS ======================
 // =====================================
 
-function loadNAFFile(incident, document, callback) {
-    var get_data = { 'inc': incident, 'doc': document };
-    
+function loadNAFFile(type, incident, document, callback) {
+    var get_data = { 'typ': type, 'inc': incident, 'doc': document };
+
     $.get('/load_document', get_data, function(result, status) {
         callback(result['naf']);
     }).fail(function(e) {

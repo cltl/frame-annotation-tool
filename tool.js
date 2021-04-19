@@ -405,7 +405,7 @@ function readRoleLayer(role_layer) {
  * Convert raw NAF SRL layer object to a formated json object
  * @param {object}      srl_layer   The raw NAF object to be converted
  */
-function readSRLLayer(srl_layer) {
+function readSRLLayer(srl_layer, typicality) {
     var result = [{}, { 'unexpressed': [] }];
 
     // Loop over each entry in SRL layer
@@ -431,6 +431,7 @@ function readSRLLayer(srl_layer) {
                 var frame_info = allFramesInfo[reference];
 
                 result[0][term_id] = { 'status': predicate_stat,
+                                       'typicality': typicality[reference],
                                        'label': frame_info.frame_label,
                                        'definition': frame_info.definition,
                                        'premon': reference,
@@ -501,7 +502,10 @@ function readCoreferencesLayer(coref_layer) {
  * @param {object}      json_data   The raw NAF object to be converted
  * @param {string}      doc_name    The name of the NAF document
  */
-function readNAFFile(json_data, doc_name) {
+function readNAFFile(json_data, doc_name, inc_type) {
+    var typfile = 'data/DFNDataReleases/lexical_data/typicality/typicality_scores/' + inc_type + '.json'
+    var typicality = JSON.parse(fs.readFileSync(typfile, 'utf8'));
+
     var source = json_data['NAF']['nafHeader']['public']['attr']['uri'];
 
     // Get token layer and convert to formatted data
@@ -522,12 +526,12 @@ function readNAFFile(json_data, doc_name) {
     if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
     var term_info = readTermLayer(term_layer, token_data);
-    var predicates = readSRLLayer(srl_layer);
+    var predicates = readSRLLayer(srl_layer, typicality);
     var coreferences = readCoreferencesLayer(coref_layer);
 
     return { 'name': doc_name, 'source': source, 'title': 'test',
-             'body': term_info, 'frames': predicates[0],
-             'frame_elements': predicates[1], 'coreferences': coreferences }
+                'body': term_info, 'frames': predicates[0],
+                'frame_elements': predicates[1], 'coreferences': coreferences } 
 }
 
 /**
@@ -536,7 +540,7 @@ function readNAFFile(json_data, doc_name) {
  * @param {boolean}     adapt       Set to true if output format should be info
  * @param {callback}    callback    Function to call when done loading file
  */
-function loadNAFFile(filename, adapt, data_dir, callback) {
+function loadNAFFile(filename, inc_type, adapt, data_dir, callback) {
     if (data_dir == false) {
         data_dir = '';
     } else {
@@ -550,7 +554,7 @@ function loadNAFFile(filename, adapt, data_dir, callback) {
         var json = xmlParser.parse(data, xmlOptions);
 
         if (adapt) {
-            callback(readNAFFile(json, filename));
+            callback(readNAFFile(json, filename, inc_type));
         } else {
             callback(json);
         }
@@ -562,21 +566,21 @@ function loadNAFFile(filename, adapt, data_dir, callback) {
  * @param {array}       nafs        Array containing the filenames to load
  * @param {callback}    callback    Function to call when done loadin files
  */
-function loadMultipleNAFs(nafs, callback){
-    var result = [];
+// function loadMultipleNAFs(nafs, callback){
+//     var result = [];
 
-    // Load each NAF file and return if all files are loaded
-    for (var i = 0; i < nafs.length; i++) {
-        loadNAFFile(nafs[i], true, function(json_data) {
-            result.push(json_data);
+//     // Load each NAF file and return if all files are loaded
+//     for (var i = 0; i < nafs.length; i++) {
+//         loadNAFFile(nafs[i], true, function(json_data) {
+//             result.push(json_data);
 
-            // Call callback when ready
-            if (result.length == nafs.length) {
-                callback(result);
-            }
-        });
-    }
-}
+//             // Call callback when ready
+//             if (result.length == nafs.length) {
+//                 callback(result);
+//             }
+//         });
+//     }
+// }
 //#endregion
 
 // =====================================
@@ -1357,7 +1361,7 @@ app.post('/store_annotation', isAuthenticated, function(req, res) {
         res.sendStatus(200);
     } else {
         // Load NAF file for editing
-        loadNAFFile(lan + '/' + doc, false, true, function(json_data) {
+        loadNAFFile(lan + '/' + doc, '', false, true, function(json_data) {
             if (tid == 1) {
                 json_data = handleMarkableCorrection(json_data, tda);
             } else if (tid == 2) {
@@ -1401,6 +1405,7 @@ app.get("/projects", isAuthenticated, function(req, res) {
 
     // Return projects and types
     res.send({ "proj": proj_res, "type": type_res });
+    res.status(200);
 });
 
 // Endpoint to get all incidents of a certain type in a project
@@ -1420,6 +1425,7 @@ app.get("/project_incidents", isAuthenticated, function(req, res) {
 
     // Return result
     res.send({ "inc": result });
+    res.status(200);
 });
 
 // Endpoint to get all languages in a specific incident
@@ -1434,6 +1440,7 @@ app.get('/incident_languages', isAuthenticated, function(req, res) {
 
     // Return result
     res.send({ 'lang': languages });
+    res.status(200);
 });
 
 // Endpoint te get all documents in a specific language for an incident
@@ -1452,17 +1459,19 @@ app.get('/incident_documents', isAuthenticated, function(req, res) {
 
     // Return result
     res.send({ 'doc': result });
+    res.status(200);
 });
 
 // Endpoint to load an incident
 app.get('/load_document', isAuthenticated, function(req, res) {
     // Check if incident is provided
-    if (!req.query['inc'] || !req.query['doc']) {
+    if (!req.query['typ'] || !req.query['inc'] || !req.query['doc']) {
         res.sendStatus(400);
         return
     }
 
     // Get naf files using parameters
+    var typ = req.query['typ'];
     var inc = req.query['inc'];
     var doc = req.query['doc'];
 
@@ -1494,8 +1503,9 @@ app.get('/load_document', isAuthenticated, function(req, res) {
         LockedIncidents[inc] = { 'user': req.user.user, 'time': now };
 
         // Load NAF files and return
-        loadNAFFile(doc, true, true, function(data) {
+        loadNAFFile(doc, typ, true, true, function(data) {
             res.send({ 'naf': data })
+            res.status(200);
         });
     } else {
         res.sendStatus(423);
@@ -1510,6 +1520,7 @@ app.get("/load_incident_data", isAuthenticated, function(req, res) {
         // Get query parameters
         var inc = req.query["inc"];
         res.send(inc2str[inc]);
+        res.status(200);
     }
 });
 
@@ -1597,6 +1608,7 @@ app.get('/frames', isAuthenticated, function(req, res) {
         }
 
         res.send(result);
+        res.status(200);
     });
 });
 
@@ -1607,6 +1619,7 @@ app.get('/frame_elements', isAuthenticated, function(req, res) {
         res.sendStatus(400);
     } else {
         res.send(getFrameElements(req.query["frame"]));
+        res.status(200);
     }
 });
 
@@ -1624,11 +1637,13 @@ app.post('/multi_frame_elements', isAuthenticated, function(req, res) {
         }
 
         res.send(frames_info);
+        res.status(200);
     }
 });
 
 app.get('/pos_info', isAuthenticated, function(req, res) {
     res.send(Object.keys(posInfo))
+    res.status(200);
 });
 
 // =====================================
@@ -1639,4 +1654,4 @@ app.listen(PORT, function() {
     console.log('started annotation tool nodejs backend on port ' + PORT);
 });
 
-module.exports = { app, loadNAFFile, loadMultipleNAFs, saveNAF, handleMarkableCorrection, handleFrameAnnotation, handleFrameElementAnnotation, handleCoreferenceAnnotation };
+// module.exports = { app, loadNAFFile, loadMultipleNAFs, saveNAF, handleMarkableCorrection, handleFrameAnnotation, handleFrameElementAnnotation, handleCoreferenceAnnotation };
