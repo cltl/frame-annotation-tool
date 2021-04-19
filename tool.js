@@ -67,6 +67,7 @@ const proj2inc_file = 'data/DFNDataReleases/structured/proj2inc_index.json';
 const labels_file = 'data/DFNDataReleases/structured/labels.json'
 
 const pos_info_file = 'data/DFNDataReleases/lexical_data/part_of_speech/part_of_speech_ud_info.json'
+const pos_map_file = 'data/DFNDataReleases/lexical_data/part_of_speech/ud_pos_to_fn_pos.json';
 const frame_info_file = 'data/DFNDataReleases/lexical_data/lexicons/frame_to_info.json';
 
 const LL_DIR = 'data/DFNDataReleases/lexical_data/typicality/lexical_lookup/';
@@ -139,6 +140,11 @@ fs.readFile(frame_info_file, 'utf8', function (err, data){
 fs.readFile(pos_info_file, 'utf8', function (err, data){
     if (err) throw err; // we'll not consider error handling for now
     posInfo = JSON.parse(data);
+});
+
+fs.readFile(pos_map_file, 'utf8', function (err, data){
+    if (err) throw err; // we'll not consider error handling for now
+    posMap = JSON.parse(data);
 });
 
 //#endregion
@@ -1069,7 +1075,6 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
             task_data['lu'] = dynamicLexicalLookup(task_data['lem'],
                                                    task_data['pos'],
                                                    task_data['frame']);
-            console.log(task_data);
         } 
 
         // Check for span overlap & update where necessary
@@ -1292,6 +1297,8 @@ function dynamicLexicalLookup(lemma, pos, frame) {
     var namespace = 'http://rdf.cltl.nl/efn/fn_eng-lexicon-1.7-lu-';
     var new_id = (new Date()).getTime();
 
+    var pos = posMap[pos];
+
     if (lemma in DynamicLexicon) {
         if (pos in DynamicLexicon[lemma]) {
             // LU ID already exists
@@ -1504,24 +1511,6 @@ app.get("/load_incident_data", isAuthenticated, function(req, res) {
         var inc = req.query["inc"];
         res.send(inc2str[inc]);
     }
-});
-
-app.get('/frames', isAuthenticated, function(req, res) {
-    if (!req.query['typ'] || !req.query['lan']) {
-        res.sendStatus(400);
-        return
-    }
-
-    var typ = req.query['typ'];
-    var lan = req.query['lan'];
-    var lexical_path = lan + '/' + typ + '.json';
-
-    // Load lexical data
-    fs.readFile(LL_DIR + lexical_path, 'utf8', function(err, data) {
-        data = JSON.parse(data);
-        
-        return data
-    });
 });
 
 // Endpoint to get all frames
