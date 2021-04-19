@@ -1506,8 +1506,25 @@ app.get("/load_incident_data", isAuthenticated, function(req, res) {
     }
 });
 
+app.get('/frames', isAuthenticated, function(req, res) {
+    if (!req.query['typ'] || !req.query['lan']) {
+        res.sendStatus(400);
+        return
+    }
+
+    var typ = req.query['typ'];
+    var lan = req.query['lan'];
+    var lexical_path = lan + '/' + typ + '.json';
+
+    // Load lexical data
+    fs.readFile(LL_DIR + lexical_path, 'utf8', function(err, data) {
+        data = JSON.parse(data);
+        
+        return data
+    });
+});
+
 // Endpoint to get all frames
-// TODO: Fix lexical lookup
 app.get('/frames', isAuthenticated, function(req, res) {
     if (!req.query['typ'] || !req.query['lan'] || !req.query['lem']) {
         res.sendStatus(400);

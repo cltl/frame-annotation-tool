@@ -33,6 +33,17 @@ $(function() {
         }
     })
 
+    $('#fan-typical-select').slider({
+        range: true,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        values: [0, 1],
+        slide: function(e, u) {
+            console.log(u.values);
+        }
+    });
+
     resetDocument();
     resetSelection();
     resetTaskSelection();
@@ -1161,8 +1172,6 @@ function validateFrameAnnotation() {
 
     var lem = $('[term-selector=' + selected + ']').attr('lemma');
     var pos = $('[term-selector=' + selected + ']').attr('pos');
-    console.log(lem);
-    console.log(pos);
 
     // Validate
     if (frame_task == '1') {
