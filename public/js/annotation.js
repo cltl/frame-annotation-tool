@@ -442,6 +442,7 @@ function updateFANTask() {
         $('#ip-pre').show();
         $('#ip-fan').hide();
 
+        $(".fan-val-selectors").show();
         $(".fan-add-selectors").hide();
         $(".fan-rem-selectors").hide();
         
@@ -449,12 +450,15 @@ function updateFANTask() {
     } else if (fan_task == "2") {
         $('#ip-fan').show();
         $(".fan-add-selectors").show();
+        $(".fan-val-selectors").hide();
         $(".fan-rem-selectors").hide();
     } else if (fan_task == '3') {
         $('#ip-pre').show();
         $(".fan-add-selectors").hide();
+        $(".fan-val-selectors").hide();
     } else {
         $(".fan-add-selectors").hide();
+        $(".fan-val-selectors").hide();
     }
 }
 
