@@ -9,7 +9,7 @@ var fan_task = 'None';
 var mcn_task = 'None';
 var mcn_type = 'None';
 
-var enforced_role_annotation = 'None';
+var enforced_role_annotation = false;
 var predicate_selected = false;
 
 noFrameType = 'NO-FRAME';
@@ -328,12 +328,34 @@ function resetSubtaskPanels() {
 }
 
 function updateTask(clear) {
-    if (enforced_role_annotation != 'None') {
-        $('#annotation-task-selection').prop('disabled', true);
-        $('#fea-pred-select').prop('disabled', true);
+    if (enforced_role_annotation) {
+        $('#annotation-task-selection').click(function(e) {
+            e.preventDefault();
+            this.blur();
+            window.focus();
+
+            if (confirm('Not all core roles are annotated, are you sure you want to continue?')) {
+                enforced_role_annotation = false;
+                $('#annotation-task-selection').off('click');
+                $('#fea-pred-select').off('click');
+                console.log('test');
+            }
+        });
+        $('#fea-pred-select').click(function(e) {
+            e.preventDefault();
+            this.blur();
+            window.focus();
+            
+            if (confirm('Not all core roles are annotated, are you sure you want to continue?')) {
+                enforced_role_annotation = false;
+                $('#annotation-task-selection').off('click');
+                $('#fea-pred-select').off('click');
+                console.log('test');
+            }
+        });
     } else {
-        $('#annotation-task-selection').prop('disabled', false);
-        $('#fea-pred-select').prop('disabled', false);
+        $('#annotation-task-selection').off('click');
+        $('#fea-pred-select').off('click');
     }
 
     var new_task = $('#annotation-task-selection').val();
@@ -1257,12 +1279,12 @@ function validateRoleAnnotation() {
     }
 
     loadRoles(annotations['fan'][tid]['premon'], function(result) {
-        enforced_role_annotation = 'None';
+        enforced_role_annotation = false;
         for (i in result.Core) {
             el = result.Core[i].value;
 
             if (an_un.indexOf(el) == -1 && !(el in an_ex)) {
-                enforced_role_annotation = tid;
+                enforced_role_annotation = true;
                 break;
             }
         }
