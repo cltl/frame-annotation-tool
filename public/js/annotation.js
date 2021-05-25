@@ -338,7 +338,8 @@ function updateTask(clear) {
                 enforced_role_annotation = false;
                 $('#annotation-task-selection').off('click');
                 $('#fea-pred-select').off('click');
-                console.log('test');
+            } else {
+                return;
             }
         });
         $('#fea-pred-select').click(function(e) {
@@ -350,7 +351,8 @@ function updateTask(clear) {
                 enforced_role_annotation = false;
                 $('#annotation-task-selection').off('click');
                 $('#fea-pred-select').off('click');
-                console.log('test');
+            } else {
+                return;
             }
         });
     } else {
@@ -701,8 +703,17 @@ function loadDocument() {
                         var result = { 'Subset annotated': sub_annotated,
                                        'No core roles annotated': non_annotated,
                                        'All core roles annotated': all_annotated };
+                        
+                        var fea_val = undefined;
+                        if (current_task == '3') {
+                            fea_val = $('#fea-pred-select').val();
+                        }
 
                         renderDropdownWithGroups('#fea-pred-select', result, [], '-Select a predicate-');
+                        
+                        if (current_task == '3') {
+                            $('#fea-pred-select').val(fea_val);
+                        }
                     });
                 }
 
@@ -814,7 +825,7 @@ function renderToken(term, prev_term) {
 
     if (prev_term.typ == 'None') {
         join_sym = '';
-    } else if (prev_term.type == 'compound' && term.type == 'compound') {
+    } else if (prev_term.type.includes('compound') && term.type.includes('compound')) {
         join_sym = '_'
     }
 
@@ -1201,8 +1212,8 @@ function validateFrameAnnotation() {
         return [false, 'Please select at least one markable'];
     }
 
-    var lem = $('[term-selector=' + selected + ']').attr('lemma');
-    var pos = $('[term-selector=' + selected + ']').attr('pos');
+    var lem = $('[term-selector="' + selected + '"]').attr('lemma');
+    var pos = $('[term-selector="' + selected + '"]').attr('pos');
 
     // Validate
     if (frame_task == '1') {
@@ -1452,8 +1463,8 @@ function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
 
             var t_select = an_ex[data[i]['value']];
             
-            for (var i in t_select) {
-                var term = t_select[i]; 
+            for (var j in t_select) {
+                var term = t_select[j]; 
                 $('[term-selector=' + term + ']').addClass('styled');
                 $('[term-selector=' + term + ']').css('background-color', bg_color);
                 $('[term-selector=' + term + ']').css('color', fg_color);
