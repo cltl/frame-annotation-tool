@@ -94,36 +94,48 @@ $(function() {
         // Currently annotating frames
         else if (current_task == '2') {
             if (fan_task == '1') {
-                if (is_machine ) {
+                if (is_machine) {
                     $(t_selector).toggleClass('marked');
+                    $('.styled').removeAttr('style');
+                    $('.styled').removeClass('styled');
 
-                    resetPREPanel();
-                    activatePredicate(term_selector);
+                    if ($(t_selector).hasClass('marked')) {
+                        resetPREPanel();
+                        activatePredicate(term_selector);   
+                    }
                 }
             } else if (fan_task == '2') {
                 $(t_selector).toggleClass('marked');
+                $('.styled').removeAttr('style');
+                $('.styled').removeClass('styled');
 
-                if (is_frame) {
-                    resetPREPanel();
-                    activatePredicate(term_selector);
-                }
+                if ($(t_selector).hasClass('marked')) {
+                    if (is_frame) {
+                        resetPREPanel();
+                        activatePredicate(term_selector);
+                    }
 
-                var type = $('#ic-typ-select').val();
-                var language = $('#ic-lan-select').val();
-                var lemma = getLemma();
+                    var type = $('#ic-typ-select').val();
+                    var language = $('#ic-lan-select').val();
+                    var lemma = getLemma();
 
-                if (lemma != undefined) {
-                    loadFrames(type, language, lemma, function(data) {
-                        renderDropdownWithGroups('#fan-type-select', data,
-                            ['lu', 'definition', 'framenet'], '-Select frame-');
-                    });
+                    if (lemma != undefined) {
+                        loadFrames(type, language, lemma, function(data) {
+                            renderDropdownWithGroups('#fan-type-select', data,
+                                ['lu', 'definition', 'framenet'], '-Select frame-');
+                        });
+                    }
                 }
             } else if (fan_task == '3') {
                 if (is_frame) {
                     $(t_selector).toggleClass('marked');
+                    $('.styled').removeAttr('style');
+                    $('.styled').removeClass('styled');
 
-                    resetPREPanel();
-                    activatePredicate(term_selector);
+                    if ($(t_selector).hasClass('marked')) {
+                        resetPREPanel();
+                        activatePredicate(term_selector);
+                    }
                 }
             }
         }
