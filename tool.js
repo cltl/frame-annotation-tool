@@ -928,7 +928,8 @@ function addRoleEntry(json_data, target_id, role_data, session_id) {
 
             // Store result in json_data
             role_layer.push(role_entry);
-            json_data['NAF']['srl']['predicate'][i]['role'] = role_layer;
+            srl_layer[i]['role'] = role_layer;
+            json_data['NAF']['srl']['predicate'] = srl_layer;
 
             break;
         }
