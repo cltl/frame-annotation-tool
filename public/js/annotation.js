@@ -502,6 +502,8 @@ function updateFANTask() {
 
 function updateFEATask() {
     var fea_tid = $("#fea-pred-select").val();
+    // fea_tid = fea_tid.replace('.', '\.');
+    // console.log(fea_tid);
     
     resetSubtaskAnnotations();
     resetSelection();
@@ -526,7 +528,7 @@ function updateFEATask() {
         
         if (fea_tid != '-1') {
             predicate_selected = true;
-            $('[term-selector=' + fea_tid + ']').addClass('marked annotated depends');
+            $('[term-selector="' + fea_tid + '"]').addClass('marked annotated depends');
         }
     }
 }
@@ -1409,7 +1411,7 @@ function activatePredicate(token_id) {
 
     // Get information from annotation
     var info = annotations['fan'][token_id];
-    var pos = $('[term-selector=' + token_id + ']').attr('pos');
+    var pos = $('[term-selector="' + token_id + '"]').attr('pos');
 
     // Set predicate summary
     $('#ip-pre-label').text(info.label);
@@ -1477,9 +1479,9 @@ function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
             
             for (var j in t_select) {
                 var term = t_select[j]; 
-                $('[term-selector=' + term + ']').addClass('styled');
-                $('[term-selector=' + term + ']').css('background-color', bg_color);
-                $('[term-selector=' + term + ']').css('color', fg_color);
+                $('[term-selector="' + term + '"]').addClass('styled');
+                $('[term-selector="' + term + '"]').css('background-color', bg_color);
+                $('[term-selector="' + term + '"]').css('color', fg_color);
             }
         }
         
