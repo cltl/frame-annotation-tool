@@ -676,15 +676,19 @@ function loadDocument() {
 
                     // Add all roles to annotated predicates
                     for (var key in annotations.fea) {
-                        if (key == 'unexpressed') {
-                            for (key2 in annotations.fea.unexpressed) {
-                                var r_info = annotations.fea.unexpressed[key2];
-                                predicate_info[r_info.predicate].roles.push(r_info.premon);
-                            }
-                        } else {
-                            var r_info = annotations.fea[key];
+                        for (key2 in annotations.fea[key]) {
+                            var r_info = annotations.fea[key][key2];
                             predicate_info[r_info.predicate].roles.push(r_info.premon);
                         }
+                        // if (key == 'unexpressed') {
+                        //     for (key2 in annotations.fea.unexpressed) {
+                        //         var r_info = annotations.fea.unexpressed[key2];
+                        //         predicate_info[r_info.predicate].roles.push(r_info.premon);
+                        //     }
+                        // } else {
+                        //     var r_info = annotations.fea[key];
+                        //     predicate_info[r_info.predicate].roles.push(r_info.premon);
+                        // }
                     }
 
                     // Populate dropdown
@@ -1434,14 +1438,17 @@ function activatePredicate(token_id) {
     var an_ex = {};
     for (var i in annotations['fea']) {
         if (i != 'unexpressed') {
-            var frame_element = annotations['fea'][i];
+            var term = annotations['fea'][i];
+            
+            for (var j in term) {
+                var frame_element = annotations['fea'][i][j];
+                if (frame_element.predicate == info.predicate) {
+                    if (!(frame_element.premon in an_ex)) {
+                        an_ex[frame_element.premon] = [];
+                    }
 
-            if (frame_element.predicate == info.predicate) {
-                if (!(frame_element.premon in an_ex)) {
-                    an_ex[frame_element.premon] = [];
+                    an_ex[frame_element.premon].push(i);
                 }
-
-                an_ex[frame_element.premon].push(i);
             }
         }
     }

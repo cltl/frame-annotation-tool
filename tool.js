@@ -454,7 +454,11 @@ function readSRLLayer(srl_layer, typicality) {
                             var term = frame_element['span'][k];
                             var term_id = term['attr']['id'];
 
-                            result[1][term_id] = { 'premon': reference, 'predicate': predicate_id };
+                            if (!(term_id in result[1])) {
+                                result[1][term_id] = [];
+                            }
+
+                            result[1][term_id].push({ 'premon': reference, 'predicate': predicate_id });
                         }
                     } else {
                         result[1]['unexpressed'].push({ 'premon': reference, 'predicate': predicate_id });
