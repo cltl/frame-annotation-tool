@@ -295,11 +295,19 @@ function readTokenLayer(token_layer) {
             if (!Array.isArray(subtokens)) subtokens = [subtokens];
 
             for (var j in subtokens) {
-                token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['#cdata'] };
+                if ('#cdata' in subtokens[j]) {
+                    token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['#cdata'] };
+                } else {
+                    token_subs[subtokens[j]['attr']['id']] = { 'text': subtokens[j]['#text'] };
+                }
             }
         }
 
-        result[token_id] = { 'sent': token_sent, 'text': token['#cdata'], 'sub': token_subs};
+        if ('#cdata' in token) {
+            result[token_id] = { 'sent': token_sent, 'text': token['#cdata'], 'sub': token_subs};
+        } else {
+            result[token_id] = { 'sent': token_sent, 'text': token['#text'], 'sub': token_subs};
+        }
     }
 
     return result;
