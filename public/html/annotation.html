@@ -128,6 +128,7 @@
                             <option value="3">Remove</option>
                         </select>
                     </div>
+
                     <!-- Frame Type -->
                     <div class="fan-selectors fan-add-selectors col-sm-2">
                         <label>Select Frame Type</label><br/>
@@ -135,6 +136,7 @@
                             <option value="None" selected>-Select frame-</option>
                         </select>
                     </div>
+
                     <!-- Relation Type -->
                     <div class="fan-selectors fan-add-selectors col-sm-2">
                         <label>Select Relation type:</label><br/>
@@ -144,7 +146,8 @@
                             <option value="type">isOfType</option>
                         </select>
                     </div>
-                    <!-- Relation Type -->
+
+                    <!-- Typicality Range -->
                     <div class="fan-selectors col-sm-2">
                         <label>Select Typicality range:</label><br/>
                         <div id="fan-typical-select" style="top: 7px"></div>
@@ -152,8 +155,18 @@
                     
 
                     <!-- Frame Element Selectors-->
-                    <!-- Frame From Text -->
+                    <!-- Frame Element Annotation Task -->
                     <div class="fea-selectors col-sm-3">
+                        <label>Select Annotation Task:</label><br/>
+                        <select id="fea-task-select" onchange="updateFEATask()">
+                            <option value="None" selected>-Select Task-</option>
+                            <option value="1">Create</option>
+                            <option value="2">Remove</option>
+                        </select>
+                    </div>
+
+                    <!-- Frame From Text -->
+                    <div class="fea-selectors fea-add-selectors fea-rem-selectors col-sm-3">
                         <label>Select Predicate:</label><br/>
                         <select id="fea-pred-select" onchange="updateFEATask()">
                             <option value="None" selected>-Select a predicate-</option>
@@ -161,10 +174,18 @@
                     </div>
 
                     <!-- Frame Element -->
-                    <div class="fea-selectors col-sm-3">
+                    <div class="fea-selectors fea-add-selectors col-sm-3">
                         <label>Select Frame Element:</label><br/>
                         <select id="fea-role-select" onchange="updateChosenRoleInfo()">
                             <option value="None" selected>-Select frame role-</option>
+                        </select>
+                    </div>
+
+                    <!-- Frame Element from Predicate -->
+                    <div class="fea-selectors fea-rem-selectors col-sm-3">
+                        <label>Select Frame Element:</label><br/>
+                        <select id="fea-fram-select">
+                            <option value="None" selected>-Select predicate role-</option>
                         </select>
                     </div>
 

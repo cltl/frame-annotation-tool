@@ -395,7 +395,10 @@ function readRoleLayer(role_layer) {
         if (!(Array.isArray(role_span))) role_span = [role_span];
 
         // Store frame element data need in result
-        result.push({ 'reference': reference, 'span': role_span });
+        result.push({ 'id': role['attr']['id'],
+                      'status': role['attr']['status'],
+                      'reference': reference,
+                      'span': role_span });
     }
 
     return result;
@@ -422,13 +425,12 @@ function readSRLLayer(srl_layer, typicality) {
             // Loop over each term in the predicate span
             var predicate_span = predicate['span']['target'];
             if (!(Array.isArray(predicate_span))) predicate_span = [predicate_span];
+            var frame_info = allFramesInfo[reference];
 
             for (var i in predicate_span) {
                 // Store annotation for current term in result
                 var term = predicate_span[i];
                 var term_id = term['attr']['id'];
-
-                var frame_info = allFramesInfo[reference];
 
                 result[0][term_id] = { 'status': predicate_stat,
                                        'typicality': typicality[reference],
@@ -445,8 +447,22 @@ function readSRLLayer(srl_layer, typicality) {
 
                 // Loop over each frame element
                 for (var j in frame_elements) {
-                    var frame_element = frame_elements[j]
+                    var frame_element = frame_elements[j];
+
+                    if (frame_element['status'] == 'deprecated') {
+                        continue;
+                    }
+
                     var reference = frame_element['reference'];
+
+                    var role_info = {};
+                    for (var k in frame_info['frame_elements']) {
+                        var el = frame_info['frame_elements'][k];
+                        if (el['rdf_uri'] == reference) {
+                            role_info = el;
+                            break;
+                        }
+                    }
 
                     // Loop over each term in frame element span
                     if (frame_element['span'][0] != undefined) {
@@ -458,10 +474,16 @@ function readSRLLayer(srl_layer, typicality) {
                                 result[1][term_id] = [];
                             }
 
-                            result[1][term_id].push({ 'premon': reference, 'predicate': predicate_id });
+                            result[1][term_id].push({ 'premon': reference,
+                                                      'label': role_info['fe_label'],
+                                                      'role': frame_element['id'],
+                                                      'predicate': predicate_id });
                         }
                     } else {
-                        result[1]['unexpressed'].push({ 'premon': reference, 'predicate': predicate_id });
+                        result[1]['unexpressed'].push({ 'premon': reference,
+                                                        'label': role_info['fe_label'],
+                                                        'role': frame_element['id'],
+                                                        'predicate': predicate_id });
                     }
                 }
             }
@@ -952,6 +974,10 @@ function deprecateRoleEntry(json_data, parent_id, target_id) {
 
         if (predicate_id == parent_id) {
             var role_layer = predicate['role'];
+            if (!Array.isArray(role_layer)) {
+                role_layer = [role_layer];
+                srl_layer[i]['role'] = [srl_layer[i]['role']];
+            }
 
             for (var j in role_layer) {
                 var role = role_layer[j];
@@ -1127,16 +1153,21 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
     return json_data;
 }
 
-// TODO: Handle frame element update
 function handleFrameElementAnnotation(json_data, task_data, session_id) {
-    if (task_data['target_ids'] == 'unexpressed') {
-        task_data['target_ids'] = ['unexpressed'];
+    if (task_data.fea_task == 1) {
+        if (task_data['target_ids'] == 'unexpressed') {
+            task_data['target_ids'] = ['unexpressed'];
+        }
+
+        var role_data = { 'role': task_data['role'], 'target_terms': task_data['target_ids'] };
+        json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
+
+        return json_data;
+    } else if (task_data.fea_task == 2) {
+        json_data = deprecateRoleEntry(json_data, task_data.pr_id, task_data.role);
+
+        return json_data;
     }
-
-    var role_data = { 'role': task_data['role'], 'target_terms': task_data['target_ids'] };
-    json_data = addRoleEntry(json_data, task_data['pr_id'], role_data, session_id);
-
-    return json_data;
 }
 
 // TODO: Handle coreference update
