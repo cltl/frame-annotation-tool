@@ -122,7 +122,7 @@ $(function () {
                     if (lemma != undefined) {
                         loadFrames(type, language, lemma, function (data) {
                             renderDropdownWithGroups('#fan-type-select', data,
-                                ['lu', 'definition', 'framenet'], '-Select frame-');
+                                ['lu', 'definition', 'framenet'], '-Select-');
                         });
                     }
                 }
@@ -149,14 +149,20 @@ $(function () {
 
         // Currently annotating references
         else if (current_task == '4') {
-            if (!is_refering) {
-                $(t_selector).toggleClass('marked');
+            if ($('#cor-task-select').val() == '1') {
+                if (!is_refering) {
+                    $(t_selector).toggleClass('marked');
+                }
+            } else if ($('#cor-task-select').val() == '2') {
+                if (is_refering) {
+                    $(t_selector).toggleClass('marked');
+                }
             }
         }
     });
 
     $(document).on('click', 'a.structured-data', function (e) {
-        if (current_task == '4') {
+        if (current_task == '4' && $('#cor-task-select').val() == '1') {
             if (!e.ctrlKey && !e.metaKey) {
                 e.preventDefault();
                 $('.structured-data.marked').removeClass('marked');
@@ -271,6 +277,8 @@ function resetSubTaskSelections() {
     $('#fea-pred-select').val('None');
     $('#fea-role-select').val('None');
     $('.fea-selectors').hide();
+
+    $('.cor-selectors').hide();
 
     $('#sde-action-select').val('None');
     $('#sde-relation-select').val('None');
@@ -433,6 +441,9 @@ function updateTask(clear) {
         updateFEATask();
     } else if (current_task == '4') {
         $('span[reference]').addClass('annotated');
+        $('.cor-selectors').show();
+
+        updateCORTask();
     } else if (current_task == '5') {
         $('.sde-selectors').show();
         $('.sde-rem-selectors').hide();
@@ -544,7 +555,7 @@ function updateFEATask() {
 
             loadRoles(frame, function (data) {
                 renderDropdownWithGroups('#fea-role-select', data,
-                    ['definition', 'framenet'], '-Select a frame role-');
+                    ['definition', 'framenet'], '-Select-');
             });
 
             if (fea_tid != '-1') {
@@ -581,13 +592,17 @@ function updateFEATask() {
                     }
                 }
 
-                renderDropdown('#fea-fram-select', roles, ['predicate'], '-Select predicate role-');
+                renderDropdown('#fea-fram-select', roles, ['predicate'], '-Select-');
             }
         }
     } else {
         $('.fea-add-selectors').hide();
         $('.fea-rem-selectors').hide();
     }
+}
+
+function updateCORTask() {
+    resetSelection();
 }
 
 function updateSDETask() {
@@ -786,7 +801,7 @@ function loadDocument() {
                             fea_val = $('#fea-pred-select').val();
                         }
 
-                        renderDropdownWithGroups('#fea-pred-select', result, [], '-Select a predicate-');
+                        renderDropdownWithGroups('#fea-pred-select', result, [], '-Select-');
 
                         if (current_task == '3') {
                             $('#fea-pred-select').val(fea_val);
@@ -813,7 +828,7 @@ function loadDocument() {
                         }
                     }
 
-                    renderDropdownWithGroups('#sde-remove-select', dropdown_data, [], '-Select item-')
+                    renderDropdownWithGroups('#sde-remove-select', dropdown_data, [], '-Select-')
                 });
 
                 // Show controls
@@ -928,14 +943,15 @@ function renderTokens(terms, annotations) {
         term.status = '';
 
         if (term.t_select in annotations['fan']) {
-            term.type += ' frame'
+            term.type += ' frame';
             term.pr_id = annotations.fan[term.t_select].predicate;
             term.status = annotations['fan'][term.t_select].status;
             term.typical = annotations['fan'][term.t_select].typicality;
         } else if (term.t_select in annotations['fea']) {
-            term.type += ' role'
+            term.type += ' role';
         } else if (term.t_select in annotations['sdr']) {
-            term.type += ' reference'
+            term.type += ' reference';
+            term.cr_id = annotations['sdr'][term.t_select];
         }
 
         text += renderToken(term, prev_term);
@@ -1007,7 +1023,7 @@ function renderStructuredData(incident_id, incident_txt, data) {
             if (i > 0) result += ', ';
 
             if (clean_property != 'hasTimeStamp') {
-                functionality = 'class="structured-data" data-uti="' + cur_uri + '" data-type="entity"';
+                functionality = 'class="structured-data" data-uri="' + cur_uri + '" data-type="entity"';
             }
 
             if ($.trim(cur_lab) == '')
@@ -1414,24 +1430,40 @@ function validateRoleAnnotation() {
 }
 
 var validateReference = function () {
-    // Get all selected markables
-    var selected = getSelected();
+    var task = $('#cor-task-select').val()
 
-    if (!(selected.length > 0)) {
-        return [false, 'Select at least one markable']
+    if (task == '1') {
+        // Get all selected markables
+        var selected = getSelected();
+
+        if (!(selected.length > 0)) {
+            return [false, 'Select at least one markable']
+        }
+
+        // Get all selected referents
+        var referent = $('.structured-data.marked')
+        var referent_uri = $(referent).data('uri');
+        var referent_type = $(referent).data('type');
+
+        if (!referent.length) {
+            return [false, 'Select a referent'];
+        }
+
+        var task_data = { 'cor_task': 1, 'target_ids': selected, 'reference': referent_uri, 'type': referent_type };
+        return [true, task_data];
+    } else if (task == '2') {
+        // Get all selected markables
+        var selected = getSelected();
+
+        if (!(selected.length > 0)) {
+            return [false, 'Select at least one markable'];
+        }
+
+        var cr_id = annotations['sdr'][selected[0]]['coreference'];
+        var task_data = { 'cor_task': 2, 'coreference': cr_id };
+
+        return [true, task_data];
     }
-
-    // Get all selected referents
-    var referent = $('.structured-data.marked')
-    var referent_uri = $(referent).data('uri');
-    var referent_type = $(referent).data('type');
-
-    if (!referent.length) {
-        return [false, 'Select a referent'];
-    }
-
-    var task_data = { 'target_ids': selected, 'reference': referent_uri, 'type': referent_type };
-    return [true, task_data];
 }
 
 var validateStructuredData = function () {

@@ -74,10 +74,10 @@
                 <div class="row w-100">
                     <!-- Task Selector-->
                     <div class="annotation-task-selectors col-sm-3">
-                        <label>Annotation type: </label>
+                        <label>Select Annotation Type: </label>
                         <br/>
                         <select id="annotation-task-selection" onchange="updateTask(true)">
-                            <option value="None" selected>-Select annotation type-</option>
+                            <option value="None" selected>-Select-</option>
                             <option value="1">Markable Correction</option>
                             <option value="2">Frame Annotation</option>
                             <option value="3">Frame Element Annotation</option>
@@ -89,9 +89,9 @@
                     <!-- Markable Correction Selectors -->
                     <!-- Correction Task -->
                     <div class="mcn-selectors col-sm-3">
-                        <label>Select Correction Task:</label><br/>
+                        <label>Select Annotation Task:</label><br/>
                         <select id="mcn-task-select" onchange="updateMCNTask()">
-                            <option value="None" selected>-Select correction type-</option>
+                            <option value="None" selected>-Select-</option>
                             <option value="1">Create</option>
                             <option value="2">Remove</option>
                         </select>
@@ -100,7 +100,7 @@
                     <div class="mcn-selectors mcn-add-selectors col-sm-3">
                         <label>Select Correction Type:</label><br/>
                         <select id="mcn-type-select" onchange="updateMCNType()">
-                            <option value="None" selected>-Select correction type-</option>
+                            <option value="None" selected>-Select-</option>
                             <option value="1">Phrasal verb</option>
                             <option value="2">Idiom</option>
                             <option value="3">Compound</option>
@@ -122,7 +122,7 @@
                     <div class="fan-selectors col-sm-3">
                         <label>Select Annotation Task:</label><br/>
                         <select id="fan-task-select" onchange="updateFANTask()">
-                            <option value="None" selected>-Select Task-</option>
+                            <option value="None" selected>-Select-</option>
                             <option value="1">Validate</option>
                             <option value="2">Create</option>
                             <option value="3">Remove</option>
@@ -133,7 +133,7 @@
                     <div class="fan-selectors fan-add-selectors col-sm-2">
                         <label>Select Frame Type</label><br/>
                         <select id="fan-type-select" onchange="updateChosenFrameInfo()">
-                            <option value="None" selected>-Select frame-</option>
+                            <option value="None" selected>-Select-</option>
                         </select>
                     </div>
 
@@ -141,7 +141,7 @@
                     <div class="fan-selectors fan-add-selectors col-sm-2">
                         <label>Select Relation type:</label><br/>
                         <select id="fan-relation-select">
-                            <option value="None" selected>-Select relation-</option>
+                            <option value="None" selected>-Select-</option>
                             <option value="evoke">evokes</option>
                             <option value="type">isOfType</option>
                         </select>
@@ -153,13 +153,12 @@
                         <div id="fan-typical-select" style="top: 7px"></div>
                     </div>
                     
-
                     <!-- Frame Element Selectors-->
                     <!-- Frame Element Annotation Task -->
                     <div class="fea-selectors col-sm-3">
                         <label>Select Annotation Task:</label><br/>
                         <select id="fea-task-select" onchange="updateFEATask()">
-                            <option value="None" selected>-Select Task-</option>
+                            <option value="None" selected>-Select-</option>
                             <option value="1">Create</option>
                             <option value="2">Remove</option>
                         </select>
@@ -169,7 +168,7 @@
                     <div class="fea-selectors fea-add-selectors fea-rem-selectors col-sm-3">
                         <label>Select Predicate:</label><br/>
                         <select id="fea-pred-select" onchange="updateFEATask()">
-                            <option value="None" selected>-Select a predicate-</option>
+                            <option value="None" selected>-Select-</option>
                         </select>
                     </div>
 
@@ -177,7 +176,7 @@
                     <div class="fea-selectors fea-add-selectors col-sm-3">
                         <label>Select Frame Element:</label><br/>
                         <select id="fea-role-select" onchange="updateChosenRoleInfo()">
-                            <option value="None" selected>-Select frame role-</option>
+                            <option value="None" selected>-Select-</option>
                         </select>
                     </div>
 
@@ -185,16 +184,27 @@
                     <div class="fea-selectors fea-rem-selectors col-sm-3">
                         <label>Select Frame Element:</label><br/>
                         <select id="fea-fram-select">
-                            <option value="None" selected>-Select predicate role-</option>
+                            <option value="None" selected>-Select-</option>
+                        </select>
+                    </div>
+
+                    <!-- Coreference Selectors -->
+                    <!-- Task selection -->
+                    <div class="cor-selectors col-sm-3">
+                        <label>Select Annotation Task:</label><br />
+                        <select id="cor-task-select" onchange="updateCORTask()">
+                            <option value="None" selected>-Select-</option>
+                            <option value="1">Create Coreference</option>
+                            <option value="2">Remove Coreference</option>
                         </select>
                     </div>
 
                     <!-- Structured Data Selectors -->
                     <!-- Task -->
                     <div class="sde-selectors col-sm-3">
-                        <label>Select Reference Task:</label><br />
+                        <label>Select Annotation Task:</label><br />
                         <select id="sde-task-select" onchange="updateSDETask()">
-                            <option value="None" selected>-Select Task-</option>
+                            <option value="None" selected>-Select-</option>
                             <option value="1">Create Wikidata Entity</option>
                             <option value="2">Create NIL Entity</option>
                             <option value="3">Remove Entity</option>
@@ -204,7 +214,7 @@
                     <div class="sde-selectors sde-add-selectors col-sm-2">
                         <label>Select Relation:</label><br />
                         <select id="sde-relation-select">
-                            <option value="None" selected>-Select relation-</option>
+                            <option value="None" selected>-Select-</option>
                             <option value="sem:hasActor">sem:hasActor</option>
                             <option value="sem:hasPlace">sem:hasPlace</option>
                         </select>

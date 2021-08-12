@@ -512,6 +512,10 @@ function readCoreferencesLayer(coref_layer) {
     for (var i in coref_layer) {
         var coreference = coref_layer[i];
 
+        if (coreference['attr']['status'] == 'deprecated') {
+            continue;
+        }
+
         var coref_span = coreference['span']['target'];
         if (!Array.isArray(coref_span)) coref_span = [coref_span];
 
@@ -523,7 +527,10 @@ function readCoreferencesLayer(coref_layer) {
             for (var i in coref_span) {
                 var term_id = coref_span[i]['attr']['id'];
 
-                result[term_id] = reference;
+                result[term_id] = {
+                    'entity': reference,
+                    'coreference': coreference['attr']['id'] 
+                };
             }
         }
     }
@@ -1050,7 +1057,7 @@ function deprecateCoreferenceEntry(json_data, target_id) {
         var coref_id = coref['attr']['id'];
 
         if (coref_id == target_id) {
-            coref_layer[i]['status'] = 'deprecated';
+            coref_layer[i]['attr']['status'] = 'deprecated';
             break;
         }
     }
@@ -1178,34 +1185,42 @@ function handleFrameElementAnnotation(json_data, task_data, session_id) {
     }
 }
 
-// TODO: Handle coreference update
 function handleCoreferenceAnnotation(json_data, task_data, session_id) {
-    json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'coreferences', 'coref');
-    var coref_layer = json_data['NAF']['coreferences']['coref'];
-    if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
+    if (task_data.cor_task == 1) {
+        json_data['NAF'] = createLayerIfNotExists(json_data['NAF'], 'coreferences', 'coref');
+        var coref_layer = json_data['NAF']['coreferences']['coref'];
+        if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
 
-    // Check for span overlap on different wikidata reference
-    for (var i in coref_layer) {
-        var coref = coref_layer[i];
-        var coref_target = coref['span']['target'];
+        // Check for span overlap on different wikidata reference
+        // for (var i in coref_layer) {
+        //     var coref = coref_layer[i];
+        //     var coref_target = coref['span']['target'];
 
-        if (coref_target['attr']['id'] in task_data['target_ids']) {
-            coref_layer[i]['status'] = 'deprecated';
-            break;
+        //     if (coref_target['attr']['id'] in task_data['target_ids']) {
+        //         coref_layer[i]['status'] = 'deprecated';
+        //         break;
+        //     }
+        // }
+
+        // json_data['NAF']['coreferences']['coref'] = coref_layer;
+
+        // Create new coreference entry for each term in selected
+        for (var i in task_data['target_ids']) {
+            var coreference_data = {
+                'reference': task_data['reference'],
+                'type': task_data['type'],
+                'target_term': task_data['target_ids'][i]
+            };
+
+            json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
         }
+
+        return json_data
+    } else if (task_data.cor_task == 2) {
+        json_data = deprecateCoreferenceEntry(json_data, task_data.coreference);
+        
+        return json_data;
     }
-
-    json_data['NAF']['coreferences']['coref'] = coref_layer;
-
-    // Create new coreference entry for each term in selected
-    for (var i in task_data['target_ids']) {
-        var coreference_data = { 'reference': task_data['reference'],
-                                 'type': task_data['type'],
-                                 'target_term': task_data['target_ids'][i] };
-        json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
-    }
-
-    return addCoreferenceEntry(json_data, task_data)
 }
 
 function handleStructuredDataAnnotation(incident_id, task_data) {
