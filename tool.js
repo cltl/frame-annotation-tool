@@ -147,6 +147,11 @@ fs.readFile(pos_map_file, 'utf8', function (err, data){
     posMap = JSON.parse(data);
 });
 
+fs.readFile('data/DynamicLexicon.json', 'utf8', function (err, data){
+    if (err) throw err; // we'll not consider error handling for now
+    DynamicLexicon = JSON.parse(data);
+});
+
 //#endregion
 
 // =====================================
@@ -318,7 +323,7 @@ function readTokenLayer(token_layer) {
  * @param {object}      term_layer  The raw NAF object to be converted
  * @param {object}      token_data  Information of all tokens in token layer
  */
-function readTermLayer(term_layer, token_data) {
+function readTermLayer(term_layer, mw_layer, token_data) {
     var result = [];
 
     // Loop trough term layer
@@ -329,10 +334,19 @@ function readTermLayer(term_layer, token_data) {
         // Term is part of multiword
         if (term['attr']['component_of'] != undefined) {
             var par_term_id = term['attr']['component_of'];
+            var par_term_lem = undefined;
+
+            for (var j in mw_layer) {
+                if (mw_layer[j]['attr']['id'] == par_term_id) {
+                    par_term_lem = mw_layer[j]['attr']['lemma'];
+                }
+            }
+
+            console.log(par_term_lem);
             var target_token_id = term['span']['target']['attr']['id'];
             var target_token = token_data[target_token_id];
             var term_data = { 'text': target_token['text'],
-                              'lemma': term['attr']['lemma'],
+                              'lemma': par_term_lem,
                               'pos': term['attr']['pos'],
                               't_select': par_term_id,
                               'p_select': par_term_id,
@@ -566,7 +580,10 @@ function readNAFFile(json_data, doc_name, inc_type) {
     var srl_layer = srl_layer != undefined ? srl_layer['predicate'] : [];
     if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
-    var term_info = readTermLayer(term_layer, token_data);
+    var mw_layer = json_data['NAF']['multiwords']['mw'];
+    if (!Array.isArray(mw_layer)) mw_layer = [mw_layer];
+
+    var term_info = readTermLayer(term_layer, mw_layer, token_data);
     var predicates = readSRLLayer(srl_layer, typicality);
     var coreferences = readCoreferencesLayer(coref_layer);
 
