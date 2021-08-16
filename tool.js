@@ -1031,8 +1031,10 @@ function addCoreferenceEntry(json_data, coreference_data, session_id) {
                                'externalReferences': { 'externalRef': [] }};
     
     // Construct span layer
-    var target_data = { 'attr': { 'id': coreference_data['target_term'] }};
-    correference_entry['span']['target'].push(target_data);
+    for (var i in coreference_data['target_term']) {
+        var target_data = { 'attr': { 'id': coreference_data['target_term'][i] }};
+        correference_entry['span']['target'].push(target_data);
+    }
 
     // Construct external references layer in coreference
     var reference_data = { 'reference': coreference_data['reference'],
@@ -1205,15 +1207,23 @@ function handleCoreferenceAnnotation(json_data, task_data, session_id) {
         // json_data['NAF']['coreferences']['coref'] = coref_layer;
 
         // Create new coreference entry for each term in selected
-        for (var i in task_data['target_ids']) {
-            var coreference_data = {
-                'reference': task_data['reference'],
-                'type': task_data['type'],
-                'target_term': task_data['target_ids'][i]
-            };
+        // for (var i in task_data['target_ids']) {
+        //     var coreference_data = {
+        //         'reference': task_data['reference'],
+        //         'type': task_data['type'],
+        //         'target_term': task_data['target_ids'][i]
+        //     };
 
-            json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
-        }
+        //     json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
+        // }
+
+        var coreference_data = {
+            'reference': task_data['reference'],
+            'type': task_data['type'],
+            'target_terms': task_data['target_ids']
+        };
+
+        json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
 
         return json_data
     } else if (task_data.cor_task == 2) {
