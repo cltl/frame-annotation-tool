@@ -342,7 +342,6 @@ function readTermLayer(term_layer, mw_layer, token_data) {
                 }
             }
 
-            console.log(par_term_lem);
             var target_token_id = term['span']['target']['attr']['id'];
             var target_token = token_data[target_token_id];
             var term_data = { 'text': target_token['text'],
@@ -580,8 +579,11 @@ function readNAFFile(json_data, doc_name, inc_type) {
     var srl_layer = srl_layer != undefined ? srl_layer['predicate'] : [];
     if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
-    var mw_layer = json_data['NAF']['multiwords']['mw'];
-    if (!Array.isArray(mw_layer)) mw_layer = [mw_layer];
+    var mw_layer = [];
+    if ('multiwords' in json_data['NAF']) {
+        mw_layer = json_data['NAF']['multiwords']['mw'];
+        if (!Array.isArray(mw_layer)) mw_layer = [mw_layer];
+    }
 
     var term_info = readTermLayer(term_layer, mw_layer, token_data);
     var predicates = readSRLLayer(srl_layer, typicality);
