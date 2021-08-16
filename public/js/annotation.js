@@ -556,6 +556,16 @@ function updateFEATask() {
             loadRoles(frame, function (data) {
                 renderDropdownWithGroups('#fea-role-select', data,
                     ['definition', 'framenet'], '-Select-');
+                
+                $("#fea-role-select > optgroup > option").each(function() {
+                    for (i in annotations['fea']) {
+                        for (j in annotations['fea'][i]) {
+                            if ($(this).val() == annotations['fea'][i][j]['premon']) {
+                                $(this).attr('disabled', true);
+                            }
+                        }
+                    }
+                });
             });
 
             if (fea_tid != '-1') {
