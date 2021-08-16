@@ -117,7 +117,7 @@ $(function () {
 
                     var type = $('#ic-typ-select').val();
                     var language = $('#ic-lan-select').val();
-                    var lemma = getLemma();
+                    var lemma = $(this).attr('lemma');
 
                     if (lemma != undefined) {
                         loadFrames(type, language, lemma, function (data) {
