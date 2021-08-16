@@ -1031,8 +1031,8 @@ function addCoreferenceEntry(json_data, coreference_data, session_id) {
                                'externalReferences': { 'externalRef': [] }};
     
     // Construct span layer
-    for (var i in coreference_data['target_term']) {
-        var target_data = { 'attr': { 'id': coreference_data['target_term'][i] }};
+    for (var i in coreference_data['target_terms']) {
+        var target_data = { 'attr': { 'id': coreference_data['target_terms'][i] }};
         correference_entry['span']['target'].push(target_data);
     }
 
