@@ -685,15 +685,18 @@ function updateIncidentSelection(changed) {
 
         if (selected_pro == 'None' || selected_typ == 'None') {
             renderDropdown('#ic-inc-select', [], [], '-Select an incident-');
+            sortDropdown('#ic-inc-select');
         } else {
             var get_data = { 'proj': selected_pro, 'type': selected_typ };
             $.get('/project_incidents', get_data, function (result, status) {
                 var inc = result['inc'];
-                renderDropdown('#ic-inc-select', inc, [], '-Select an incident-')
+                renderDropdown('#ic-inc-select', inc, [], '-Select an incident-');
+                sortDropdown('#ic-inc-select');
             });
         }
     } else if (changed == 2) {
         renderDropdown('#ic-doc-select', [], [], '-Select a document-');
+        sortDropdown('#ic-doc-select');
 
         if (selected_inc == 'None') {
             renderDropdown('#ic-lan-select', [], [], '-Select a language-');
@@ -707,11 +710,13 @@ function updateIncidentSelection(changed) {
     } else if (changed == 3) {
         if (selected_lan == 'None') {
             renderDropdown('#ic-doc-select', [], [], '-Select a document-');
+            sortDropdown('#ic-doc-select');
         } else {
             var get_data = { 'inc': selected_inc, 'lan': selected_lan };
             $.get('/incident_documents', get_data, function (result, status) {
                 var doc = result['doc'];
                 renderDropdown('#ic-doc-select', doc, [], '-Select a document-');
+                sortDropdown('#ic-doc-select');
             });
         }
     }
@@ -1097,6 +1102,18 @@ function renderDropdown(element_id, items, data_items, default_option) {
 
         element.append(cur_option);
     }
+}
+
+// From https://stackoverflow.com/questions/12073270/sorting-options-elements-alphabetically-using-jquery
+function sortDropdown(element_id) {
+    var options = $(element_id + ' option');
+    var arr = options.map(function(_, o) { return { t: $(o).text(), v: o.value }; }).get();
+
+    arr.sort(function(o1, o2) { return o1.t > o2.t ? 1 : o1.t < o2.t ? -1 : 0; });
+        options.each(function(i, o) {
+        o.value = arr[i].v;
+        $(o).text(arr[i].t);
+    });
 }
 
 function clearMessage() {
