@@ -853,7 +853,10 @@ function deprecateMultiwordEntry(json_data, target_id) {
         }
     }
 
-    json_data['NAF']['srl']['predicate'] = srl_layer;
+    if ('srl' in json_data['NAF']) {
+        json_data['NAF']['srl']['predicate'] = srl_layer;
+    }
+    
     json_data["NAF"]["multiwords"]["mw"] = mw_layer;
     json_data['NAF']['terms']['term'] = term_layer;
     return json_data;
