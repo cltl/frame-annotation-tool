@@ -836,8 +836,10 @@ function deprecateMultiwordEntry(json_data, target_id) {
         }
     }
 
-    var srl_layer = json_data['NAF']['srl']['predicate'];
-    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+    if ('srl' in json_data['NAF']) {
+        var srl_layer = json_data['NAF']['srl']['predicate'];
+        if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+    }
 
     for (var i in srl_layer) {
         var predicate = srl_layer[i];
@@ -1243,11 +1245,9 @@ function handleCoreferenceAnnotation(json_data, task_data, session_id) {
         };
 
         json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
-
-        return json_data
+        return json_data;
     } else if (task_data.cor_task == 2) {
         json_data = deprecateCoreferenceEntry(json_data, task_data.coreference);
-        
         return json_data;
     }
 }
