@@ -532,6 +532,7 @@ function updateFANTask() {
 function updateFEATask() {
     var fea_task = $("#fea-task-select").val();
     var fea_tid = $("#fea-pred-select").val();
+    var rpr_id = $('#fea-pred-select option:selected').text();
 
     resetSubtaskAnnotations();
     resetSelection();
@@ -560,7 +561,7 @@ function updateFEATask() {
                 $("#fea-role-select > optgroup > option").each(function() {
                     for (i in annotations['fea']) {
                         for (j in annotations['fea'][i]) {
-                            if ($(this).val() == annotations['fea'][i][j]['premon']) {
+                            if ($(this).val() == annotations['fea'][i][j]['premon'] && rpr_id == annotations['fea'][i][j]['predicate']) {
                                 $(this).attr('disabled', true);
                             }
                         }
