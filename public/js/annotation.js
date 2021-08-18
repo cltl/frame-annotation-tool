@@ -14,7 +14,7 @@ var predicate_selected = false;
 
 noFrameType = 'NO-FRAME';
 
-const CONTRASTING_COLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
+const CONTRASTING_CQ106366730OLORS = ['#731d1d', '#ff8080', '#a6877c', '#f2853d',
     '#402310', '#7f4400', '#e5b073', '#8c7000',
     '#ffd940', '#eeff00', '#64664d', '#2a4000',
     '#86b32d', '#d6f2b6', '#20f200', '#00660e',
@@ -942,6 +942,10 @@ function renderToken(term, prev_term) {
         super_script = '<sup>' + term.pr_id + '</sup>'
     }
 
+    if (term.t_select == 't207') {
+        console.log(term.type);
+    }
+
     return join_sym + '<span class="markable ' + term.status + '" lemma="' +
         term.lemma + '" pos="' + term.pos + '" term-selector="' +
         t_select + '" parent-selector="' + p_select + '" ' +
@@ -962,9 +966,13 @@ function renderTokens(terms, annotations) {
             term.pr_id = annotations.fan[term.t_select].predicate;
             term.status = annotations['fan'][term.t_select].status;
             term.typical = annotations['fan'][term.t_select].typicality;
-        } else if (term.t_select in annotations['fea']) {
+        }
+        
+        if (term.t_select in annotations['fea']) {
             term.type += ' role';
-        } else if (term.t_select in annotations['sdr']) {
+        }
+        
+        if (term.t_select in annotations['sdr']) {
             term.type += ' reference';
             term.cr_id = annotations['sdr'][term.t_select];
         }
