@@ -63,6 +63,7 @@
 .info-panel {
     margin-bottom: 10px;
     background: #EBF5FB;
+    padding: 5px;
 }
 
 select {
@@ -72,4 +73,9 @@ select {
 input[type=text] {
     line-height: 9px;
     font-size: 9px;
+}
+
+textarea {
+    width: calc(100% - 10px);
+    
 }

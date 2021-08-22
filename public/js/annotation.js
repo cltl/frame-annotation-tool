@@ -731,6 +731,9 @@ function loadDocument() {
 
         loadNAFFile(typ, inc, lan + '/' + doc, function (result) {
             if (result != 0) {
+                $('#notes').val(result['notes']);
+
+                result = result['naf']
                 annotations['fan'] = result['frames'];
                 annotations['fea'] = result['frame_elements'];
                 annotations['cor'] = result['coreferences'];
@@ -907,6 +910,16 @@ function saveChanges() {
             printMessage(validation[1], 'error');
         }
     }
+}
+
+function saveNotes() {
+    var text = $('#notes').val();
+    var lan = $('#ic-lan-select').val();
+    var doc = $('#ic-doc-select').val();
+
+    $.post('/store_notes', {'doc': lan  + '/' + doc, 'text': text}, function(result, status) {
+        printMessage('Succesfully stored notes', 'success');
+    });
 }
 
 // =====================================
@@ -1148,7 +1161,7 @@ function loadNAFFile(type, incident, document, callback) {
     var get_data = { 'typ': type, 'inc': incident, 'doc': document };
 
     $.get('/load_document', get_data, function (result, status) {
-        callback(result['naf']);
+        callback(result);
     }).fail(function (e) {
         // Incident locked
         if (e.status == 423) {

@@ -1457,6 +1457,19 @@ app.post('/store_annotation', isAuthenticated, function(req, res) {
     }
 });
 
+app.post("/store_notes", isAuthenticated, function(req, res) {
+    var doc = req.body['doc'];
+    var text = req.body['text'];
+
+    fs.readFile('data/Notes.json', 'utf8', function(err, data) {
+        var notes = JSON.parse(data);
+        notes[doc] = text;
+
+        fs.writeFile('data/Notes.json', JSON.stringify(notes), function() {});
+        res.sendStatus(200);
+    });
+});
+
 // Endpoint to get all projects and incident types
 app.get("/projects", isAuthenticated, function(req, res) {
     // Get projects and types
@@ -1571,9 +1584,17 @@ app.get('/load_document', isAuthenticated, function(req, res) {
         LockedIncidents[inc] = { 'user': req.user.user, 'time': now };
 
         // Load NAF files and return
-        loadNAFFile(doc, typ, true, true, function(data) {
-            res.send({ 'naf': data })
-            res.status(200);
+        loadNAFFile(doc, typ, true, true, function(naf_data) {
+            fs.readFile('data/Notes.json', 'utf8', function(err, data) {
+                var notes = JSON.parse(data);
+                var notes_data = '';
+                if (doc in notes) {
+                    notes_data = notes[doc];
+                }
+
+                res.send({ 'naf': naf_data, 'notes': notes_data });
+                res.status(200);
+            });
         });
     } else {
         res.sendStatus(423);
