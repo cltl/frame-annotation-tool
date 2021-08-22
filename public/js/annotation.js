@@ -5,12 +5,8 @@ var pos_options = ''
 annotations = {};
 
 var current_task = 'None';
-var fan_task = 'None';
-var mcn_task = 'None';
-var mcn_type = 'None';
 
 var enforced_role_annotation = false;
-var predicate_selected = false;
 
 noFrameType = 'NO-FRAME';
 
@@ -34,15 +30,12 @@ $(function () {
     })
 
     $('#fan-typical-select').slider({
-        range: true,
-        min: 0,
-        max: 1,
-        step: 0.05,
-        values: [0, 1],
+        range: true, min: 0, max: 1, step: 0.05, values: [0, 1],
         slide: function (e, u) {
-            $('[frame].system').removeClass('annotated');
-            var selected = $('[frame].system').filter(function () {
-                var score = parseFloat($(this).attr('typicality'));
+            $('span[data-pred-status="system"]').removeClass('annotated');
+
+            var selected = $('span[data-pred-status="system"]').filter(function () {
+                var score = parseFloat($(this).data('pred-typicality'));
                 return score >= u.values[0] && score <= u.values[1];
             })
 
@@ -52,9 +45,8 @@ $(function () {
 
     resetDocument();
     resetSelection();
-    resetTaskSelection();
-    resetSubTaskSelections();
-    resetSubtaskAnnotations();
+    resetAnnotations();
+    resetSubtaskSelections();
     resetSubtaskPanels();
 
     // On click markable
@@ -66,72 +58,65 @@ $(function () {
         var t_selector = '[term-selector="' + term_selector + '"]';
         var p_selector = '[parent-selector="' + parent_selector + '"]';
 
-        var is_annotated = $(t_selector).hasClass('annotated');
-        var is_machine = $(t_selector).hasClass('system');
-        var is_refering = $(t_selector).is('[reference]');
-        var is_frame = $(t_selector).is('[frame]');
-        var is_role = $(t_selector).is('[role]');
-
         // Currently in markable correction
         if (current_task == '1') {
-            // Add checks for already marked
-            if (mcn_task == '1') {
-                if (mcn_type == '3') {
+            var corrected = $(t_selector).data('term-type') == 'multiword' || $(t_selector).data('term-type') == 'compound';
+
+            if ($('#mcn-task-select').val() == '1' && !corrected) {
+                if ($('#mcn-type-select').val() == '3') {
                     resetSelection();
 
-                    // Dont select sup
+                    // Dont select super text
                     var token = $(t_selector).clone().children().remove().end().text();
                     $('#mcn-subdivide-input').val(token);
                     updateCPDSubdivide();
                 }
 
                 $(t_selector).toggleClass('marked');
-            } else if (mcn_task == '2') {
-                $(p_selector).toggleClass('marked');
+            } else if ($('#mcn-task-select').val() == '2') {
+                if (corrected) {
+                    $(p_selector).toggleClass('marked');
+                }
             }
         }
 
         // Currently annotating frames
         else if (current_task == '2') {
-            if (fan_task == '1') {
-                if (is_machine) {
+            if ($('#fan-task-select').val() == '1') {
+                if ($(t_selector).data('pred-status') == 'system') {
                     $(t_selector).toggleClass('marked');
-                    $('.styled').removeAttr('style');
-                    $('.styled').removeClass('styled');
 
                     if ($(t_selector).hasClass('marked')) {
                         resetPREPanel();
                         activatePredicate(term_selector);
                     }
                 }
-            } else if (fan_task == '2') {
-                $(t_selector).toggleClass('marked');
-                $('.styled').removeAttr('style');
-                $('.styled').removeClass('styled');
+            } else if ($('#fan-task-select').val() == '2') {
+                if (!$(t_selector).data('pred-id')) {
+                    $(t_selector).toggleClass('marked');
 
-                if ($(t_selector).hasClass('marked')) {
-                    if (is_frame) {
-                        resetPREPanel();
-                        activatePredicate(term_selector);
-                    }
+                    if ($(t_selector).hasClass('marked')) {
+                        if ($(t_selector).data('pred-id')) {
+                            resetPREPanel();
+                            activatePredicate(term_selector);
+                        }
 
-                    var type = $('#ic-typ-select').val();
-                    var language = $('#ic-lan-select').val();
-                    var lemma = $(this).attr('lemma');
+                        var type = $('#ic-typ-select').val();
+                        var language = $('#ic-lan-select').val();
+                        var lemma = $(this).attr('lemma');
 
-                    if (lemma != undefined) {
-                        loadFrames(type, language, lemma, function (data) {
-                            renderDropdownWithGroups('#fan-type-select', data,
-                                ['lu', 'definition', 'framenet'], '-Select-');
-                        });
+                        if (lemma != undefined) {
+                            loadFrames(type, language, lemma, function (data) {
+                                renderDropdownWithGroups('#fan-type-select', data,
+                                    ['lu', 'definition', 'framenet'], '-Select-');
+                            });
+                        }
                     }
                 }
-            } else if (fan_task == '3') {
-                if (is_frame) {
+            } else if ($('#fan-task-select').val() == '3') {
+                if ($(t_selector).data('pred-id')) {
                     $(t_selector).toggleClass('marked');
-                    $('.styled').removeAttr('style');
-                    $('.styled').removeClass('styled');
-
+                    
                     if ($(t_selector).hasClass('marked')) {
                         resetPREPanel();
                         activatePredicate(term_selector);
@@ -142,20 +127,23 @@ $(function () {
 
         // Currently annotating frame elements
         else if (current_task == '3') {
-            if (predicate_selected) {
-                $(t_selector).toggleClass('marked');
+            if ($('#fea-task-select').val() == '1') {
+                if ($('#fea-pred-select').val() != 'None') {
+                    $(t_selector).toggleClass('marked');
+                }
             }
         }
 
         // Currently annotating references
         else if (current_task == '4') {
+            var ref_id = $(t_selector).data('ref-id');
             if ($('#cor-task-select').val() == '1') {
-                if (!is_refering) {
+                if (!ref_id) {
                     $(t_selector).toggleClass('marked');
                 }
             } else if ($('#cor-task-select').val() == '2') {
-                if (is_refering) {
-                    $(t_selector).toggleClass('marked');
+                if (ref_id) {
+                    $('span[data-ref-id="' + ref_id + '"]').toggleClass('marked');
                 }
             }
         }
@@ -165,8 +153,7 @@ $(function () {
         if (current_task == '4' && $('#cor-task-select').val() == '1') {
             if (!e.ctrlKey && !e.metaKey) {
                 e.preventDefault();
-                $('.structured-data.marked').removeClass('marked');
-                $(this).addClass('marked');
+                $(this).toggleClass('marked');
             }
         }
     });
@@ -211,6 +198,7 @@ function hexToRGB(hex) {
         parseInt(result[3], 16)
     ] : null;
 }
+
 function getSelected() {
     return $.unique($('.marked').not('.annotated.depends')
         .not('.structured-data').map(function () {
@@ -245,55 +233,51 @@ function resetDocument() {
 }
 
 function resetSelection() {
-    if (current_task == '3') {
-        $('.marked').not('.annotated').removeClass('marked');
-    } else {
-        predicate_selected = false;
+    $('.marked').removeClass('marked');
+    $('.manual').removeClass('manual');
+    $('.system').removeClass('system');
 
-        $('.styled').removeAttr('style');
-        $('.styled').removeClass('styled');
-        $('.marked').removeClass('marked');
-
-        $('#mcn-subdivide-input').val('');
-        updateCPDSubdivide();
-    }
+    $('#mcn-subdivide-input').val('');
+    updateCPDSubdivide();
 }
 
-function resetTaskSelection() {
-    $('#annotation-task-selection').val('None');
+function resetAnnotations() {
+    $('.annotated').removeClass('annotated');
+    $('.dependency').removeClass('dependency');
+
+    $('.styled').removeAttr('style');
+    $('.styled').removeClass('styled');
+    $('sup').hide();
 }
 
-function resetSubTaskSelections() {
+function resetSubtaskSelections() {
     $('#mcn-task-select').val('None');
     $('#mcn-type-select').val('None');
     $('#mcn-lemma-input').val('');
+    $('#mcn-subdivide-input').val('');
     $('.mcn-selectors').hide();
 
     $('#fan-task-select').val('None');
     $('#fan-type-select').val('None');
     $('#fan-relation-select').val('None');
+    $('#fan-typical-select').val('None');
     $('.fan-selectors').hide();
 
+    $('#fea-task-select').val('None');
     $('#fea-pred-select').val('None');
     $('#fea-role-select').val('None');
+    $('#fea-fram-select').val('None');
     $('.fea-selectors').hide();
 
+    $('#cor-task-select').val('None');
     $('.cor-selectors').hide();
 
-    $('#sde-action-select').val('None');
+    $('#sde-task-select').val('None');
     $('#sde-relation-select').val('None');
     $('#sde-remove-select').val('None');
     $('#sde-uri-input').val('');
     $('#sde-label-input').val('');
     $('.sde-selectors').hide();
-}
-
-function resetSubtaskAnnotations() {
-    $('.styled').removeAttr('style');
-    $('.styled').removeClass('styled');
-    $('.annotated').removeClass('annotated');
-    $('.depends').removeClass('depends');
-    $('sup').hide();
 }
 
 function resetMCNPanel() {
@@ -412,7 +396,7 @@ function updateTask(clear) {
         } else if (current_task == '3') {
             updateFEATask();
         } else if (current_task == '4') {
-            $('span[reference]').addClass('annotated');
+            updateCORTask();
         }
 
         return;
@@ -421,8 +405,7 @@ function updateTask(clear) {
     current_task = new_task
 
     resetSelection();
-    resetSubTaskSelections();
-    resetSubtaskAnnotations();
+    resetSubtaskSelections();
     resetSubtaskPanels();
 
     if (current_task == '1') {
@@ -440,7 +423,6 @@ function updateTask(clear) {
 
         updateFEATask();
     } else if (current_task == '4') {
-        $('span[reference]').addClass('annotated');
         $('.cor-selectors').show();
 
         updateCORTask();
@@ -456,17 +438,16 @@ function updateTask(clear) {
 
 function updateMCNTask() {
     resetSelection();
+    resetAnnotations();
     resetSubtaskPanels();
 
-    $('span[multiword]').addClass('annotated');
-    $('span[compound]').addClass('annotated');
-
+    $('span[data-term-type="multiword"]').addClass('annotated');
+    $('span[data-term-type="compound"]').addClass('annotated');
+    
     $('#mcn-type-select').val('None');
     $('#mcn-lemma-input').val('');
 
-    mcn_task = $("#mcn-task-select").val();
-
-    if (mcn_task == '1') {
+    if ($('#mcn-task-select').val() == '1') {
         $('.mcn-add-selectors').show();
         updateMCNType();
     } else {
@@ -481,13 +462,11 @@ function updateMCNType() {
     resetSubtaskPanels();
     $('#mcn-lemma-input').val('');
 
-    mcn_type = $("#mcn-type-select").val();
-
-    if (mcn_type == '1' || mcn_type == '2') {
+    if ($('#mcn-type-select').val() == '1' || $('#mcn-type-select').val() == '2') {
         $('#ip-mcn').hide();
         $('.mcn-add-selectors2').show();
         $('.mcn-add-selectors3').hide();
-    } else if (mcn_type == '3') {
+    } else if ($('#mcn-type-select').val() == '3') {
         $('#ip-mcn').show();
         $('.mcn-add-selectors2').hide();
         $('.mcn-add-selectors3').show();
@@ -500,16 +479,19 @@ function updateMCNType() {
 
 function updateFANTask() {
     resetSelection();
+    resetAnnotations();
     resetSubtaskPanels();
 
     $('#ip-pre').show();
-    $('span[frame]').addClass('annotated');
+
+    $('span[data-pred-id]').addClass('annotated');
+    $('span[data-pred-status="manual"]').addClass('manual');
+    $('span[data-pred-status="system"]').addClass('system');
+
     $('#fan-type-select').val('None');
     $('#fan-relation-select').val('None');
 
-    fan_task = $("#fan-task-select").val();
-
-    if (fan_task == "1") {
+    if ($('#fan-task-select').val() == "1") {
         $('#ip-pre').show();
         $('#ip-fan').hide();
 
@@ -517,11 +499,11 @@ function updateFANTask() {
         $(".fan-rem-selectors").hide();
 
         // $('span[frame].manual').removeClass('annotated');
-    } else if (fan_task == "2") {
+    } else if ($('#fan-task-select').val() == "2") {
         $('#ip-fan').show();
         $(".fan-add-selectors").show();
         $(".fan-rem-selectors").hide();
-    } else if (fan_task == '3') {
+    } else if ($('#fan-task-select').val() == '3') {
         $('#ip-pre').show();
         $(".fan-add-selectors").hide();
     } else {
@@ -534,13 +516,15 @@ function updateFEATask() {
     var fea_tid = $("#fea-pred-select").val();
     var rpr_id = $('#fea-pred-select option:selected').text();
 
-    resetSubtaskAnnotations();
     resetSelection();
+    resetAnnotations();
     resetSubtaskPanels();
+
     $("#fea-pred-select").val(fea_tid);
 
     $('#ip-pre').show();
     $('#ip-fea').show();
+    $('span[data-pred-id]');
 
     $('sup').show();
     $('#fea-role-select').val('None');
@@ -570,8 +554,7 @@ function updateFEATask() {
             });
 
             if (fea_tid != '-1') {
-                predicate_selected = true;
-                $('[term-selector="' + fea_tid + '"]').addClass('marked annotated depends');
+                $('[term-selector="' + fea_tid + '"]').addClass('dependency');
             }
         }
     } else if (fea_task == '2') {
@@ -582,8 +565,7 @@ function updateFEATask() {
             activatePredicate(fea_tid);
 
             if (fea_tid != '-1') {
-                predicate_selected = true;
-                $('[term-selector="' + fea_tid + '"]').addClass('marked annotated depends');
+                $('[term-selector="' + fea_tid + '"]').addClass('dependency');
 
                 var pid = annotations['fan'][fea_tid]['predicate'];
                 var roles = [];
@@ -597,7 +579,8 @@ function updateFEATask() {
                                 'label': elem['label'],
                                 'value': elem['role'],
                                 'predicate': pid
-                            })
+                            });
+
                             labels.push(elem['label'])
                         }
                     }
@@ -614,10 +597,14 @@ function updateFEATask() {
 
 function updateCORTask() {
     resetSelection();
+    resetAnnotations();
+
+    $('span[data-ref-id]').addClass('annotated');
 }
 
 function updateSDETask() {
     resetSelection();
+    resetAnnotations();
     resetSubtaskPanels();
 
     $('#sde-action-select').val('None');
@@ -736,6 +723,7 @@ function loadDocument() {
 
     resetDocument();
     resetSelection();
+    resetAnnotations();
     resetSubtaskPanels();
 
     if (lan != 'None' && doc != 'None') {
@@ -745,7 +733,7 @@ function loadDocument() {
             if (result != 0) {
                 annotations['fan'] = result['frames'];
                 annotations['fea'] = result['frame_elements'];
-                annotations['sdr'] = result['coreferences'];
+                annotations['cor'] = result['coreferences'];
 
                 renderDocument(result, annotations);
                 $('sup').hide();
@@ -930,55 +918,75 @@ function renderToken(term, prev_term) {
 
     var t_select = term.t_select;
     var p_select = term.p_select;
+    var data_attrs = 'data-term-type="' + term.type + '"';
+
     var join_sym = ' ';
     var super_script = '';
 
-    if (prev_term.typ == 'None') {
-        join_sym = '';
-    } else if (prev_term.type.includes('compound') && term.type.includes('compound')) {
-        join_sym = '_'
+    if (prev_term.type == 'compound' && term.type == 'compound') {
+        join_sym = '_';
     }
 
-    if (term.type.includes('frame')) {
-        super_script = '<sup>' + term.pr_id + '</sup>'
+    if (term.attributes.includes('frame')) {
+        super_script = '<sup>' + term.pred_id + '</sup>'
+        data_attrs += 'data-pred-id="' + term.pred_id + '"';
+        data_attrs += 'data-pred-status="' + term.pred_status + '"';
+        data_attrs += 'data-pred-typicality="' + term.pred_typicality + '"';
     }
 
-    return join_sym + '<span class="markable ' + term.status + '" lemma="' +
+    if (term.attributes.includes('role')) {
+        data_attrs += 'data-role-id="' + term.role_id + '"';
+        data_attrs += 'data-role-pred="' + term.role_pred + '"';
+    }
+
+    if (term.attributes.includes('coref')) {
+        data_attrs += 'data-ref-id="' + term.ref_id + '"';
+    }
+
+    return join_sym + '<span class="markable" lemma="' +
         term.lemma + '" pos="' + term.pos + '" term-selector="' +
         t_select + '" parent-selector="' + p_select + '" ' +
-        term.type + ' typicality=' + term.typical + '>' +
-        term.text + super_script + '</span>';
+        data_attrs + '>' + term.text + super_script + '</span>';
 }
 
 function renderTokens(terms, annotations) {
-    var text = '';
-    var prev_term = { 'type': 'None' };
+    var result = '';
+    var prev_term = {'type': 'singleton'};
 
     for (var i in terms) {
         var term = terms[i];
-        term.status = '';
+        term.type = term.type == '' ? 'singleton' : term.type
+        term.attributes = '';
 
         if (term.t_select in annotations['fan']) {
-            term.type += ' frame';
-            term.pr_id = annotations.fan[term.t_select].predicate;
-            term.status = annotations['fan'][term.t_select].status;
-            term.typical = annotations['fan'][term.t_select].typicality;
+            term.pred_id = annotations.fan[term.t_select].predicate;
+            term.pred_status = annotations['fan'][term.t_select].status;
+            term.pred_typicality = annotations['fan'][term.t_select].typicality;
+            term.attributes += 'frame ';
         }
         
         if (term.t_select in annotations['fea']) {
-            term.type += ' role';
+            term.role_id = [];
+            term.role_pred = [];
+
+            for (j in annotations['fea'][term.t_select]) { 
+                term.role_id.push(annotations['fea'][term.t_select][j].role);
+                term.role_pred.push(annotations['fea'][term.t_select][j].predicate);
+            }
+
+            term.attributes += 'role ';
         }
         
-        if (term.t_select in annotations['sdr']) {
-            term.type += ' reference';
-            term.cr_id = annotations['sdr'][term.t_select];
+        if (term.t_select in annotations['cor']) {
+            term.ref_id = annotations['cor'][term.t_select].coreference;
+            term.attributes += 'coref ';
         }
 
-        text += renderToken(term, prev_term);
+        result += renderToken(term, prev_term);
         prev_term = term;
     }
 
-    return text;
+    return result;
 }
 
 function renderDocument(doc_data, annotations) {
@@ -1186,8 +1194,8 @@ function loadMultipleRoles(frames, callback) {
 // VALIDATION UTILS ====================
 // =====================================
 function validateCorrection() {
-    var correction_task = mcn_task;
-    var correction_type = mcn_type;
+    var correction_task = $('#mcn-task-select').val();
+    var correction_type = $('#mcn-type-select').val();
 
     var correction_lemma = $('#mcn-lemma-input').val();
 
@@ -1201,7 +1209,7 @@ function validateCorrection() {
         return $(this).attr('parent-selector');
     }).get())[0];
 
-    if (correction_task == '1' && mcn_type == '3') {
+    if (correction_task == '1' && correction_type == '3') {
         for (var i in correction_subdivisions) {
             var id = 'subdiv_' + i;
             var cdata = $('#' + id + '_t').html();
@@ -1235,7 +1243,7 @@ function validateCorrection() {
     // Create
     if (correction_task == '1') {
         // Multiwords
-        if (mcn_type == '1' || mcn_type == '2') {
+        if ($('#mcn-type-select').val() == '1' || $('#mcn-type-select').val() == '2') {
             if (!correction_lemma) {
                 return [false, 'Set lemma for markable correction'];
             }
@@ -1404,7 +1412,7 @@ function validateRoleAnnotation() {
             }
         }
 
-        var tid = $('.annotated.depends.marked').attr('term-selector');
+        var tid = $('.dependency').attr('term-selector');
         var pr_id = annotations.fan[tid]['predicate'];
 
         var an_un = [role];
@@ -1473,15 +1481,21 @@ var validateReference = function () {
         }
 
         // Get all selected referents
-        var referent = $('.structured-data.marked')
-        var referent_uri = $(referent).data('uri');
-        var referent_type = $(referent).data('type');
-
-        if (!referent.length) {
-            return [false, 'Select a referent'];
+        var referents = $('.structured-data.marked')
+        if (!referents.length) {
+            return [false, 'Select at least one referent'];
         }
 
-        var task_data = { 'cor_task': 1, 'target_ids': selected, 'reference': referent_uri, 'type': referent_type };
+        var referents_data = [];
+
+        referents.each(function() {
+            referents_data.push({
+                'uri': $(this).data('uri'),
+                'type': $(this).data('type')
+            })
+        });
+
+        var task_data = { 'cor_task': 1, 'target_ids': selected, 'referents_data': referents_data };
         return [true, task_data];
     } else if (task == '2') {
         // Get all selected markables
@@ -1491,7 +1505,7 @@ var validateReference = function () {
             return [false, 'Select at least one markable'];
         }
 
-        var cr_id = annotations['sdr'][selected[0]]['coreference'];
+        var cr_id = annotations['cor'][selected[0]]['coreference'];
         var task_data = { 'cor_task': 2, 'coreference': cr_id };
 
         return [true, task_data];
@@ -1576,8 +1590,9 @@ function activatePredicate(token_id) {
     $('#ip-pre-pos').text(pos);
     $('#ip-pre-pre').text(info.premon);
     $('#ip-pre-pre').attr('href', info.premon);
-    $('#ip-pre-fra-frn').text(info.framenet);
-    $('#ip-pre-fra-frn').attr('href', info.framenet);
+    $('#ip-pre-fra').text(info.framenet);
+    $('#ip-pre-fra').attr('href', info.framenet);
+    $('#ip-pre-ide').text(info.predicate);
     $('#activePredicate').text(info.predicate);
 
     var an_un = [];
@@ -1665,7 +1680,8 @@ function activateRoles(datasource, type, an_ex, an_un, show, color_index) {
 }
 
 function updateChosenFrameInfo() {
-    var chosen_element = $('#fan-type-select option:selected')
+    var chosen_element = $('#fan-type-select option:selected');
+
     $('#ip-fan-label').html(chosen_element.text());
     $('#ip-fan-pre').html('Click here');
     $('#ip-fan-pre').attr('href', chosen_element.val());
@@ -1674,7 +1690,8 @@ function updateChosenFrameInfo() {
 }
 
 function updateChosenRoleInfo() {
-    var chosen_element = $('#fea-type-select option:selected')
+    var chosen_element = $('#fea-role-select option:selected')
+
     $('#ip-fea-label').html(chosen_element.text());
     $('#ip-fea-pre').html('Click here');
     $('#ip-fea-pre').attr('href', chosen_element.val());

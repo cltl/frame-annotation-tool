@@ -1217,37 +1217,15 @@ function handleCoreferenceAnnotation(json_data, task_data, session_id) {
         var coref_layer = json_data['NAF']['coreferences']['coref'];
         if (!Array.isArray(coref_layer)) coref_layer = [coref_layer];
 
-        // Check for span overlap on different wikidata reference
-        // for (var i in coref_layer) {
-        //     var coref = coref_layer[i];
-        //     var coref_target = coref['span']['target'];
+        for (var i in task_data.referents_data) {
+            var coreference_data = {
+                'reference': task_data.referents_data[i].uri,
+                'type': task_data.referents_data[i].type,
+                'target_terms': task_data.target_ids
+            };
 
-        //     if (coref_target['attr']['id'] in task_data['target_ids']) {
-        //         coref_layer[i]['status'] = 'deprecated';
-        //         break;
-        //     }
-        // }
-
-        // json_data['NAF']['coreferences']['coref'] = coref_layer;
-
-        // Create new coreference entry for each term in selected
-        // for (var i in task_data['target_ids']) {
-        //     var coreference_data = {
-        //         'reference': task_data['reference'],
-        //         'type': task_data['type'],
-        //         'target_term': task_data['target_ids'][i]
-        //     };
-
-        //     json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
-        // }
-
-        var coreference_data = {
-            'reference': task_data['reference'],
-            'type': task_data['type'],
-            'target_terms': task_data['target_ids']
-        };
-
-        json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
+            json_data = addCoreferenceEntry(json_data, coreference_data, session_id);
+        }
         return json_data;
     } else if (task_data.cor_task == 2) {
         json_data = deprecateCoreferenceEntry(json_data, task_data.coreference);
@@ -1472,7 +1450,6 @@ app.post('/store_annotation', isAuthenticated, function(req, res) {
                     console.error('Error while saving NAF: ' + error);
                     res.sendStatus(400).json({ "error": error });
                 } else {
-                    console.log("Successfully saved annotation");
                     res.sendStatus(200);
                 }
             });

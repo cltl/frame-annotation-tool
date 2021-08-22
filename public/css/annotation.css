@@ -34,41 +34,29 @@
 }
 
 /* Markables */
-.structured-data.marked {
-    background: #BB8FCE !important;
-}
-
 .markable.marked {
     background: #0f0 !important;
 }
 
-.markable.annotated.marked {
-    background: #BB8FCE !important;
-}
-
-.markable.annotated.system {
-    color: red !important;
+.markable.annotated {
+    font-weight: bold;
 }
 
 .markable.annotated.manual {
-    color: blue !important;
+    color: blue;
 }
 
-span.info-marked {
+.markable.annotated.system {
+    color: red;
+}
+
+.markable.dependency {
     background: #BB8FCE;
-}
-
-.annotated {
     font-weight: bold;
 }
 
-.annotated-depends {
-    font-weight: bold;
-    font-style: italic;
-}
-
-.annotated-depends.marked {
-    background-color: #BB8FCE !important;
+.structured-data.marked {
+    background: #BB8FCE !important;
 }
 
 /* Info panels */
