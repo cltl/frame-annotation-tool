@@ -146,6 +146,9 @@ $(function () {
             } else if ($('#cor-task-select').val() == '2') {
                 if (ref_id) {
                     $('span[data-ref-id="' + ref_id + '"]').toggleClass('marked');
+
+                    var uri = $(t_selector).data('ref-uri');
+                    $('a[data-uri="' + uri + '"]').toggleClass('marked');
                 }
             }
         }
@@ -957,6 +960,7 @@ function renderToken(term, prev_term) {
 
     if (term.attributes.includes('coref')) {
         data_attrs += 'data-ref-id="' + term.ref_id + '"';
+        data_attrs += 'data-ref-uri="' + term.ref_uri + '"';
     }
 
     return join_sym + '<span class="markable" lemma="' +
@@ -995,6 +999,7 @@ function renderTokens(terms, annotations) {
         
         if (term.t_select in annotations['cor']) {
             term.ref_id = annotations['cor'][term.t_select].coreference;
+            term.ref_uri = annotations['cor'][term.t_select].entity;
             term.attributes += 'coref ';
         }
 
