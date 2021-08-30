@@ -437,16 +437,16 @@ function readSRLLayer(srl_layer, typicality) {
         var predicate = srl_layer[i];
         var predicate_id = predicate['attr']['id'];
         var predicate_stat = predicate['attr']['status'];
-
+``
         // Get most recent annotation for current predicate if not deprecated
         if (predicate_stat !== 'deprecated') {
             var references = predicate['externalReferences']['externalRef'];
-            var reference = getLatestExternalReference(references).reference;
+            var latest_ref = getLatestExternalReference(references);
             
             // Loop over each term in the predicate span
             var predicate_span = predicate['span']['target'];
             if (!(Array.isArray(predicate_span))) predicate_span = [predicate_span];
-            var frame_info = allFramesInfo[reference];
+            var frame_info = allFramesInfo[latest_ref.reference];
 
             for (var i in predicate_span) {
                 // Store annotation for current term in result
@@ -457,9 +457,10 @@ function readSRLLayer(srl_layer, typicality) {
                                        'typicality': typicality[reference],
                                        'label': frame_info.frame_label,
                                        'definition': frame_info.definition,
-                                       'premon': reference,
+                                       'premon': latest_ref.reference,
                                        'framenet': frame_info.framenet_url,
-                                       'predicate': predicate_id };
+                                       'predicate': predicate_id,
+                                       'relation': latest_ref.reftype };
             }
 
             // Get frame element annotations

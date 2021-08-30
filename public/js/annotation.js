@@ -115,6 +115,8 @@ $(function () {
                 }
             } else if ($('#fan-task-select').val() == '3') {
                 if ($(t_selector).data('pred-id')) {
+                    $('.styled').removeAttr('style');
+                    $('.styled').removeClass('styled');
                     $(t_selector).toggleClass('marked');
                     
                     if ($(t_selector).hasClass('marked')) {
@@ -317,6 +319,7 @@ function resetPREPanel() {
     $('#ip-pre-fra').html('');
     $('#ip-pre-fra').attr('href', '#');
     $('#ip-pre-ide').html('');
+    $('#ip-pre-rel').html('');
 
     $('#ip-pre-rol').empty();
     $('#ip-pre-rol').append('<tr><th>Frame Element</th><th>Role Type</th><th>Annotated</th><th>Expressed</th></tr>');
@@ -1601,11 +1604,12 @@ function activatePredicate(token_id) {
     // Set predicate summary
     $('#ip-pre-label').text(info.label);
     $('#ip-pre-pos').text(pos);
-    $('#ip-pre-pre').text(info.premon);
+    $('#ip-pre-pre').text('Click here');
     $('#ip-pre-pre').attr('href', info.premon);
-    $('#ip-pre-fra').text(info.framenet);
+    $('#ip-pre-fra').text('Click here');
     $('#ip-pre-fra').attr('href', info.framenet);
     $('#ip-pre-ide').text(info.predicate);
+    $('#ip-pre-rel').text(info.relation);
     $('#activePredicate').text(info.predicate);
 
     var an_un = [];
