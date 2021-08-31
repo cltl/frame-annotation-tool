@@ -1282,8 +1282,6 @@ function validateCorrection() {
             }
 
             if (correction_subdivisions.join('') != correction_original) {
-                console.log(correction_original);
-                console.log(correction_subdivisions);
                 return [false, 'Compound components should recreate entire compound'];
             }
 
@@ -1648,8 +1646,8 @@ function activatePredicate(token_id) {
         var color_index = 0;
         color_index = activateRoles(result, 'Core', an_ex, an_un, true, color_index);
         color_index = activateRoles(result, 'Peripheral', an_ex, an_un, false, color_index);
-        color_index = activateRoles(result, 'Extra-thematic', an_ex, an_un, false, color_index);
-        color_index = activateRoles(result, 'Core-unexpressed', an_ex, an_un, false), color_index;
+        color_index = activateRoles(result, 'Extra-Thematic', an_ex, an_un, false, color_index);
+        // color_index = activateRoles(result, 'Core-unexpressed', an_ex, an_un, false), color_index;
     });
 }
 

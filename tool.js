@@ -1285,12 +1285,14 @@ var getFrameElements = function(frame_id) {
         // Add current frame element to correct resulting list
         if (element_type == "Core") core_elements.push(element);
         else if (element_type == "Peripheral") peripheral_elements.push(element);
-        else if (element_type == "Extra-thematic") extra_thematic_elements.push(element);
-        else if (element_type == "Core-unexpressed") core_unexpressed_elements.push(element);
+        else if (element_type == "Extra-Thematic") extra_thematic_elements.push(element);
+        // else if (element_type == "Core-Unexpressed") core_unexpressed_elements.push(element);
+        else if (element_type == "Core-Unexpressed") core_elements.push(element);
         else continue
     }
 
-    return { "Core": core_elements, "Peripheral": peripheral_elements, "Extra-thematic": extra_thematic_elements, "Core-unexpressed": core_unexpressed_elements };
+    // return { "Core": core_elements, "Peripheral": peripheral_elements, "Extra-Thematic": extra_thematic_elements, "Core-unexpressed": core_unexpressed_elements };
+    return { "Core": core_elements, "Peripheral": peripheral_elements, "Extra-Thematic": extra_thematic_elements };
 }
 
 // TODO: Refactor needed
