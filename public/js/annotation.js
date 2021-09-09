@@ -546,7 +546,7 @@ function updateFEATask() {
     $('#ip-fea').show();
     $('span[data-pred-id]');
 
-    $('sup').show();
+    $('[data-pred-status="manual"] > sup').show();
     $('#fea-role-select').val('None');
 
     if (fea_task == '1') {
@@ -769,7 +769,11 @@ function loadDocument() {
                     // Extract all annotated predicate ids
                     for (var key in annotations.fan) {
                         var p_info = annotations.fan[key];
-                        predicate_info[p_info.predicate] = { 'tid': key, 'roles': [], 'prem': p_info.premon };
+                        predicate_info[p_info.predicate] = { 'tid': key,
+                                                             'roles': [],
+                                                             'prem': p_info.premon,
+                                                             'status': p_info.status };
+
                         predicate_prems.push(p_info.premon);
                     }
 
@@ -779,15 +783,6 @@ function loadDocument() {
                             var r_info = annotations.fea[key][key2];
                             predicate_info[r_info.predicate].roles.push(r_info.premon);
                         }
-                        // if (key == 'unexpressed') {
-                        //     for (key2 in annotations.fea.unexpressed) {
-                        //         var r_info = annotations.fea.unexpressed[key2];
-                        //         predicate_info[r_info.predicate].roles.push(r_info.premon);
-                        //     }
-                        // } else {
-                        //     var r_info = annotations.fea[key];
-                        //     predicate_info[r_info.predicate].roles.push(r_info.premon);
-                        // }
                     }
 
                     // Populate dropdown
@@ -801,19 +796,21 @@ function loadDocument() {
                             var r_info = role_data[p_info.prem].Core;
                             var overlap = 0;
 
-                            for (var i in r_info) {
-                                if (p_info.roles.indexOf(r_info[i].value) > -1) {
-                                    overlap += 1
+                            if (p_info.status == 'manual') {
+                                for (var i in r_info) {
+                                    if (p_info.roles.indexOf(r_info[i].value) > -1) {
+                                        overlap += 1
+                                    }
                                 }
-                            }
-
-                            var entry = { 'label': pr_id, 'value': p_info.tid }
-                            if (overlap == 0) {
-                                non_annotated.push(entry)
-                            } else if (overlap == r_info.length) {
-                                all_annotated.push(entry)
-                            } else {
-                                sub_annotated.push(entry)
+    
+                                var entry = { 'label': pr_id, 'value': p_info.tid }
+                                if (overlap == 0) {
+                                    non_annotated.push(entry)
+                                } else if (overlap == r_info.length) {
+                                    all_annotated.push(entry)
+                                } else {
+                                    sub_annotated.push(entry)
+                                }
                             }
                         }
 
@@ -1387,7 +1384,8 @@ function validateFrameAnnotation() {
     }
 
     for (var i in selected) {
-        if ($('[term-selector="' + selected[i] + '"]').data('pred-id')) {
+        var term = $('[term-selector="' + selected[i] + '"]');
+        if (term.data('pred-id') && term.data('pred-status') != 'system') {
             return [false, 'One or more selected markables is already annotated']
         }
     }
