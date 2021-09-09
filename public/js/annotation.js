@@ -112,6 +112,15 @@ $(function () {
                             });
                         }
                     }
+                } else {
+                    $('.styled').removeAttr('style');
+                    $('.styled').removeClass('styled');
+                    $(t_selector).toggleClass('marked');
+                    
+                    if ($(t_selector).hasClass('marked')) {
+                        resetPREPanel();
+                        activatePredicate(term_selector);
+                    }
                 }
             } else if ($('#fan-task-select').val() == '3') {
                 if ($(t_selector).data('pred-id')) {
@@ -1370,6 +1379,12 @@ function validateFrameAnnotation() {
 
     if (!(selected.length > 0)) {
         return [false, 'Please select at least one markable'];
+    }
+
+    for (var i in selected) {
+        if ($('[term-selector="' + selected[i] + '"]').data('pred-id')) {
+            return [false, 'One or more selected markables is already annotated']
+        }
     }
 
     var lem = $('[term-selector="' + selected + '"]').attr('lemma');
