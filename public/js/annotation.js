@@ -151,6 +151,11 @@ $(function () {
             if ($('#cor-task-select').val() == '1') {
                 if (!ref_id) {
                     $(t_selector).toggleClass('marked');
+                } else {
+                    $('span[data-ref-id="' + ref_id + '"]').toggleClass('marked');
+
+                    var uri = $(t_selector).data('ref-uri');
+                    $('a[data-uri="' + uri + '"]').toggleClass('marked');
                 }
             } else if ($('#cor-task-select').val() == '2') {
                 if (ref_id) {
@@ -1512,6 +1517,12 @@ var validateReference = function () {
 
         if (!(selected.length > 0)) {
             return [false, 'Select at least one markable']
+        }
+
+        for (var i in selected) {
+            if ($('[term-selector="' + selected[i] + '"]').data('ref-id')) {
+                return [false, 'One or more selected markables is already annotated']
+            }
         }
 
         // Get all selected referents
