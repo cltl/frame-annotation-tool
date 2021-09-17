@@ -1383,13 +1383,6 @@ function validateFrameAnnotation() {
         return [false, 'Please select at least one markable'];
     }
 
-    for (var i in selected) {
-        var term = $('[term-selector="' + selected[i] + '"]');
-        if (term.data('pred-id') && term.data('pred-status') != 'system') {
-            return [false, 'One or more selected markables is already annotated']
-        }
-    }
-
     var lem = $('[term-selector="' + selected + '"]').attr('lemma');
     var pos = $('[term-selector="' + selected + '"]').attr('pos');
 
@@ -1405,6 +1398,13 @@ function validateFrameAnnotation() {
     }
     // Create
     else if (frame_task == '2') {
+        for (var i in selected) {
+            var term = $('[term-selector="' + selected[i] + '"]');
+            if (term.data('pred-id') && term.data('pred-status') != 'system') {
+                return [false, 'One or more selected markables is already annotated']
+            }
+        }
+
         var task_data = {
             'fan_task': 2,
             'frame': frame_type,
