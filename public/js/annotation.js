@@ -133,6 +133,10 @@ $(function () {
                         activatePredicate(term_selector);
                     }
                 }
+            } else if ($('#fan-task-select').val() == '4') {
+                if (!$(t_selector).data('pred-id')) {
+                    $(t_selector).toggleClass('marked');
+                }
             }
         }
 
@@ -974,10 +978,11 @@ function renderToken(term, prev_term) {
         data_attrs += 'data-ref-uri="' + term.ref_uri + '"';
     }
 
-    return join_sym + '<span class="markable" lemma="' +
-        term.lemma + '" pos="' + term.pos + '" term-selector="' +
-        t_select + '" parent-selector="' + p_select + '" ' +
-        data_attrs + '>' + term.text + super_script + '</span>';
+    return join_sym + '<span class="markable" sentence="' + term.sent +
+        '" lemma="' + term.lemma + '" pos="' + term.pos +
+        '" term-selector="' + t_select + '" parent-selector="' +
+        p_select + '" ' + data_attrs + '>' + term.text +
+        super_script + '</span>';
 }
 
 function renderTokens(terms, annotations) {
@@ -1418,7 +1423,7 @@ function validateFrameAnnotation() {
         return [true, task_data];
     }
     // Remove
-    else {
+    else if (frame_task == '3') {
         var predicates = selected.map(function (term) {
             return annotations.fan[term].predicate;
         });
@@ -1426,6 +1431,40 @@ function validateFrameAnnotation() {
         var task_data = { 'fan_task': 3, 'target_ids': predicates };
 
         return [true, task_data];
+    }
+    //Suggest
+    else {
+        var suggestion_data = [];
+
+        for (var i in selected) {
+            var term = $('[term-selector="' + selected[i] + '"]');
+            var term_text = '';
+
+            term.each(function() {
+                term_text += $(this).text() + ' ';
+            });
+
+            var sentence = '';
+
+            $('[sentence="' + term.attr('sentence') + '"]').each(function() {
+                if ($(this).attr('pos') != 'PUNCT') {
+                    sentence += ' ';
+                }
+
+                sentence += $(this).text();
+            });
+
+            suggestion_data.push({
+                'word': term_text,
+                'lemma': term.attr('lemma'),
+                'pos': term.attr('pos'),
+                'sentence': sentence
+            });
+        }
+
+        var lan = $('#ic-lan-select').val();
+        var task_data = { 'fan_task': 4, 'suggestions': suggestion_data, 'lan': lan }
+        return [true, task_data]
     }
 }
 

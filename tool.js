@@ -334,11 +334,15 @@ function readTermLayer(term_layer, mw_layer, token_data) {
         // Term is part of multiword
         if (term['attr']['component_of'] != undefined) {
             var par_term_id = term['attr']['component_of'];
+            var par_term_pos = undefined;
             var par_term_lem = undefined;
 
             for (var j in mw_layer) {
                 if (mw_layer[j]['attr']['id'] == par_term_id) {
+                    par_term_pos = mw_layer[j]['attr']['pos'];
                     par_term_lem = mw_layer[j]['attr']['lemma'];
+
+                    break;
                 }
             }
 
@@ -346,7 +350,7 @@ function readTermLayer(term_layer, mw_layer, token_data) {
             var target_token = token_data[target_token_id];
             var term_data = { 'text': target_token['text'],
                               'lemma': par_term_lem,
-                              'pos': term['attr']['pos'],
+                              'pos': par_term_pos,
                               't_select': par_term_id,
                               'p_select': par_term_id,
                               'type': 'multiword',
@@ -671,7 +675,7 @@ function addMultiwordEntry(json_data, multiword_data) {
     if (!Array.isArray(mw_layer)) mw_layer = [mw_layer];
 
     multiword_data['mcn_type'] = multiword_data['mcn_type'] == 1 ? 'phrasal' : 'idiom';
-    var pos = multiword_data['mcn_type'] == 'phrasal' ? 'VERB' : '';
+    var pos = multiword_data['mcn_type'] == 'phrasal' ? 'VERB' : 'MWE';
 
     // Prepare multiword entry creation
     var multiword_id = 'mw' + (mw_layer.length + 1).toString();
@@ -713,23 +717,23 @@ function updateMultiwordTerms(json_data, multiword_id, target_term_ids) {
         }
     }
 
-    var srl_layer = json_data['NAF']['srl']['predicate'];
-    if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
+    // var srl_layer = json_data['NAF']['srl']['predicate'];
+    // if (!Array.isArray(srl_layer)) srl_layer = [srl_layer];
 
-    for (var i in srl_layer) {
-        var predicate = srl_layer[i];
-        var predicate_span = predicate['span']['target'];
+    // for (var i in srl_layer) {
+    //     var predicate = srl_layer[i];
+    //     var predicate_span = predicate['span']['target'];
 
-        for (j in predicate_span) {
-            var term = predicate_span[j];
-            if (term in target_term_ids) {
-                delete srl_layer[i];
-            }
-        }
-    }
+    //     for (j in predicate_span) {
+    //         var term = predicate_span[j];
+    //         if (term in target_term_ids) {
+    //             delete srl_layer[i];
+    //         }
+    //     }
+    // }
 
     json_data['NAF']['terms']['term'] = term_layer;
-    json_data['NAF']['srl']['predicate'] = srl_layer;
+    // json_data['NAF']['srl']['predicate'] = srl_layer;
     return json_data;
 }
 
@@ -1190,7 +1194,21 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
             var target_id = task_data.target_ids[i];
             json_data = deprecatePredicateEntry(json_data, target_id);
         }
-    } 
+    } else if (task_data.fan_task == 4) {    
+        fs.readFile('data/Suggestions.json', 'utf8', function(err, data) {
+            var suggestions = JSON.parse(data);
+
+            if (!(task_data.lan in suggestions)) {
+                suggestions[task_data.lan] = [];
+            }
+            
+            for (i in task_data.suggestions) {
+                suggestions[task_data.lan].push(task_data.suggestions[i]);
+            }
+    
+            fs.writeFile('data/Suggestions.json', JSON.stringify(suggestions), function() {});
+        });
+    }
 
     return json_data;
 }
