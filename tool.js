@@ -35,7 +35,7 @@ app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
 })); 
 
 // set up our express application
-app.use(morgan('dev')); // log every request to the console
+app.use(morgan(':date[clf] ":method :url"')); // log every request to the console
 app.use(cookieParser()); // read cookies (needed for auth)
 app.use(expressSession({secret: 'mySecretKey', resave: true, saveUninitialized: false}));
 app.use(passport.initialize())  
