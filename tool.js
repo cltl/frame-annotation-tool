@@ -29,7 +29,7 @@ app.set('views', __dirname + '/public/html');
 app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'html');
 
-app.use( bodyParser.json() );       // to support JSON-encoded bodies
+app.use(bodyParser.json() );       // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
   extended: true
 })); 
@@ -545,10 +545,14 @@ function readCoreferencesLayer(coref_layer) {
             for (var i in coref_span) {
                 var term_id = coref_span[i]['attr']['id'];
 
-                result[term_id] = {
+                if (!(term_id in result)) {
+                    result[term_id] = [];
+                }
+
+                result[term_id].push({
                     'entity': reference,
                     'coreference': coreference['attr']['id'] 
-                };
+                });
             }
         }
     }

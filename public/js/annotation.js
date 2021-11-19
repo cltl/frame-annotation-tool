@@ -153,15 +153,15 @@ $(function () {
         else if (current_task == '4') {
             var ref_id = $(t_selector).data('ref-id');
             if ($('#cor-task-select').val() == '1') {
-                if (!ref_id) {
-                    $(t_selector).toggleClass('marked');
-                } else {
+                $(t_selector).toggleClass('marked');
+            } else if ($('#cor-task-select').val() == '2') {
+                if (ref_id) {
                     $('span[data-ref-id="' + ref_id + '"]').toggleClass('marked');
 
                     var uri = $(t_selector).data('ref-uri');
                     $('a[data-uri="' + uri + '"]').toggleClass('marked');
                 }
-            } else if ($('#cor-task-select').val() == '2') {
+            } else if ($('#cor-task-select').val() == '3') {
                 if (ref_id) {
                     $('span[data-ref-id="' + ref_id + '"]').toggleClass('marked');
 
@@ -974,8 +974,10 @@ function renderToken(term, prev_term) {
     }
 
     if (term.attributes.includes('coref')) {
-        data_attrs += 'data-ref-id="' + term.ref_id + '"';
-        data_attrs += 'data-ref-uri="' + term.ref_uri + '"';
+        for (var i in term.ref_id) {
+            data_attrs += 'data-ref-id="' + term.ref_id[i] + '"';
+            data_attrs += 'data-ref-uri="' + term.ref_uri[i] + '"';
+        }
     }
 
     return join_sym + '<span class="markable" sentence="' + term.sent +
@@ -1014,8 +1016,15 @@ function renderTokens(terms, annotations) {
         }
         
         if (term.t_select in annotations['cor']) {
-            term.ref_id = annotations['cor'][term.t_select].coreference;
-            term.ref_uri = annotations['cor'][term.t_select].entity;
+            term.ref_id = [];
+            term.ref_uri = [];
+
+            for (var i in annotations['cor'][term.t_select]) {
+                item = annotations['cor'][term.t_select][i];
+                term.ref_id.push(item.coreference);
+                term.ref_uri.push(item.entity);
+            }
+
             term.attributes += 'coref ';
         }
 
@@ -1556,14 +1565,15 @@ var validateReference = function () {
             return [false, 'Select at least one markable']
         }
 
-        for (var i in selected) {
-            if ($('[term-selector="' + selected[i] + '"]').data('ref-id')) {
-                return [false, 'One or more selected markables is already annotated']
-            }
-        }
+        // for (var i in selected) {
+        //     if ($('[term-selector="' + selected[i] + '"]').data('ref-id')) {
+        //         return [false, 'One or more selected markables is already annotated']
+        //     }
+        // }
 
         // Get all selected referents
         var referents = $('.structured-data.marked')
+        
         if (!referents.length) {
             return [false, 'Select at least one referent'];
         }
@@ -1582,13 +1592,22 @@ var validateReference = function () {
     } else if (task == '2') {
         // Get all selected markables
         var selected = getSelected();
+        var referent = $("[term-selector=" + selected[0] + "]").data("ref-uri");
+        console.log(selected);
 
         if (!(selected.length > 0)) {
             return [false, 'Select at least one markable'];
         }
 
-        var cr_id = annotations['cor'][selected[0]]['coreference'];
+        for (var i in annotations['cor'][selected[0]]) {
+            var item = annotations['cor'][selected[0]][i];
+            if (item.entity == referent) {
+                var cr_id = item['coreference'];
+            }
+        }
         var task_data = { 'cor_task': 2, 'coreference': cr_id };
+
+        console.log(task_data);
 
         return [true, task_data];
     }
