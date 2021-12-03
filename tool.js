@@ -1545,14 +1545,16 @@ var saveNAF = function (file_name, json_data, callback) {
 
     libxml.freeXml();
 
-    fs.writeFile(file_name, xml, function (err, data) {
-        if (err) {
-            console.log(err);
-            callback(err);
-        } else {
-            callback(false);
-        }
-    });
+    if (xml != "") {
+        fs.writeFile(file_name, xml, function (err, data) {
+            if (err) {
+                console.log(err);
+                callback(err);
+            } else {
+                callback(false);
+            }
+        });
+    }
 };
 
 // =====================================
