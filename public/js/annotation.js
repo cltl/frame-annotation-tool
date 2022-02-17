@@ -1592,8 +1592,7 @@ var validateReference = function () {
     } else if (task == '2') {
         // Get all selected markables
         var selected = getSelected();
-        var referent = $("[term-selector=" + selected[0] + "]").data("ref-uri");
-        console.log(selected);
+        var referent = $("span[term-selector=\"" + selected[0] + "\"]").data("ref-uri");
 
         if (!(selected.length > 0)) {
             return [false, 'Select at least one markable'];
