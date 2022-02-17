@@ -481,11 +481,16 @@ function readSRLLayer(srl_layer, typicality) {
         var predicate = srl_layer[i];
         var predicate_id = predicate["attr"]["id"];
         var predicate_stat = predicate["attr"]["status"];
-        ``;
+
         // Get most recent annotation for current predicate if not deprecated
         if (predicate_stat !== "deprecated") {
             var references = predicate["externalReferences"]["externalRef"];
-            var latest_ref = getLatestExternalReference(references);
+            var latest_ref = getLatSestExternalReference(references);
+
+            // NOTE: Probably should be moved to data repo
+            if (predicate_stat == "system") {
+                latest_ref.reftype = "isOfType";
+            }
 
             // Loop over each term in the predicate span
             var predicate_span = predicate["span"]["target"];
