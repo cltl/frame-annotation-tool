@@ -122,6 +122,16 @@ $(function () {
                         activatePredicate(term_selector);
                     }
                 }
+
+                if ($(t_selector).hasClass('coref')) {
+                    var ref_id = $(t_selector).data('ref-id');
+                    var uri = $(t_selector).data('ref-uri');
+
+                    console.log(uri)
+
+                    $('span[data-ref-id="' + ref_id + '"]').toggleClass('coref-marked');
+                    $('a[data-uri="' + uri + '"]').toggleClass('coref-marked');
+                }
             } else if ($('#fan-task-select').val() == '3') {
                 if ($(t_selector).data('pred-id')) {
                     $('.styled').removeAttr('style');
@@ -511,6 +521,7 @@ function updateFANTask() {
     $('span[data-pred-id]').addClass('annotated');
     $('span[data-pred-status="manual"]').addClass('manual');
     $('span[data-pred-status="system"]').addClass('system');
+    $('span[data-ref-id]').addClass('coref');
 
     $('#fan-type-select').val('None');
     $('#fan-relation-select').val('None');

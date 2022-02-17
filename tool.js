@@ -485,7 +485,7 @@ function readSRLLayer(srl_layer, typicality) {
         // Get most recent annotation for current predicate if not deprecated
         if (predicate_stat !== "deprecated") {
             var references = predicate["externalReferences"]["externalRef"];
-            var latest_ref = getLatSestExternalReference(references);
+            var latest_ref = getLatestExternalReference(references);
 
             // NOTE: Probably should be moved to data repo
             if (predicate_stat == "system") {
@@ -1854,6 +1854,7 @@ app.get("/frames", isAuthenticated, function (req, res) {
     var lan = req.query["lan"];
     var lem = req.query["lem"];
     var lexical_path = lan + "/" + typ + ".json";
+    console.log(LL_DIR + lexical_path);
 
     // Load lexical data
     fs.readFile(LL_DIR + lexical_path, "utf8", function (err, data) {
