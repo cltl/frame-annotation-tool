@@ -7,7 +7,7 @@
     font-size: 1.5rem;
 }
 
-.table-condensed{
+.table-condensed {
     font-size: 1rem;
     width: 100%;
 }
@@ -50,19 +50,31 @@
     color: red;
 }
 
+.markable.coref {
+    color: #bb8fce;
+}
+
+.markable.coref-marked {
+    font-weight: bold;
+}
+
 .markable.dependency {
-    background: #BB8FCE;
+    background: #bb8fce;
     font-weight: bold;
 }
 
 .structured-data.marked {
-    background: #BB8FCE !important;
+    background: #bb8fce !important;
+}
+
+.structured-data.coref-marked {
+    background: #bb8fce !important;
 }
 
 /* Info panels */
 .info-panel {
     margin-bottom: 10px;
-    background: #EBF5FB;
+    background: #ebf5fb;
     padding: 5px;
 }
 
@@ -70,12 +82,16 @@ select {
     width: 100%;
 }
 
-input[type=text] {
+input[type="text"] {
     line-height: 9px;
     font-size: 9px;
 }
 
 textarea {
     width: calc(100% - 10px);
-    
+}
+
+.panel-body {
+    max-height: 50vh;
+    overflow-y: scroll;
 }
