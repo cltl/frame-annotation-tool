@@ -417,6 +417,7 @@ function updateTask(clear) {
     }
 
     var new_task = $('#annotation-task-selection').val();
+    $('span[data-ref-id]').removeClass('coref');
 
     if (clear == true) {
         clearMessage();
