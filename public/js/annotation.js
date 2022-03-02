@@ -127,8 +127,6 @@ $(function () {
                     var ref_id = $(t_selector).data('ref-id');
                     var uri = $(t_selector).data('ref-uri');
 
-                    console.log(uri)
-
                     $('span[data-ref-id="' + ref_id + '"]').toggleClass('coref-marked');
                     $('a[data-uri="' + uri + '"]').toggleClass('coref-marked');
                 }
@@ -417,6 +415,8 @@ function updateTask(clear) {
     }
 
     var new_task = $('#annotation-task-selection').val();
+    $('.coref').removeClass('coref');
+    $('.coref-marked').removeClass('coref-marked');
 
     if (clear == true) {
         clearMessage();
