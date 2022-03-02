@@ -415,6 +415,7 @@ function updateTask(clear) {
     }
 
     var new_task = $('#annotation-task-selection').val();
+    
     $('.coref').removeClass('coref');
     $('.coref-marked').removeClass('coref-marked');
 
