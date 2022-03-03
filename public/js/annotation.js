@@ -1618,8 +1618,6 @@ var validateReference = function () {
         }
         var task_data = { 'cor_task': 2, 'coreference': cr_id };
 
-        console.log(task_data);
-
         return [true, task_data];
     }
 }

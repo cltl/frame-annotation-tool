@@ -505,7 +505,7 @@ function readSRLLayer(srl_layer, typicality) {
 
                 result[0][term_id] = {
                     status: predicate_stat,
-                    typicality: typicality[reference],
+                    typicality: typicality[latest_ref.reference],
                     label: frame_info.frame_label,
                     definition: frame_info.definition,
                     premon: latest_ref.reference,
