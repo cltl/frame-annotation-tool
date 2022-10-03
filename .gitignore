@@ -1,9 +1,4 @@
-data/DynamicLexicon.json
-data/Notes.json
-data/Annotation
-data/LexicalData
-data/DFNDataReleases
-data/TestData
+data
 allowed.json
 package-lock.json
 node_modules/

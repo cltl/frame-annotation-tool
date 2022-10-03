@@ -1256,8 +1256,10 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
                 var reference_data = getLatestExternalReference(
                     predicate.externalReferences.externalRef
                 );
+
                 reference_data["timestamp"] = timestamp;
                 reference_data["source"] = session_id;
+                reference_data["reftype"] = "isOfType";
 
                 srl_layer[i] = addExternalReferences(predicate, reference_data);
                 srl_layer[i]["attr"]["status"] = "manual";
