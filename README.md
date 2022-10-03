@@ -3,37 +3,37 @@ Annotation tool in JavaScript and Node.js for annotation of frames in Dutch docu
 
 ### Installation
 
-To install all the needed packages, please run `npm install`. This will install all dependencies listed in `package.json`.
+To install all the required packages, run `npm install`. This will install all dependencies listed in `package.json`. The data for the tool can be obtained from [https://github.com/cltl/DFNDataReleases](https://github.com/cltl/DFNDataReleases), and should be cloned into the `data` directory. Furthermore, the `data` directory should also contain empty JSON files `DynamicLexicon.json`, `Notes.json`, and `Suggestions.json`. The `data` directory should thus look like this:
 
-Other things needed for the tool to work (if you don't know how to get these, contact Filip or Piek):
-* The `data` folder should be in this directory and contain a subfolder `json`. 
-* There should be an authentication file `allowed.json` that contains the users and their passwords as key-value pairs. 
+```
+data
+|  DynamicLexicon.json     ->    Containing "{}"
+|  Notes.json              ->    Containing "{}"
+|  Suggestions.json        ->    Containing "{}"
+└──DFNDataReleases
+   |  ...
+```
 
-*That should be it ;)*
+The root directory of the tool should also contain a file `allowed.json`, which contains a username to password mapping (e.g. `{"sam": "sams_very_secure_password"}`) 
 
 ### Starting the server
 
-To start the server, simply run `node frame.js` or `npm start`.
+To start the server, simply run `node tool.js` or `npm start`.
 
-### Directory structure
+### Tool structure
 
-* `frame.js` is the main Node.js server file.
-* the folder `public` contains all static code (HTML, Javascript) and static files to be served (images and PDF files).
-* the filder `data` contains the input data for the tool. Specifically, its `naf` subfolder contains the NAF files, whereas `data/json` contains several JSON indices. All of this data is created by [MWEP](https://github.com/cltl/multilingual-wiki-event-pipeline).
-* the tool documentation can be found in `docs`.
-
-### Reloading the data
-
-Reloading the tool data requires three steps:
-1. Run the `main.py` script from the [MWEP](https://github.com/cltl/multilingual-wiki-event-pipeline) project
-2. Run the script `reload.sh` to update our data (.json and .naf) files with the new files created in step 1. Note: make sure you update the directories in the script to correspond to your local file structure.
-3. [optionally] remove the old data in `annotation`
+* `tools.js` is the main Node.js server file containing all backend endpoints and logic for NAF manipulation.
+* the `public` directory contains all static frontend code (HTML, Javascript) and static files to be served (images).
+  * `public/html/annotation.html` contains all HTML for the annotation page of the tool
+  * `public/js/annotation.json` contains all frontend logic and communication with the backend for the annotation page of the tool.
+* the `data` directory contains the input data for the tool.
 
 ### Acknowledgements
 
 Some functionality was reused from the <a href="https://github.com/cltl/LongTailAnnotation">Long Tail Annotation tool</a>.
 
 ### Contact
-Filip Ilievski (f.ilievski@vu.nl)
+
+Sam Titarsolej (s.titarsolej@gmail.com)
 
 Vrije Universiteit Amsterdam
