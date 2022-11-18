@@ -186,7 +186,7 @@ app.get("/annotation", isAuthenticated, function (req, res) {
 //#region Passport function
 passport.use(
     new LocalStrategy(function (username, password, done) {
-        fs.readFile("allowed.json", "utf8", function (err, data) {
+        fs.readFile("data/allowed.json", "utf8", function (err, data) {
             if (err) throw err; // we'll not consider error handling for now
 
             var allowed = JSON.parse(data);
@@ -1344,7 +1344,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
             fs.writeFile(
                 "data/Suggestions.json",
                 JSON.stringify(suggestions),
-                function () {}
+                function () { }
             );
         });
     }
@@ -1432,7 +1432,7 @@ function handleStructuredDataAnnotation(incident_id, task_data) {
     }
 
     // Store inc2str
-    fs.writeFile(inc2str_file, JSON.stringify(inc2str), function () {});
+    fs.writeFile(inc2str_file, JSON.stringify(inc2str), function () { });
 }
 //#endregion
 
@@ -1697,7 +1697,7 @@ app.post("/store_notes", isAuthenticated, function (req, res) {
         var notes = JSON.parse(data);
         notes[doc] = text;
 
-        fs.writeFile("data/Notes.json", JSON.stringify(notes), function () {});
+        fs.writeFile("data/Notes.json", JSON.stringify(notes), function () { });
         res.sendStatus(200);
     });
 });
