@@ -7,6 +7,7 @@ To install all the required packages, run `npm install`. This will install all d
 
 ```
 data
+|  allowed.json            ->    Containing user -> password mapping
 |  DynamicLexicon.json     ->    Containing "{}"
 |  Notes.json              ->    Containing "{}"
 |  Suggestions.json        ->    Containing "{}"
@@ -14,7 +15,7 @@ data
    |  ...
 ```
 
-The root directory of the tool should also contain a file `allowed.json`, which contains a username to password mapping (e.g. `{"sam": "sams_very_secure_password"}`) 
+`data/allowed.json` should contain a username to password mapping (e.g. `{"sam": "sams_very_secure_password"}`) 
 
 ### Starting the server
 
