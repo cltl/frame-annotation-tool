@@ -1,6 +1,8 @@
 // =====================================
 //#region Load dependencies
 
+require('dotenv').config({ path: ".env" })
+
 var express = require("express");
 // var request = require('request');
 var passport = require("passport");
