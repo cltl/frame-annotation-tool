@@ -18,7 +18,6 @@ var _ = require("underscore");
 
 var app = express();
 var libxml = new Libxml();
-libxml.loadDtds(["data/naf/naf.dtd"]);
 
 //#endregion
 
@@ -63,28 +62,29 @@ app.use("/pdf", express.static("public/assets/pdf"));
 app.use("/img", express.static("public/assets/images"));
 app.use("/logs", express.static("logs"));
 
-const LOCK_TIME = 20; // Time in minutes
-
 // Settings
 const GUIDELINESVERSION = "v1";
-const PORT = 8787;
 
+const PORT = process.env.TOOL_PORT;
+const LOCK_TIME = process.env.TOOL_LOCK_TIME; // Time in minutes
+
+const data_dir = process.env.TOOL_DATA_DIR;
 const inc2lang2doc_file =
-    "data/DFNDataReleases/structured/inc2lang2doc_index.json";
-const inc2str_file = "data/DFNDataReleases/structured/inc2str_index.json";
-const type2inc_file = "data/DFNDataReleases/structured/type2inc_index.json";
-const proj2inc_file = "data/DFNDataReleases/structured/proj2inc_index.json";
-const labels_file = "data/DFNDataReleases/structured/labels.json";
+    data_dir + "/DFNDataReleases/structured/inc2lang2doc_index.json";
+const inc2str_file = data_dir + "/DFNDataReleases/structured/inc2str_index.json";
+const type2inc_file = data_dir + "/DFNDataReleases/structured/type2inc_index.json";
+const proj2inc_file = data_dir + "/DFNDataReleases/structured/proj2inc_index.json";
+const labels_file = data_dir + "/DFNDataReleases/structured/labels.json";
 
 const pos_info_file =
-    "data/DFNDataReleases/lexical_data/part_of_speech/part_of_speech_ud_info.json";
+    data_dir + "/DFNDataReleases/lexical_data/part_of_speech/part_of_speech_ud_info.json";
 const pos_map_file =
-    "data/DFNDataReleases/lexical_data/part_of_speech/ud_pos_to_fn_pos.json";
+    data_dir + "/DFNDataReleases/lexical_data/part_of_speech/ud_pos_to_fn_pos.json";
 const frame_info_file =
-    "data/DFNDataReleases/lexical_data/lexicons/frame_to_info.json";
+    data_dir + "/DFNDataReleases/lexical_data/lexicons/frame_to_info.json";
 
-const LL_DIR = "data/DFNDataReleases/lexical_data/typicality/lexical_lookup/";
-const NAF_DIR = "data/DFNDataReleases/unstructured/";
+const LL_DIR = data_dir + "/DFNDataReleases/lexical_data/typicality/lexical_lookup/";
+const NAF_DIR = data_dir + "/DFNDataReleases/unstructured/";
 
 LockedIncidents = {};
 DynamicLexicon = {};
@@ -160,7 +160,7 @@ fs.readFile(pos_map_file, "utf8", function (err, data) {
     posMap = JSON.parse(data);
 });
 
-fs.readFile("data/DynamicLexicon.json", "utf8", function (err, data) {
+fs.readFile(data_dir + "/DynamicLexicon.json", "utf8", function (err, data) {
     if (err) throw err; // we'll not consider error handling for now
     DynamicLexicon = JSON.parse(data);
 });
@@ -186,7 +186,7 @@ app.get("/annotation", isAuthenticated, function (req, res) {
 //#region Passport function
 passport.use(
     new LocalStrategy(function (username, password, done) {
-        fs.readFile("data/allowed.json", "utf8", function (err, data) {
+        fs.readFile(data_dir + "/allowed.json", "utf8", function (err, data) {
             if (err) throw err; // we'll not consider error handling for now
 
             var allowed = JSON.parse(data);
@@ -619,7 +619,7 @@ function readCoreferencesLayer(coref_layer) {
  */
 function readNAFFile(json_data, doc_name, inc_type) {
     var typfile =
-        "data/DFNDataReleases/lexical_data/typicality/typicality_scores/" +
+        data_dir + "/DFNDataReleases/lexical_data/typicality/typicality_scores/" +
         inc_type +
         ".json";
     var typicality = JSON.parse(fs.readFileSync(typfile, "utf8"));
@@ -1330,7 +1330,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
             json_data = deprecatePredicateEntry(json_data, target_id);
         }
     } else if (task_data.fan_task == 4) {
-        fs.readFile("data/Suggestions.json", "utf8", function (err, data) {
+        fs.readFile(data_dir + "/Suggestions.json", "utf8", function (err, data) {
             var suggestions = JSON.parse(data);
 
             if (!(task_data.lan in suggestions)) {
@@ -1342,7 +1342,7 @@ function handleFrameAnnotation(json_data, task_data, session_id) {
             }
 
             fs.writeFile(
-                "data/Suggestions.json",
+                data_dir + "/Suggestions.json",
                 JSON.stringify(suggestions),
                 function () { }
             );
@@ -1569,7 +1569,7 @@ var saveNAF = function (file_name, json_data, callback) {
 // =====================================
 function storeDynamicLexicon() {
     data = JSON.stringify(DynamicLexicon);
-    fs.writeFileSync("data/DynamicLexicon.json", data, function (err, data) {
+    fs.writeFileSync(data_dir + "/DynamicLexicon.json", data, function (err, data) {
         if (err) {
             console.log(err);
         }
@@ -1693,11 +1693,11 @@ app.post("/store_notes", isAuthenticated, function (req, res) {
     var doc = req.body["doc"];
     var text = req.body["text"];
 
-    fs.readFile("data/Notes.json", "utf8", function (err, data) {
+    fs.readFile(data_dir + "/Notes.json", "utf8", function (err, data) {
         var notes = JSON.parse(data);
         notes[doc] = text;
 
-        fs.writeFile("data/Notes.json", JSON.stringify(notes), function () { });
+        fs.writeFile(data_dir + "/Notes.json", JSON.stringify(notes), function () { });
         res.sendStatus(200);
     });
 });
@@ -1817,7 +1817,7 @@ app.get("/load_document", isAuthenticated, function (req, res) {
 
         // Load NAF files and return
         loadNAFFile(doc, typ, true, true, function (naf_data) {
-            fs.readFile("data/Notes.json", "utf8", function (err, data) {
+            fs.readFile(data_dir + "/Notes.json", "utf8", function (err, data) {
                 var notes = JSON.parse(data);
                 var notes_data = "";
                 if (doc in notes) {

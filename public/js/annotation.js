@@ -116,7 +116,7 @@ $(function () {
                     $('.styled').removeAttr('style');
                     $('.styled').removeClass('styled');
                     $(t_selector).toggleClass('marked');
-                    
+
                     if ($(t_selector).hasClass('marked')) {
                         resetPREPanel();
                         activatePredicate(term_selector);
@@ -135,7 +135,7 @@ $(function () {
                     $('.styled').removeAttr('style');
                     $('.styled').removeClass('styled');
                     $(t_selector).toggleClass('marked');
-                    
+
                     if ($(t_selector).hasClass('marked')) {
                         resetPREPanel();
                         activatePredicate(term_selector);
@@ -478,7 +478,7 @@ function updateMCNTask() {
 
     $('span[data-term-type="multiword"]').addClass('annotated');
     $('span[data-term-type="compound"]').addClass('annotated');
-    
+
     $('#mcn-type-select').val('None');
     $('#mcn-lemma-input').val('');
 
@@ -577,8 +577,8 @@ function updateFEATask() {
             loadRoles(frame, function (data) {
                 renderDropdownWithGroups('#fea-role-select', data,
                     ['definition', 'framenet'], '-Select-');
-                
-                $("#fea-role-select > optgroup > option").each(function() {
+
+                $("#fea-role-select > optgroup > option").each(function () {
                     for (i in annotations['fea']) {
                         for (j in annotations['fea'][i]) {
                             if ($(this).val() == annotations['fea'][i][j]['premon'] && rpr_id == annotations['fea'][i][j]['predicate']) {
@@ -785,10 +785,12 @@ function loadDocument() {
                     // Extract all annotated predicate ids
                     for (var key in annotations.fan) {
                         var p_info = annotations.fan[key];
-                        predicate_info[p_info.predicate] = { 'tid': key,
-                                                             'roles': [],
-                                                             'prem': p_info.premon,
-                                                             'status': p_info.status };
+                        predicate_info[p_info.predicate] = {
+                            'tid': key,
+                            'roles': [],
+                            'prem': p_info.premon,
+                            'status': p_info.status
+                        };
 
                         predicate_prems.push(p_info.premon);
                     }
@@ -818,7 +820,7 @@ function loadDocument() {
                                         overlap += 1
                                     }
                                 }
-    
+
                                 var entry = { 'label': pr_id, 'value': p_info.tid }
                                 if (overlap == 0) {
                                     non_annotated.push(entry)
@@ -950,7 +952,7 @@ function saveNotes() {
     var lan = $('#ic-lan-select').val();
     var doc = $('#ic-doc-select').val();
 
-    $.post('/store_notes', {'doc': lan  + '/' + doc, 'text': text}, function(result, status) {
+    $.post('/store_notes', { 'doc': lan + '/' + doc, 'text': text }, function (result, status) {
         printMessage('Succesfully stored notes', 'success');
     });
 }
@@ -1001,7 +1003,7 @@ function renderToken(term, prev_term) {
 
 function renderTokens(terms, annotations) {
     var result = '';
-    var prev_term = {'type': 'singleton'};
+    var prev_term = { 'type': 'singleton' };
 
     for (var i in terms) {
         var term = terms[i];
@@ -1014,19 +1016,19 @@ function renderTokens(terms, annotations) {
             term.pred_typicality = annotations['fan'][term.t_select].typicality;
             term.attributes += 'frame ';
         }
-        
+
         if (term.t_select in annotations['fea']) {
             term.role_id = [];
             term.role_pred = [];
 
-            for (j in annotations['fea'][term.t_select]) { 
+            for (j in annotations['fea'][term.t_select]) {
                 term.role_id.push(annotations['fea'][term.t_select][j].role);
                 term.role_pred.push(annotations['fea'][term.t_select][j].predicate);
             }
 
             term.attributes += 'role ';
         }
-        
+
         if (term.t_select in annotations['cor']) {
             term.ref_id = [];
             term.ref_uri = [];
@@ -1178,10 +1180,10 @@ function renderDropdown(element_id, items, data_items, default_option) {
 // From https://stackoverflow.com/questions/12073270/sorting-options-elements-alphabetically-using-jquery
 function sortDropdown(element_id) {
     var options = $(element_id + ' option');
-    var arr = options.map(function(_, o) { return { t: $(o).text(), v: o.value }; }).get();
+    var arr = options.map(function (_, o) { return { t: $(o).text(), v: o.value }; }).get();
 
-    arr.sort(function(o1, o2) { return o1.t > o2.t ? 1 : o1.t < o2.t ? -1 : 0; });
-        options.each(function(i, o) {
+    arr.sort(function (o1, o2) { return o1.t > o2.t ? 1 : o1.t < o2.t ? -1 : 0; });
+    options.each(function (i, o) {
         o.value = arr[i].v;
         $(o).text(arr[i].t);
     });
@@ -1461,13 +1463,13 @@ function validateFrameAnnotation() {
             var term = $('[term-selector="' + selected[i] + '"]');
             var term_text = '';
 
-            term.each(function() {
+            term.each(function () {
                 term_text += $(this).text() + ' ';
             });
 
             var sentence = '';
 
-            $('[sentence="' + term.attr('sentence') + '"]').each(function() {
+            $('[sentence="' + term.attr('sentence') + '"]').each(function () {
                 if ($(this).attr('pos') != 'PUNCT') {
                     sentence += ' ';
                 }
@@ -1552,7 +1554,7 @@ function validateRoleAnnotation() {
         if (pr_tid == 'None') {
             return [false, 'Select a predicate'];
         }
-        
+
         var pr_id = annotations.fan[pr_tid]['predicate'];
 
         var role = $('#fea-fram-select').val();
@@ -1585,14 +1587,14 @@ var validateReference = function () {
 
         // Get all selected referents
         var referents = $('.structured-data.marked')
-        
+
         if (!referents.length) {
             return [false, 'Select at least one referent'];
         }
 
         var referents_data = [];
 
-        referents.each(function() {
+        referents.each(function () {
             referents_data.push({
                 'uri': $(this).data('uri'),
                 'type': $(this).data('type')
