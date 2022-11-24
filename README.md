@@ -25,7 +25,7 @@ To start the annotation server locally, simply run `node tool.js` or `npm start`
 For deployment on a server, deployment using a process manager such as [pm2](https://pm2.keymetrics.io/) is recommended. Install the pm2 and run `pm2 start tool.js` to the annotation server.
 
 ### Using docker
-Alternatively deployment using docker is possible. First, run `docker pull ghcr.io/cltl/frame-annotation-tool:latest` to pull the docker image on your server. Create a data directory on the server containing all the required data. Start the annotation server by running `docker run ghcr.io/cltl/frame-annotation-tool:latest --mount type=bind,source=/path/to/data/directory,target=/usr/data --env TOOL_DATA_DIR=/usr/data`.
+Alternatively deployment using docker is possible. First, run `docker pull ghcr.io/cltl/frame-annotation-tool:latest` to pull the docker image on your server. Create a data directory on the server containing all the required data. Start the annotation server by running `docker run ghcr.io/cltl/frame-annotation-tool:latest --mount type=bind,source=/path/to/data/directory,target=/usr/data --env TOOL_DATA_DIR=/usr/data -p 8787:8787`.
 
 ## Tool structure
 
